@@ -1,0 +1,67 @@
+# Build results
+bin/
+obj/
+out/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# VS Code settings
+.vscode/
+
+# Visual Studio folders
+.vs/
+
+# NuGet packages
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Auto-generated database
+*.dbmdl
+
+# Logs
+*.log
+
+# LocalDB / SQLite / Dev Databases (optional)
+*.mdf
+*.ldf
+*.sqlite
+*.db
+
+# Publish output
+publish/
+AppPackages/
+*.appx
+*.appxbundle
+*.appxupload
+*.eappx
+*.eappxbundle
+*.eappxupload
+
+# JetBrains Rider
+.idea/
+
+# Test results
+TestResults/
+*.coverage
+*.coveragexml
+*.trx
+
+# OS
+.DS_Store
+desktop.ini
+
+# Dotnet watch
+**/tmp/

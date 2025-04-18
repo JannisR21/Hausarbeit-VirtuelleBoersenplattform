@@ -64,8 +64,9 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             // Beispieldaten initialisieren
             InitializeData();
 
-            // API-Key aus der Konfiguration holen (in einer realen Anwendung)
-            string apiKey = "dein_api_key_hier"; // Für Produktionseinsatz aus App.config oder Umgebungsvariablen laden
+            // API-Key festlegen - Verwende den in der Anwendung bereits enthaltenen API-Key
+            // In der echten Anwendung sollte dieser aus einer Konfigurationsdatei oder Umgebungsvariable kommen
+            string apiKey = "cb617aba18ea46b3a974d878d3c7310b";
 
             // ViewModels für die verschiedenen Bereiche erstellen
             PortfolioViewModel = new PortfolioViewModel();

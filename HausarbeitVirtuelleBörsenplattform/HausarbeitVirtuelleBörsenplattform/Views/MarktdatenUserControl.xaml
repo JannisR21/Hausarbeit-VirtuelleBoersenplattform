@@ -65,6 +65,7 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -123,11 +124,49 @@
                            VerticalAlignment="Center"
                            Margin="10,0,0,0"
                            Foreground="#666"/>
+
+                <!-- Nächste Aktualisierung -->
+                <TextBlock Text="{Binding NächsteAktualisierung, StringFormat={} | Nächste: {0:HH:mm:ss}}"
+                           VerticalAlignment="Center"
+                           Margin="10,0,0,0"
+                           Foreground="#666"/>
             </StackPanel>
         </Grid>
 
+        <!-- Fehlerbereich -->
+        <Border Grid.Row="1" 
+                Background="#fff8e1" 
+                BorderBrush="#ffecb3" 
+                BorderThickness="1" 
+                CornerRadius="4" 
+                Padding="10" 
+                Margin="0,0,0,10"
+                Visibility="{Binding HatFehler, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Warnsymbol -->
+                <Path Grid.Column="0"
+                      Data="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"
+                      Fill="#ffa000"
+                      Width="24"
+                      Height="24"
+                      Stretch="Uniform"
+                      Margin="0,0,10,0"/>
+
+                <!-- Fehlermeldung -->
+                <TextBlock Grid.Column="1"
+                           Text="{Binding FehlerText}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
         <!-- Aktien-Tabelle -->
-        <DataGrid Grid.Row="1"
+        <DataGrid Grid.Row="2"
                   ItemsSource="{Binding AktienListe}"
                   SelectedItem="{Binding AusgewählteAktie, Mode=TwoWay}"
                   AutoGenerateColumns="False"
@@ -157,7 +196,7 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="Änderung %" Width="100">
+                <DataGridTemplateColumn Header="Änderung %" Width="100">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding ÄnderungProzent, StringFormat={}{0:+#.##;-#.##;0} %}" 
@@ -173,8 +212,8 @@
         </DataGrid>
 
         <!-- Hinweis zur Datenquelle -->
-        <TextBlock Grid.Row="2" 
-                   Text="Datenquelle: Twelve Data API | Basic 8 Plan (8 Anfragen pro Minute)" 
+        <TextBlock Grid.Row="3" 
+                   Text="Datenquelle: Twelve Data API | Basic 8 Plan (8 Anfragen pro Minute)" 
                    Foreground="#888888"
                    FontSize="11"
                    HorizontalAlignment="Center"

@@ -4,6 +4,8 @@ using HausarbeitVirtuelleBörsenplattform.Models;
 using HausarbeitVirtuelleBörsenplattform.Services;
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Threading;
@@ -24,8 +26,14 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         private DispatcherTimer _updateTimer;
         private bool _isUpdating;
         private string _statusText;
+        private string _fehlerText;
+        private bool _hatFehler;
         private DateTime _letzteAktualisierung;
         private bool _isLoading;
+        private TimeSpan _aktualisierungsIntervall = TimeSpan.FromMinutes(2); // 2 Minuten Intervall
+
+        // Kultur für korrekte Formatierung
+        private CultureInfo _germanCulture = new CultureInfo("de-DE");
 
         #endregion
 
@@ -59,6 +67,24 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         }
 
         /// <summary>
+        /// Fehlertext für die Anzeige von API-Fehlern
+        /// </summary>
+        public string FehlerText
+        {
+            get => _fehlerText;
+            set => SetProperty(ref _fehlerText, value);
+        }
+
+        /// <summary>
+        /// Gibt an, ob ein Fehler aufgetreten ist
+        /// </summary>
+        public bool HatFehler
+        {
+            get => _hatFehler;
+            set => SetProperty(ref _hatFehler, value);
+        }
+
+        /// <summary>
         /// Zeitpunkt der letzten Aktualisierung
         /// </summary>
         public DateTime LetzteAktualisierung
@@ -77,6 +103,11 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         }
 
         /// <summary>
+        /// Nächste geplante Aktualisierung
+        /// </summary>
+        public DateTime NächsteAktualisierung { get; private set; }
+
+        /// <summary>
         /// Command zum manuellen Aktualisieren der Marktdaten
         /// </summary>
         public IRelayCommand AktualisierenCommand { get; }
@@ -90,9 +121,11 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// </summary>
         /// <param name="mainViewModel">Hauptinstanz des MainViewModel</param>
         /// <param name="apiKey">API-Schlüssel für Twelve Data</param>
-        public MarktdatenViewModel(MainViewModel mainViewModel, string apiKey = "cb617aba18ea46b3a974d878d3c7310b")
+        public MarktdatenViewModel(MainViewModel mainViewModel, string apiKey = "dein_api_key_hier")
         {
             _mainViewModel = mainViewModel;
+            Debug.WriteLine($"MarktdatenViewModel wird initialisiert mit API-Key: {apiKey}");
+
             _twelveDatenService = new TwelveDataService(apiKey);
 
             // Kommandos initialisieren
@@ -104,7 +137,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             // Beispieldaten für den Start laden
             InitializeMarktdaten();
 
-            // Timer für regelmäßige Aktualisierungen (alle 60 Sekunden)
+            // Timer für regelmäßige Aktualisierungen
             StartUpdateTimer();
         }
 
@@ -174,6 +207,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 
             AktienListe = standardAktien;
             LetzteAktualisierung = DateTime.Now;
+            NächsteAktualisierung = DateTime.Now.Add(_aktualisierungsIntervall);
             StatusText = "Initiale Daten geladen";
 
             // Live-Daten sofort laden
@@ -187,10 +221,12 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         {
             _updateTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromSeconds(60) // Update alle 60 Sekunden
+                Interval = _aktualisierungsIntervall // Update alle 2 Minuten
             };
             _updateTimer.Tick += async (s, e) => await AktualisiereMarktdaten();
             _updateTimer.Start();
+
+            Debug.WriteLine($"Update-Timer gestartet mit Intervall: {_aktualisierungsIntervall.TotalMinutes} Minuten");
         }
 
         /// <summary>
@@ -203,14 +239,37 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             _isUpdating = true;
             IsLoading = true;
             StatusText = "Daten werden aktualisiert...";
+            HatFehler = false;
+            FehlerText = "";
+
+            Debug.WriteLine("Starte Aktualisierung der Marktdaten...");
 
             try
             {
                 // Alle Aktien-Symbole aus der aktuellen Liste extrahieren
                 var symbole = AktienListe.Select(a => a.AktienSymbol).ToList();
+                Debug.WriteLine($"Aktualisiere Symbole: {string.Join(", ", symbole)}");
 
                 // Aktiendaten von der API abrufen
                 var aktienDaten = await _twelveDatenService.HoleAktienKurse(symbole);
+
+                // Prüfen, ob ein API-Fehler aufgetreten ist
+                if (!string.IsNullOrEmpty(_twelveDatenService.LastErrorMessage))
+                {
+                    Debug.WriteLine($"API-Fehler erkannt: {_twelveDatenService.LastErrorMessage}");
+                    HatFehler = true;
+                    FehlerText = _twelveDatenService.LastErrorMessage;
+
+                    // Bei API-Limit-Fehler, verlängere das Intervall
+                    if (_twelveDatenService.LastErrorMessage.Contains("API credits") &&
+                        _twelveDatenService.LastErrorMessage.Contains("limit"))
+                    {
+                        // Intervall auf 3 Minuten erhöhen
+                        _aktualisierungsIntervall = TimeSpan.FromMinutes(3);
+                        _updateTimer.Interval = _aktualisierungsIntervall;
+                        Debug.WriteLine($"API-Limit erreicht. Intervall auf {_aktualisierungsIntervall.TotalMinutes} Minuten erhöht.");
+                    }
+                }
 
                 // UI-Thread-Zugriff sicherstellen
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
@@ -225,22 +284,38 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                             existingAktie.AktuellerPreis = aktienInfo.AktuellerPreis;
                             existingAktie.Änderung = aktienInfo.Änderung;
                             existingAktie.ÄnderungProzent = aktienInfo.ÄnderungProzent;
+                            existingAktie.AktienName = aktienInfo.AktienName; // Übernehme auch den Namen (wichtig für Fehlermeldungen)
                             existingAktie.LetzteAktualisierung = DateTime.Now;
                         }
                     }
 
                     LetzteAktualisierung = DateTime.Now;
-                    StatusText = $"Daten aktualisiert um {LetzteAktualisierung.ToString("HH:mm:ss")}";
+                    NächsteAktualisierung = DateTime.Now.Add(_aktualisierungsIntervall);
+
+                    if (HatFehler)
+                    {
+                        StatusText = $"Fehler bei der Aktualisierung um {LetzteAktualisierung.ToString("HH:mm:ss", _germanCulture)}";
+                    }
+                    else
+                    {
+                        StatusText = $"Daten aktualisiert um {LetzteAktualisierung.ToString("HH:mm:ss", _germanCulture)}";
+                    }
                 });
             }
             catch (Exception ex)
             {
+                Debug.WriteLine($"Unbehandelte Ausnahme: {ex.Message}");
+                Debug.WriteLine($"StackTrace: {ex.StackTrace}");
+
+                HatFehler = true;
+                FehlerText = $"Unbehandelte Ausnahme: {ex.Message}";
                 StatusText = $"Fehler bei der Aktualisierung: {ex.Message}";
             }
             finally
             {
                 _isUpdating = false;
                 IsLoading = false;
+                Debug.WriteLine("Aktualisierung der Marktdaten abgeschlossen.");
             }
         }
 

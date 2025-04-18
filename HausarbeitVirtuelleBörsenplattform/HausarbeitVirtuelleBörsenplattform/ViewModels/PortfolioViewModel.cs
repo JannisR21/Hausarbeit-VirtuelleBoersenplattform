@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using HausarbeitVirtuelleBörsenplattform.Models;
 
@@ -117,6 +118,40 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         {
             Gesamtwert = PortfolioEintraege.Sum(pe => pe.Wert);
             GesamtGewinnVerlust = PortfolioEintraege.Sum(pe => pe.GewinnVerlust);
+            Debug.WriteLine($"Portfolio-Gesamtwerte neu berechnet: Wert={Gesamtwert:N2}€, GewinnVerlust={GesamtGewinnVerlust:N2}€");
+        }
+
+        /// <summary>
+        /// Aktualisiert die Kurse der Portfolio-Einträge basierend auf den aktuellen Marktdaten
+        /// </summary>
+        /// <param name="aktienListe">Liste aller Aktien mit aktuellen Kursinformationen</param>
+        public void AktualisiereKurseMitMarktdaten(IEnumerable<Aktie> aktienListe)
+        {
+            if (aktienListe == null)
+                return;
+
+            Debug.WriteLine("Aktualisiere Portfolio-Kurse mit Marktdaten");
+            bool wurdeAktualisiert = false;
+
+            foreach (var eintrag in PortfolioEintraege)
+            {
+                var aktienInfo = aktienListe.FirstOrDefault(a => a.AktienSymbol == eintrag.AktienSymbol);
+                if (aktienInfo != null && aktienInfo.AktuellerPreis > 0)
+                {
+                    decimal alterKurs = eintrag.AktuellerKurs;
+                    eintrag.AktuellerKurs = aktienInfo.AktuellerPreis;
+                    eintrag.LetzteAktualisierung = aktienInfo.LetzteAktualisierung;
+
+                    Debug.WriteLine($"Portfolio-Eintrag {eintrag.AktienSymbol} aktualisiert: {alterKurs:N2}€ -> {aktienInfo.AktuellerPreis:N2}€");
+                    wurdeAktualisiert = true;
+                }
+            }
+
+            if (wurdeAktualisiert)
+            {
+                // Gesamtwerte neu berechnen, wenn mindestens ein Kurs aktualisiert wurde
+                BerechneGesamtwerte();
+            }
         }
 
         /// <summary>

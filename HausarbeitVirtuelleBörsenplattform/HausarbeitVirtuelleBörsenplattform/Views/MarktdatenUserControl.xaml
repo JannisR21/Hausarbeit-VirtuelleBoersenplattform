@@ -177,37 +177,38 @@
                   Background="Transparent"
                   RowBackground="White"
                   AlternatingRowBackground="#f8f9fa">
+            <!-- Änderungen für die DataGrid-Spalten in MarktdatenUserControl.xaml -->
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Symbol" 
-                                    Binding="{Binding AktienSymbol}" 
-                                    Width="80"/>
+                        Binding="{Binding AktienSymbol}" 
+                        Width="80"/>
                 <DataGridTextColumn Header="Name" 
-                                    Binding="{Binding AktienName}" 
-                                    Width="*"/>
+                        Binding="{Binding AktienName}" 
+                        Width="*"/>
                 <DataGridTextColumn Header="Aktueller Preis" 
-                                    Binding="{Binding AktuellerPreis, StringFormat={}{0:N2} €}" 
-                                    Width="120"/>
+                        Binding="{Binding AktuellerPreis, StringFormat={}{0:N2} €, ConverterCulture=de-DE}" 
+                        Width="120"/>
                 <DataGridTemplateColumn Header="Änderung" Width="100">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding Änderung, StringFormat={}{0:+#.##;-#.##;0} €}" 
-                                       Foreground="{Binding Änderung, Converter={StaticResource GewinnVerlustFarbeConverter}}"
-                                       HorizontalAlignment="Right"/>
+                            <TextBlock Text="{Binding Änderung, StringFormat={}{0:+0.00;-0.00;0.00} €, ConverterCulture=de-DE}" 
+                           Foreground="{Binding Änderung, Converter={StaticResource GewinnVerlustFarbeConverter}}"
+                           HorizontalAlignment="Right"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
                 <DataGridTemplateColumn Header="Änderung %" Width="100">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding ÄnderungProzent, StringFormat={}{0:+#.##;-#.##;0} %}" 
-                                       Foreground="{Binding Änderung, Converter={StaticResource GewinnVerlustFarbeConverter}}"
-                                       HorizontalAlignment="Right"/>
+                            <TextBlock Text="{Binding ÄnderungProzent, StringFormat={}{0:+0.00;-0.00;0.00} %, ConverterCulture=de-DE}" 
+                           Foreground="{Binding Änderung, Converter={StaticResource GewinnVerlustFarbeConverter}}"
+                           HorizontalAlignment="Right"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Letzte Aktualisierung" 
-                                    Binding="{Binding LetzteAktualisierung, StringFormat={}{0:HH:mm:ss}}" 
-                                    Width="120"/>
+                        Binding="{Binding LetzteAktualisierung, StringFormat={}{0:HH:mm:ss}}" 
+                        Width="120"/>
             </DataGrid.Columns>
         </DataGrid>
 

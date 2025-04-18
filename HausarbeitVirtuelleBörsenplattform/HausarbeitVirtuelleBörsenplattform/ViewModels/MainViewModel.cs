@@ -2,6 +2,7 @@
 using HausarbeitVirtuelleBörsenplattform.Models;
 using System;
 using System.Configuration;
+using System.Diagnostics;
 
 namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 {
@@ -72,6 +73,16 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             PortfolioViewModel = new PortfolioViewModel();
             MarktdatenViewModel = new MarktdatenViewModel(this, apiKey);
             AktienhandelViewModel = new AktienhandelViewModel(this);
+
+            // Event-Handler hinzufügen, um das Portfolio zu aktualisieren, wenn Marktdaten aktualisiert werden
+            MarktdatenViewModel.PropertyChanged += (sender, args) =>
+            {
+                if (args.PropertyName == nameof(MarktdatenViewModel.LetzteAktualisierung))
+                {
+                    Debug.WriteLine("Marktdaten wurden aktualisiert, synchronisiere Portfolio...");
+                    PortfolioViewModel.AktualisiereKurseMitMarktdaten(MarktdatenViewModel.AktienListe);
+                }
+            };
         }
 
         #endregion

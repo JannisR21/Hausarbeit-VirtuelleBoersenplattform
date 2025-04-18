@@ -204,7 +204,10 @@
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0" Text="Portfolio" Style="{StaticResource CardHeaderStyle}"/>
-                            <TextBlock Grid.Column="1" Text="Gesamtwert: 2.500,00 €" FontWeight="SemiBold" Foreground="#2c3e50"/>
+                            <TextBlock Grid.Column="1" 
+                               Text="{Binding PortfolioViewModel.Gesamtwert, StringFormat=Gesamtwert: {0:N2} €}" 
+                               FontWeight="SemiBold" 
+                               Foreground="#2c3e50"/>       
                         </Grid>
 
                         <!-- Portfolio-UserControl einbinden -->

@@ -1,0 +1,183 @@
+﻿<UserControl x:Class="HausarbeitVirtuelleBörsenplattform.Views.MarktdatenUserControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:HausarbeitVirtuelleBörsenplattform.Views"
+             xmlns:converters="clr-namespace:HausarbeitVirtuelleBörsenplattform.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+
+    <!-- Ressourcen für das UserControl -->
+    <UserControl.Resources>
+        <converters:GewinnVerlustFarbeConverter x:Key="GewinnVerlustFarbeConverter"/>
+
+        <!-- Style für den Aktualisieren-Button -->
+        <Style x:Key="RefreshButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#f0f0f0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#d0d0d0"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <!-- Refresh-Symbol -->
+                                <Path Grid.Column="0" 
+                                      Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 9h7V2l-2.35 2.35z"
+                                      Fill="#555"
+                                      Width="16"
+                                      Height="16"
+                                      Stretch="Uniform"
+                                      Margin="0,0,5,0"/>
+                                <!-- Text -->
+                                <ContentPresenter Grid.Column="1" 
+                                                 HorizontalAlignment="Center" 
+                                                 VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#e0e0e0"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#d0d0d0"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Steuerungsleiste -->
+        <Grid Grid.Row="0" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Aktualisieren-Button -->
+            <Button Grid.Column="0"
+                    Content="Aktualisieren" 
+                    Command="{Binding AktualisierenCommand}"
+                    Style="{StaticResource RefreshButtonStyle}"
+                    IsEnabled="{Binding IsLoading, Converter={StaticResource BooleanToBooleanInverterConverter}}"/>
+
+            <!-- Status und letzte Aktualisierung -->
+            <StackPanel Grid.Column="1" 
+                        Orientation="Horizontal" 
+                        HorizontalAlignment="Right" 
+                        VerticalAlignment="Center">
+
+                <!-- Ladeindikator -->
+                <Grid Width="16" Height="16" Margin="0,0,5,0" Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Path x:Name="SpinnerPath"
+                          Data="M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z"
+                          Fill="#2c3e50"
+                          Stretch="Uniform">
+                        <Path.RenderTransform>
+                            <RotateTransform x:Name="SpinnerRotate" CenterX="8" CenterY="8" Angle="0"/>
+                        </Path.RenderTransform>
+                        <Path.Triggers>
+                            <EventTrigger RoutedEvent="Path.Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation 
+                                            Storyboard.TargetName="SpinnerRotate"
+                                            Storyboard.TargetProperty="Angle"
+                                            From="0" To="360" Duration="0:0:1"
+                                            RepeatBehavior="Forever" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Path.Triggers>
+                    </Path>
+                </Grid>
+
+                <!-- Status-Text -->
+                <TextBlock Text="{Binding StatusText}" 
+                           VerticalAlignment="Center"/>
+
+                <!-- Letzte Aktualisierung -->
+                <TextBlock Text="{Binding LetzteAktualisierung, StringFormat={} | Letzte Aktualisierung: {0:HH:mm:ss}}"
+                           VerticalAlignment="Center"
+                           Margin="10,0,0,0"
+                           Foreground="#666"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Aktien-Tabelle -->
+        <DataGrid Grid.Row="1"
+                  ItemsSource="{Binding AktienListe}"
+                  SelectedItem="{Binding AusgewählteAktie, Mode=TwoWay}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  BorderThickness="0"
+                  Background="Transparent"
+                  RowBackground="White"
+                  AlternatingRowBackground="#f8f9fa">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Symbol" 
+                                    Binding="{Binding AktienSymbol}" 
+                                    Width="80"/>
+                <DataGridTextColumn Header="Name" 
+                                    Binding="{Binding AktienName}" 
+                                    Width="*"/>
+                <DataGridTextColumn Header="Aktueller Preis" 
+                                    Binding="{Binding AktuellerPreis, StringFormat={}{0:N2} €}" 
+                                    Width="120"/>
+                <DataGridTemplateColumn Header="Änderung" Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Änderung, StringFormat={}{0:+#.##;-#.##;0} €}" 
+                                       Foreground="{Binding Änderung, Converter={StaticResource GewinnVerlustFarbeConverter}}"
+                                       HorizontalAlignment="Right"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Änderung %" Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding ÄnderungProzent, StringFormat={}{0:+#.##;-#.##;0} %}" 
+                                       Foreground="{Binding Änderung, Converter={StaticResource GewinnVerlustFarbeConverter}}"
+                                       HorizontalAlignment="Right"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Letzte Aktualisierung" 
+                                    Binding="{Binding LetzteAktualisierung, StringFormat={}{0:HH:mm:ss}}" 
+                                    Width="120"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Hinweis zur Datenquelle -->
+        <TextBlock Grid.Row="2" 
+                   Text="Datenquelle: Twelve Data API | Basic 8 Plan (8 Anfragen pro Minute)" 
+                   Foreground="#888888"
+                   FontSize="11"
+                   HorizontalAlignment="Center"
+                   Margin="0,10,0,0"/>
+    </Grid>
+</UserControl>

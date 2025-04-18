@@ -103,10 +103,11 @@
             <!-- Header mit Navigation -->
             <RowDefinition Height="Auto"/>
             <!-- Status-Leiste -->
-            <RowDefinition Height="*"/>
-            <!-- Hauptbereich mit Inhalten -->
             <RowDefinition Height="Auto"/>
+            <!-- Hauptbereich mit Inhalten -->
+            <RowDefinition Height="*"/>
             <!-- Footer -->
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Header mit Navigation -->
@@ -124,8 +125,7 @@
                        Margin="20,15" VerticalAlignment="Center"/>
 
             <!-- Navigation -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal" 
-                        HorizontalAlignment="Right" Margin="0,0,20,0">
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,20,0">
                 <Button Content="Dashboard" Style="{StaticResource NavButtonStyle}" IsEnabled="False"/>
                 <Button Content="Portfolio" Style="{StaticResource NavButtonStyle}"/>
                 <Button Content="Handel" Style="{StaticResource NavButtonStyle}"/>
@@ -134,8 +134,7 @@
                 <!-- Benutzer-Icon mit Dropdown -->
                 <Button x:Name="UserButton" Style="{StaticResource UserButtonStyle}">
                     <Button.Content>
-                        <Path Data="M20,21v-2a4,4,0,0,0-4-4H8a4,4,0,0,0-4,4v2 M12,7a4,4,0,1,0-4-4,4,4,0,0,0,4,4z" 
-                              Stroke="White" StrokeThickness="2" Stretch="Uniform" Width="18" Height="18"/>
+                        <Path Data="M20,21v-2a4,4,0,0,0-4-4H8a4,4,0,0,0-4,4v2 M12,7a4,4,0,1,0-4-4,4,4,0,0,0,4,4z" Stroke="White" StrokeThickness="2" Stretch="Uniform" Width="18" Height="18"/>
                     </Button.Content>
                     <Button.ContextMenu>
                         <ContextMenu>
@@ -171,7 +170,7 @@
             </StackPanel>
         </Grid>
 
-        <!-- Dashboard-Layout -->
+        <!-- Hauptbereich mit Inhalten -->
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
             <Grid Margin="10">
                 <Grid.RowDefinitions>
@@ -205,8 +204,7 @@
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0" Text="Portfolio" Style="{StaticResource CardHeaderStyle}"/>
-                            <TextBlock Grid.Column="1" Text="Gesamtwert: 2.500,00 €" 
-                                       FontWeight="SemiBold" Foreground="#2c3e50"/>
+                            <TextBlock Grid.Column="1" Text="Gesamtwert: 2.500,00 €" FontWeight="SemiBold" Foreground="#2c3e50"/>
                         </Grid>
 
                         <!-- Portfolio-UserControl einbinden -->
@@ -232,13 +230,11 @@
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0" Text="Marktdaten" Style="{StaticResource CardHeaderStyle}"/>
-                            <TextBlock Grid.Column="1" Text="Letzte Aktualisierung: 16.04.2025 10:30" 
-                                       FontSize="12" Foreground="#666" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="Letzte Aktualisierung: 16.04.2025 10:30" FontSize="12" Foreground="#666" VerticalAlignment="Center"/>
                         </Grid>
 
-                        <!-- Placeholder für Marktdaten-Inhalt -->
-                        <TextBlock Grid.Row="1" Text="Marktdaten-Bereich wird mit Tabelle gefüllt" 
-                                  HorizontalAlignment="Center" VerticalAlignment="Center" Height="550"/>
+                        <!-- MarktdatenUserControl einbinden -->
+                        <views:MarktdatenUserControl Grid.Row="1" DataContext="{Binding MarktdatenViewModel}"/>
                     </Grid>
                 </Border>
 
@@ -255,16 +251,15 @@
                         <!-- Header -->
                         <TextBlock Grid.Row="0" Text="Aktienhandel" Style="{StaticResource CardHeaderStyle}"/>
 
-                        <!-- Placeholder für Handels-Inhalt -->
-                        <TextBlock Grid.Row="1" Text="Handels-Bereich wird mit Formular gefüllt" 
-                                  HorizontalAlignment="Center" VerticalAlignment="Center" Height="250"/>
+                        <!-- Handels-UserControl einbinden -->
+                        <views:HandelsUserControl Grid.Row="1" DataContext="{Binding HandelsViewModel}"/>
                     </Grid>
                 </Border>
             </Grid>
         </ScrollViewer>
 
         <!-- Footer -->
-        <Grid Grid.Row="3" Background="#2c3e50">
+        <Grid Grid.Row="4" Background="#2c3e50">
             <TextBlock Text="© 2025 Virtuelle Börsenplattform | Entwickelt von Jannis Ruhland | Daten bereitgestellt von Twelve Data API" 
                        Foreground="White" HorizontalAlignment="Center" Margin="0,15"/>
         </Grid>

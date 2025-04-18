@@ -1,7 +1,12 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using HausarbeitVirtuelleBörsenplattform.Models;
+using HausarbeitVirtuelleBörsenplattform.Services;
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Threading;
 
 namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 {
@@ -15,6 +20,12 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         private ObservableCollection<Aktie> _aktienListe;
         private Aktie _ausgewählteAktie;
         private MainViewModel _mainViewModel;
+        private readonly TwelveDataService _twelveDatenService;
+        private DispatcherTimer _updateTimer;
+        private bool _isUpdating;
+        private string _statusText;
+        private DateTime _letzteAktualisierung;
+        private bool _isLoading;
 
         #endregion
 
@@ -38,6 +49,38 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             set => SetProperty(ref _ausgewählteAktie, value);
         }
 
+        /// <summary>
+        /// Statustext für die Aktualisierung
+        /// </summary>
+        public string StatusText
+        {
+            get => _statusText;
+            set => SetProperty(ref _statusText, value);
+        }
+
+        /// <summary>
+        /// Zeitpunkt der letzten Aktualisierung
+        /// </summary>
+        public DateTime LetzteAktualisierung
+        {
+            get => _letzteAktualisierung;
+            set => SetProperty(ref _letzteAktualisierung, value);
+        }
+
+        /// <summary>
+        /// Gibt an, ob gerade Daten geladen werden
+        /// </summary>
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set => SetProperty(ref _isLoading, value);
+        }
+
+        /// <summary>
+        /// Command zum manuellen Aktualisieren der Marktdaten
+        /// </summary>
+        public IRelayCommand AktualisierenCommand { get; }
+
         #endregion
 
         #region Konstruktor
@@ -46,14 +89,22 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// Initialisiert eine neue Instanz des MarktdatenViewModel
         /// </summary>
         /// <param name="mainViewModel">Hauptinstanz des MainViewModel</param>
-        public MarktdatenViewModel(MainViewModel mainViewModel)
+        /// <param name="apiKey">API-Schlüssel für Twelve Data</param>
+        public MarktdatenViewModel(MainViewModel mainViewModel, string apiKey = "cb617aba18ea46b3a974d878d3c7310b")
         {
             _mainViewModel = mainViewModel;
+            _twelveDatenService = new TwelveDataService(apiKey);
 
-            // Beispieldaten für Marktdaten
+            // Kommandos initialisieren
+            AktualisierenCommand = new RelayCommand(async () => await AktualisiereMarktdaten(), () => !IsLoading);
+
+            // Collection initialisieren
+            AktienListe = new ObservableCollection<Aktie>();
+
+            // Beispieldaten für den Start laden
             InitializeMarktdaten();
 
-            // Timer für regelmäßige Aktualisierungen
+            // Timer für regelmäßige Aktualisierungen (alle 60 Sekunden)
             StartUpdateTimer();
         }
 
@@ -66,8 +117,8 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// </summary>
         private void InitializeMarktdaten()
         {
-            // Beispieldaten für die Aktienliste
-            AktienListe = new ObservableCollection<Aktie>
+            // Standard-Aktien, die wir überwachen wollen
+            var standardAktien = new ObservableCollection<Aktie>
             {
                 new Aktie
                 {
@@ -120,6 +171,13 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     LetzteAktualisierung = DateTime.Now
                 }
             };
+
+            AktienListe = standardAktien;
+            LetzteAktualisierung = DateTime.Now;
+            StatusText = "Initiale Daten geladen";
+
+            // Live-Daten sofort laden
+            _ = AktualisiereMarktdaten();
         }
 
         /// <summary>
@@ -127,8 +185,63 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// </summary>
         private void StartUpdateTimer()
         {
-            // In einer realen Anwendung würde hier ein Timer gestartet werden
-            // Für diesen Prototyp wird kein Timer implementiert
+            _updateTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(60) // Update alle 60 Sekunden
+            };
+            _updateTimer.Tick += async (s, e) => await AktualisiereMarktdaten();
+            _updateTimer.Start();
+        }
+
+        /// <summary>
+        /// Aktualisiert die Marktdaten über die Twelve Data API
+        /// </summary>
+        private async Task AktualisiereMarktdaten()
+        {
+            if (_isUpdating) return;
+
+            _isUpdating = true;
+            IsLoading = true;
+            StatusText = "Daten werden aktualisiert...";
+
+            try
+            {
+                // Alle Aktien-Symbole aus der aktuellen Liste extrahieren
+                var symbole = AktienListe.Select(a => a.AktienSymbol).ToList();
+
+                // Aktiendaten von der API abrufen
+                var aktienDaten = await _twelveDatenService.HoleAktienKurse(symbole);
+
+                // UI-Thread-Zugriff sicherstellen
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    // Aktualisiere die bestehenden Aktien mit den neuen Daten
+                    foreach (var aktienInfo in aktienDaten)
+                    {
+                        var existingAktie = AktienListe.FirstOrDefault(a => a.AktienSymbol == aktienInfo.AktienSymbol);
+
+                        if (existingAktie != null)
+                        {
+                            existingAktie.AktuellerPreis = aktienInfo.AktuellerPreis;
+                            existingAktie.Änderung = aktienInfo.Änderung;
+                            existingAktie.ÄnderungProzent = aktienInfo.ÄnderungProzent;
+                            existingAktie.LetzteAktualisierung = DateTime.Now;
+                        }
+                    }
+
+                    LetzteAktualisierung = DateTime.Now;
+                    StatusText = $"Daten aktualisiert um {LetzteAktualisierung.ToString("HH:mm:ss")}";
+                });
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Fehler bei der Aktualisierung: {ex.Message}";
+            }
+            finally
+            {
+                _isUpdating = false;
+                IsLoading = false;
+            }
         }
 
         #endregion

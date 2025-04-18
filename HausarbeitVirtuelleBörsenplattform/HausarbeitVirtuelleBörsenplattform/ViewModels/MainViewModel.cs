@@ -1,5 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using HausarbeitVirtuelleBörsenplattform.Models;
+using System;
+using System.Configuration;
 
 namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 {
@@ -40,6 +42,16 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// </summary>
         public PortfolioViewModel PortfolioViewModel { get; private set; }
 
+        /// <summary>
+        /// ViewModel für den Marktdaten-Bereich
+        /// </summary>
+        public MarktdatenViewModel MarktdatenViewModel { get; private set; }
+
+        /// <summary>
+        /// ViewModel für den Aktienhandel-Bereich
+        /// </summary>
+        public AktienhandelViewModel AktienhandelViewModel { get; private set; }
+
         #endregion
 
         #region Konstruktor
@@ -52,8 +64,13 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             // Beispieldaten initialisieren
             InitializeData();
 
-            // ViewModel für den Portfolio-Bereich erstellen
+            // API-Key aus der Konfiguration holen (in einer realen Anwendung)
+            string apiKey = "dein_api_key_hier"; // Für Produktionseinsatz aus App.config oder Umgebungsvariablen laden
+
+            // ViewModels für die verschiedenen Bereiche erstellen
             PortfolioViewModel = new PortfolioViewModel();
+            MarktdatenViewModel = new MarktdatenViewModel(this, apiKey);
+            AktienhandelViewModel = new AktienhandelViewModel(this);
         }
 
         #endregion
@@ -80,7 +97,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 IsOpen = true,
                 StatusText = "Markt geöffnet",
                 StatusColor = "#2ecc71",
-                LetzteAktualisierung = System.DateTime.Now.ToString("dd.MM.yyyy HH:mm")
+                LetzteAktualisierung = DateTime.Now.ToString("dd.MM.yyyy HH:mm")
             };
         }
 

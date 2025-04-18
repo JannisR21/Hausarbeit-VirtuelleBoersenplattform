@@ -2,8 +2,12 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:HausarbeitVirtuelleBörsenplattform"
+             xmlns:converters="clr-namespace:HausarbeitVirtuelleBörsenplattform.Converters"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-
+        <!-- Globale Converter -->
+        <converters:GewinnVerlustFarbeConverter x:Key="GewinnVerlustFarbeConverter"/>
+        <converters:BooleanToBooleanInverterConverter x:Key="BooleanToBooleanInverterConverter"/>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
     </Application.Resources>
 </Application>

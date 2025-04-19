@@ -254,8 +254,8 @@
                         <!-- Header -->
                         <TextBlock Grid.Row="0" Text="Aktienhandel" Style="{StaticResource CardHeaderStyle}"/>
 
-                        <!-- Handels-UserControl einbinden -->
-                        <views:HandelsUserControl Grid.Row="1" DataContext="{Binding HandelsViewModel}"/>
+                        <!-- Handels-UserControl einbinden - NUR HIER das Binding setzen -->
+                        <views:HandelsUserControl Grid.Row="1" DataContext="{Binding AktienhandelViewModel}"/>
                     </Grid>
                 </Border>
             </Grid>

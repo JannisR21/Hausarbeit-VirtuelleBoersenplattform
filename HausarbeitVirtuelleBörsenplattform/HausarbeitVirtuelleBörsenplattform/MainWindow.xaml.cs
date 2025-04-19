@@ -15,9 +15,10 @@ namespace HausarbeitVirtuelleBörsenplattform
         {
             InitializeComponent();
 
-            // Initialisierung des Context-Menüs für den User-Button
-            InitializeUserContextMenu();
+            // Warten, bis das Fenster komplett geladen ist, dann Kontextmenü initialisieren
+            this.Loaded += (s, e) => InitializeUserContextMenu();
         }
+
 
         /// <summary>
         /// Initialisiert das Kontextmenü für den Benutzer-Button und verbindet die Event-Handler

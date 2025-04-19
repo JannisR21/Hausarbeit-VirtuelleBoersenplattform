@@ -2,8 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:HausarbeitVirtuelleBörsenplattform"
-             xmlns:converters="clr-namespace:HausarbeitVirtuelleBörsenplattform.Converters"
-             StartupUri="MainWindow.xaml">
+             xmlns:converters="clr-namespace:HausarbeitVirtuelleBörsenplattform.Converters">
+    <!-- StartupUri="MainWindow.xaml" wurde entfernt, da wir zuerst das Login-Fenster anzeigen wollen -->
     <Application.Resources>
         <!-- Globale Converter -->
         <converters:GewinnVerlustFarbeConverter x:Key="GewinnVerlustFarbeConverter"/>

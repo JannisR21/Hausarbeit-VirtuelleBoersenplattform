@@ -53,6 +53,9 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// </summary>
         public AktienhandelViewModel AktienhandelViewModel { get; private set; }
 
+        // Alternativ-Property für HandelsViewModel
+        public AktienhandelViewModel HandelsViewModel => AktienhandelViewModel;
+
         #endregion
 
         #region Konstruktor
@@ -62,8 +65,16 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// </summary>
         public MainViewModel()
         {
-            // Beispieldaten initialisieren
-            InitializeData();
+            // Daten vom angemeldeten Benutzer laden, falls vorhanden
+            if (App.AuthService?.CurrentUser != null)
+            {
+                AktuellerBenutzer = App.AuthService.CurrentUser;
+            }
+            else
+            {
+                // Beispieldaten initialisieren, falls kein Benutzer angemeldet ist
+                InitializeData();
+            }
 
             // API-Key festlegen - Verwende den in der Anwendung bereits enthaltenen API-Key
             // In der echten Anwendung sollte dieser aus einer Konfigurationsdatei oder Umgebungsvariable kommen

@@ -1,60 +1,90 @@
-﻿using System;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using System;
 
 namespace HausarbeitVirtuelleBörsenplattform.Models
 {
     /// <summary>
     /// Repräsentiert einen Eintrag im Portfolio eines Benutzers
     /// </summary>
-    public class PortfolioEintrag
+    public class PortfolioEintrag : ObservableObject
     {
-        /// <summary>
-        /// Eindeutige ID der Aktie
-        /// </summary>
-        public int AktienID { get; set; }
+        private int _aktienID;
+        private string _aktienSymbol;
+        private string _aktienName;
+        private int _anzahl;
+        private decimal _aktuellerKurs;
+        private decimal _einstandsPreis;
+        private DateTime _letzteAktualisierung;
 
-        /// <summary>
-        /// Symbol/Ticker der Aktie (z.B. AAPL für Apple)
-        /// </summary>
-        public string AktienSymbol { get; set; }
+        public int AktienID
+        {
+            get => _aktienID;
+            set => SetProperty(ref _aktienID, value);
+        }
 
-        /// <summary>
-        /// Vollständiger Name der Aktie (z.B. Apple Inc.)
-        /// </summary>
-        public string AktienName { get; set; }
+        public string AktienSymbol
+        {
+            get => _aktienSymbol;
+            set => SetProperty(ref _aktienSymbol, value);
+        }
 
-        /// <summary>
-        /// Anzahl der Aktien im Besitz
-        /// </summary>
-        public int Anzahl { get; set; }
+        public string AktienName
+        {
+            get => _aktienName;
+            set => SetProperty(ref _aktienName, value);
+        }
 
-        /// <summary>
-        /// Aktueller Kurs der Aktie
-        /// </summary>
-        public decimal AktuellerKurs { get; set; }
+        public int Anzahl
+        {
+            get => _anzahl;
+            set
+            {
+                if (SetProperty(ref _anzahl, value))
+                {
+                    OnPropertyChanged(nameof(Wert));
+                    OnPropertyChanged(nameof(GewinnVerlust));
+                    OnPropertyChanged(nameof(GewinnVerlustProzent));
+                }
+            }
+        }
 
-        /// <summary>
-        /// Durchschnittlicher Einstandspreis (Kaufpreis) der Aktien
-        /// </summary>
-        public decimal EinstandsPreis { get; set; }
+        public decimal AktuellerKurs
+        {
+            get => _aktuellerKurs;
+            set
+            {
+                if (SetProperty(ref _aktuellerKurs, value))
+                {
+                    OnPropertyChanged(nameof(Wert));
+                    OnPropertyChanged(nameof(GewinnVerlust));
+                    OnPropertyChanged(nameof(GewinnVerlustProzent));
+                }
+            }
+        }
 
-        /// <summary>
-        /// Datum der letzten Aktualisierung des Kurses
-        /// </summary>
-        public DateTime LetzteAktualisierung { get; set; }
+        public decimal EinstandsPreis
+        {
+            get => _einstandsPreis;
+            set
+            {
+                if (SetProperty(ref _einstandsPreis, value))
+                {
+                    OnPropertyChanged(nameof(GewinnVerlust));
+                    OnPropertyChanged(nameof(GewinnVerlustProzent));
+                }
+            }
+        }
 
-        /// <summary>
-        /// Berechnet den aktuellen Gesamtwert der Position (Anzahl * aktueller Kurs)
-        /// </summary>
+        public DateTime LetzteAktualisierung
+        {
+            get => _letzteAktualisierung;
+            set => SetProperty(ref _letzteAktualisierung, value);
+        }
+
         public decimal Wert => Anzahl * AktuellerKurs;
-
-        /// <summary>
-        /// Berechnet den absoluten Gewinn oder Verlust (aktueller Wert - Einstandswert)
-        /// </summary>
         public decimal GewinnVerlust => Wert - (Anzahl * EinstandsPreis);
-
-        /// <summary>
-        /// Berechnet den relativen Gewinn oder Verlust in Prozent
-        /// </summary>
-        public decimal GewinnVerlustProzent => EinstandsPreis > 0 ? ((AktuellerKurs / EinstandsPreis) - 1) * 100 : 0;
+        public decimal GewinnVerlustProzent => EinstandsPreis > 0
+            ? ((AktuellerKurs / EinstandsPreis) - 1) * 100
+            : 0;
     }
 }

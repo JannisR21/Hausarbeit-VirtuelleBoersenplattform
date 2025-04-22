@@ -30,6 +30,7 @@ namespace HausarbeitVirtuelleBörsenplattform
 
             // Das StartupUri in App.xaml muss entfernt werden, damit dies funktioniert
             Current.MainWindow = loginWindow;
+            System.Diagnostics.PresentationTraceSources.DataBindingSource.Switch.Level = System.Diagnostics.SourceLevels.Critical;
         }
 
         /// <summary>

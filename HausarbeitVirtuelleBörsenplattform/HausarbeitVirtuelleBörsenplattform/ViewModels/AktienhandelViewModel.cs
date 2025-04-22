@@ -2,28 +2,74 @@
 using CommunityToolkit.Mvvm.Input;
 using HausarbeitVirtuelleBörsenplattform.Models;
 using System;
-using System.Windows.Input;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Linq;
+using System.Windows;
 
 namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 {
+    /// <summary>
     /// ViewModel für den Aktienhandel-Bereich
+    /// </summary>
     public class AktienhandelViewModel : ObservableObject
     {
         #region Private Felder
-
+        private MainViewModel _mainViewModel; // Wird nach der Initialisierung gesetzt
         private string _aktienSymbol;
         private string _aktienName;
         private decimal _aktuellerKurs;
         private int _menge;
         private decimal _gesamtwert;
         private bool _isKauf = true;
-        private MainViewModel _mainViewModel;
+        private string _warnungsText;
+        private bool _zeigeWarnung;
+        private string _transaktionsText;
+        #endregion
 
+        #region Konstruktor
+        // Parameterfreier Konstruktor für Initialisierung ohne MainViewModel
+        public AktienhandelViewModel(MainViewModel mainViewModel)
+        {
+            // Commands initialisieren
+            AktienSuchenCommand = new RelayCommand(AktienSuchen);
+            TransaktionAusführenCommand = new RelayCommand(TransaktionAusführen, KannTransaktionAusführen);
+            IncrementMengeCommand = new RelayCommand(IncrementMenge);
+            DecrementMengeCommand = new RelayCommand(DecrementMenge);
+
+            // Standardwerte setzen
+            Menge = 1;
+            _transaktionsText = "Aktien kaufen";
+
+            // PropertyChanged-Handler für IsKauf
+            PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(IsKauf))
+                {
+                    PrüfeTransaktionsDurchführbarkeit();
+                    TransaktionsText = IsKauf ? "Aktien kaufen" : "Aktien verkaufen";
+                }
+            };
+            _mainViewModel = mainViewModel;
+        }
+
+        // Methode zum nachträglichen Setzen des MainViewModel
+        public void SetMainViewModel(MainViewModel mainViewModel)
+        {
+            _mainViewModel = mainViewModel ?? throw new ArgumentNullException(nameof(mainViewModel));
+        }
         #endregion
 
         #region Public Properties
+        /// <summary>
+        /// Verfügbare Aktien zum Auswählen
+        /// </summary>
+        public ObservableCollection<Aktie> AktienListe =>
+            _mainViewModel?.MarktdatenViewModel?.AktienListe;
 
+        /// <summary>
         /// Symbol/Ticker der ausgewählten Aktie
+        /// </summary>
         public string AktienSymbol
         {
             get => _aktienSymbol;
@@ -31,157 +77,347 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             {
                 if (SetProperty(ref _aktienSymbol, value))
                 {
-                    // Bei Änderung des Symbols Aktiendaten abrufen
                     LadeAktienDaten();
+                    TransaktionAusführenCommand.NotifyCanExecuteChanged();
+                    OnPropertyChanged(nameof(IsAktieAusgewählt));
+                    PrüfeTransaktionsDurchführbarkeit();
                 }
             }
         }
 
-        /// Name der ausgewählten Aktie
+        /// <summary>
+        /// Vollständiger Name der ausgewählten Aktie
+        /// </summary>
         public string AktienName
         {
             get => _aktienName;
-            set => SetProperty(ref _aktienName, value);
+            private set => SetProperty(ref _aktienName, value);
         }
 
-        // Aktueller Kurs der ausgewählten Aktie
+        /// <summary>
+        /// Aktueller Kurs der ausgewählten Aktie
+        /// </summary>
         public decimal AktuellerKurs
         {
             get => _aktuellerKurs;
-            set
+            private set
             {
                 if (SetProperty(ref _aktuellerKurs, value))
                 {
-                    // Bei Kursänderung Gesamtwert neu berechnen
                     BerechneGesamtwert();
+                    TransaktionAusführenCommand.NotifyCanExecuteChanged();
+                    PrüfeTransaktionsDurchführbarkeit();
                 }
             }
         }
 
-        /// Anzahl der zu handelnden Aktien
+        /// <summary>
+        /// Anzahl der zu kaufenden/verkaufenden Aktien
+        /// </summary>
         public int Menge
         {
             get => _menge;
             set
             {
+                // Sicherstellen, dass die Menge immer mindestens 1 ist
+                value = Math.Max(1, value);
+
                 if (SetProperty(ref _menge, value))
                 {
-                    // Bei Mengenänderung Gesamtwert neu berechnen
                     BerechneGesamtwert();
+                    TransaktionAusführenCommand.NotifyCanExecuteChanged();
+                    PrüfeTransaktionsDurchführbarkeit();
                 }
             }
         }
 
+        /// <summary>
         /// Gesamtwert der Transaktion
+        /// </summary>
         public decimal Gesamtwert
         {
             get => _gesamtwert;
-            set => SetProperty(ref _gesamtwert, value);
+            private set => SetProperty(ref _gesamtwert, value);
         }
 
-        /// Art der Transaktion (Kauf = true, Verkauf = false)
+        /// <summary>
+        /// Gibt an, ob die Operation ein Kauf (true) oder Verkauf (false) ist
+        /// </summary>
         public bool IsKauf
         {
             get => _isKauf;
-            set => SetProperty(ref _isKauf, value);
-        }
-
-        /// Command zum Suchen einer Aktie
-        public IRelayCommand AktienSuchenCommand { get; }
-
-        /// Command zum Ausführen einer Transaktion
-        public IRelayCommand TransaktionAusführenCommand { get; }
-
-        #endregion
-
-        #region Konstruktor
-
-        /// Initialisiert eine neue Instanz des AktienhandelViewModel
-        /// <param name="mainViewModel">Hauptinstanz des MainViewModel</param>
-        public AktienhandelViewModel(MainViewModel mainViewModel)
-        {
-            _mainViewModel = mainViewModel;
-
-            // Commands initialisieren
-            AktienSuchenCommand = new RelayCommand(AktienSuchen);
-            TransaktionAusführenCommand = new RelayCommand(TransaktionAusführen, KannTransaktionAusführen);
-
-            // Standardwerte setzen
-            Menge = 1;
-        }
-
-        #endregion
-
-        #region Private Methoden
-
-        /// Lädt Aktiendaten basierend auf dem eingegebenen Symbol
-        private void LadeAktienDaten()
-        {
-            // Hier würden normalerweise die Daten über eine API geladen
-            // Für diesen Prototyp verwenden wir Beispieldaten
-
-            if (string.IsNullOrEmpty(AktienSymbol))
-                return;
-
-            switch (AktienSymbol.ToUpper())
+            set
             {
-                case "AAPL":
-                    AktienName = "Apple Inc.";
-                    AktuellerKurs = 150.00m;
-                    break;
-                case "TSLA":
-                    AktienName = "Tesla Inc.";
-                    AktuellerKurs = 200.20m;
-                    break;
-                case "AMZN":
-                    AktienName = "Amazon.com Inc.";
-                    AktuellerKurs = 95.10m;
-                    break;
-                case "MSFT":
-                    AktienName = "Microsoft Corp.";
-                    AktuellerKurs = 320.45m;
-                    break;
-                case "GOOGL":
-                    AktienName = "Alphabet Inc.";
-                    AktuellerKurs = 128.75m;
-                    break;
-                default:
-                    AktienName = "Aktie nicht gefunden";
-                    AktuellerKurs = 0.00m;
-                    break;
+                if (SetProperty(ref _isKauf, value))
+                {
+                    TransaktionAusführenCommand.NotifyCanExecuteChanged();
+                    OnPropertyChanged(nameof(TransaktionsText));
+                }
             }
         }
 
-        /// Berechnet den Gesamtwert der aktuellen Transaktion
-        private void BerechneGesamtwert()
+        /// <summary>
+        /// Gibt an, ob die Warnungsmeldung angezeigt werden soll
+        /// </summary>
+        public bool ZeigeWarnung
         {
+            get => _zeigeWarnung;
+            set => SetProperty(ref _zeigeWarnung, value);
+        }
+
+        /// <summary>
+        /// Text für die Warnungsmeldung
+        /// </summary>
+        public string WarnungsText
+        {
+            get => _warnungsText;
+            set => SetProperty(ref _warnungsText, value);
+        }
+
+        /// <summary>
+        /// Text für den Transaktion-Button
+        /// </summary>
+        public string TransaktionsText
+        {
+            get => _transaktionsText;
+            set => SetProperty(ref _transaktionsText, value);
+        }
+
+        /// <summary>
+        /// Aktueller Kontostand des Benutzers
+        /// </summary>
+        public decimal AktuellerKontostand => _mainViewModel?.AktuellerBenutzer?.Kontostand ?? 0;
+
+        /// <summary>
+        /// Anzahl der verfügbaren Aktien im Portfolio (für Verkauf)
+        /// </summary>
+        public int VerfügbareAktien
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(AktienSymbol) || _mainViewModel?.PortfolioViewModel == null)
+                    return 0;
+
+                var aktieImPortfolio = _mainViewModel.PortfolioViewModel.PortfolioEintraege
+                    .FirstOrDefault(p => p.AktienSymbol.Equals(AktienSymbol, StringComparison.OrdinalIgnoreCase));
+
+                return aktieImPortfolio?.Anzahl ?? 0;
+            }
+        }
+
+        /// <summary>
+        /// Gibt an, ob eine Aktie ausgewählt ist
+        /// </summary>
+        public bool IsAktieAusgewählt => !string.IsNullOrEmpty(AktienSymbol) && AktuellerKurs > 0;
+        #endregion
+
+        #region Commands
+        /// <summary>
+        /// Command zum Suchen/Laden von Aktieninformationen
+        /// </summary>
+        public IRelayCommand AktienSuchenCommand { get; }
+
+        /// <summary>
+        /// Command zum Ausführen der Transaktion
+        /// </summary>
+        public IRelayCommand TransaktionAusführenCommand { get; }
+
+        /// <summary>
+        /// Command zum Erhöhen der Menge
+        /// </summary>
+        public IRelayCommand IncrementMengeCommand { get; }
+
+        /// <summary>
+        /// Command zum Verringern der Menge
+        /// </summary>
+        public IRelayCommand DecrementMengeCommand { get; }
+        #endregion
+
+        #region Private Methoden
+        /// <summary>
+        /// Lädt Daten für die ausgewählte Aktie
+        /// </summary>
+        private void LadeAktienDaten()
+        {
+            if (string.IsNullOrWhiteSpace(AktienSymbol) || _mainViewModel?.MarktdatenViewModel?.AktienListe == null)
+            {
+                AktienName = string.Empty;
+                AktuellerKurs = 0;
+                return;
+            }
+
+            var aktie = _mainViewModel.MarktdatenViewModel.AktienListe
+                .FirstOrDefault(a => a.AktienSymbol
+                    .Equals(AktienSymbol.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            if (aktie != null)
+            {
+                AktienName = aktie.AktienName;
+                AktuellerKurs = aktie.AktuellerPreis;
+                OnPropertyChanged(nameof(VerfügbareAktien));
+            }
+            else
+            {
+                AktienName = "Aktie nicht gefunden";
+                AktuellerKurs = 0;
+            }
+        }
+
+        /// <summary>
+        /// Berechnet den Gesamtwert der Transaktion
+        /// </summary>
+        private void BerechneGesamtwert() =>
             Gesamtwert = AktuellerKurs * Menge;
-        }
 
-        /// Sucht nach Aktien basierend auf dem eingegebenen Symbol
-        private void AktienSuchen()
-        {
+        /// <summary>
+        /// Sucht die Aktie anhand des eingegebenen Symbols
+        /// </summary>
+        private void AktienSuchen() =>
             LadeAktienDaten();
-        }
 
-        /// Führt eine Kauf- oder Verkaufstransaktion durch
-        private void TransaktionAusführen()
+        /// <summary>
+        /// Prüft, ob genügend Geld/Aktien für die Transaktion vorhanden sind
+        /// </summary>
+        private void PrüfeTransaktionsDurchführbarkeit()
         {
-            if (_mainViewModel == null)
+            ZeigeWarnung = false;
+            WarnungsText = string.Empty;
+
+            if (!IsAktieAusgewählt || Menge <= 0)
                 return;
 
+            if (IsKauf)
+            {
+                // Prüfe, ob genug Geld vorhanden ist
+                if (Gesamtwert > AktuellerKontostand)
+                {
+                    ZeigeWarnung = true;
+                    WarnungsText = "Nicht genügend Guthaben für diesen Kauf.";
+                }
+            }
+            else
+            {
+                // Prüfe, ob genug Aktien im Portfolio sind
+                if (Menge > VerfügbareAktien)
+                {
+                    ZeigeWarnung = true;
+                    WarnungsText = $"Sie besitzen nur {VerfügbareAktien} Aktien dieses Wertpapiers.";
+                }
+            }
         }
 
-        /// Prüft, ob eine Transaktion ausgeführt werden kann
+        /// <summary>
+        /// Führt die Transaktion (Kauf oder Verkauf) durch
+        /// </summary>
+        private void TransaktionAusführen()
+        {
+            try
+            {
+                Debug.WriteLine($"Transaktion wird ausgeführt: {(IsKauf ? "Kauf" : "Verkauf")} von {Menge} {AktienSymbol} zu {AktuellerKurs:C}");
+
+                if (_mainViewModel?.PortfolioViewModel == null)
+                {
+                    MessageBox.Show("Es ist ein Fehler aufgetreten: PortfolioViewModel ist nicht verfügbar.",
+                        "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                var portfolio = _mainViewModel.PortfolioViewModel;
+                var aktModell = _mainViewModel.MarktdatenViewModel.AktienListe
+                    .FirstOrDefault(a => a.AktienSymbol
+                        .Equals(AktienSymbol.Trim(), StringComparison.OrdinalIgnoreCase));
+
+                int id = aktModell?.AktienID ?? 0;
+                var name = AktienName;
+                var kurs = AktuellerKurs;
+
+                if (IsKauf)
+                {
+                    // Kauf durchführen
+                    if (Gesamtwert > AktuellerKontostand)
+                    {
+                        Debug.WriteLine("Kauf fehlgeschlagen: Nicht genügend Guthaben");
+                        MessageBox.Show("Nicht genügend Guthaben für diesen Kauf.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    portfolio.FügeAktieHinzu(id, AktienSymbol.Trim().ToUpper(), name, Menge, kurs, kurs);
+                    _mainViewModel.AktuellerBenutzer.Kontostand -= kurs * Menge;
+
+                    MessageBox.Show($"{Menge} Aktien von {AktienSymbol} wurden erfolgreich gekauft.",
+                        "Kauf erfolgreich", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    // Verkauf durchführen
+                    if (Menge > VerfügbareAktien)
+                    {
+                        Debug.WriteLine("Verkauf fehlgeschlagen: Nicht genügend Aktien im Portfolio");
+                        MessageBox.Show($"Sie besitzen nur {VerfügbareAktien} Aktien dieses Wertpapiers.",
+                            "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    if (portfolio.VerkaufeAktie(id, Menge))
+                    {
+                        _mainViewModel.AktuellerBenutzer.Kontostand += kurs * Menge;
+                        MessageBox.Show($"{Menge} Aktien von {AktienSymbol} wurden erfolgreich verkauft.",
+                            "Verkauf erfolgreich", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+
+                // Formular zurücksetzen
+                AktienSymbol = string.Empty;
+                Menge = 1;
+
+                // Aktualisierungen benachrichtigen
+                OnPropertyChanged(nameof(AktuellerKontostand));
+                Debug.WriteLine($"Neuer Kontostand: {AktuellerKontostand:C}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler bei Transaktion: {ex.Message}");
+                MessageBox.Show($"Bei der Transaktion ist ein Fehler aufgetreten: {ex.Message}",
+                    "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// Erhöht die Menge um 1
+        /// </summary>
+        private void IncrementMenge()
+        {
+            Menge += 1;
+        }
+
+        /// <summary>
+        /// Verringert die Menge um 1 (nicht unter 1)
+        /// </summary>
+        private void DecrementMenge()
+        {
+            if (Menge > 1)
+                Menge -= 1;
+        }
+
+        /// <summary>
+        /// Prüft, ob eine Transaktion durchgeführt werden kann
+        /// </summary>
         private bool KannTransaktionAusführen()
         {
-            if (string.IsNullOrEmpty(AktienSymbol) || AktuellerKurs <= 0 || Menge <= 0)
+            if (string.IsNullOrWhiteSpace(AktienSymbol) || AktuellerKurs <= 0 || Menge <= 0)
                 return false;
 
-
-            return true;
+            if (IsKauf)
+            {
+                // Beim Kauf prüfen, ob genug Geld vorhanden ist
+                return Gesamtwert <= AktuellerKontostand;
+            }
+            else
+            {
+                // Beim Verkauf prüfen, ob genug Aktien vorhanden sind
+                return Menge <= VerfügbareAktien;
+            }
         }
-
         #endregion
     }
 }

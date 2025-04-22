@@ -7,6 +7,10 @@
         xmlns:viewmodels="clr-namespace:HausarbeitVirtuelleBörsenplattform.ViewModels"
         xmlns:views="clr-namespace:HausarbeitVirtuelleBörsenplattform.Views"
         mc:Ignorable="d"
+         WindowStartupLocation="CenterScreen"
+        WindowState="Maximized"
+        WindowStyle="None"
+        ResizeMode="NoResize"
         Title="Virtuelle Börsenplattform" Height="800" Width="1200">
 
     <!-- DataContext für das Hauptfenster -->
@@ -254,7 +258,7 @@
                         <!-- Header -->
                         <TextBlock Grid.Row="0" Text="Aktienhandel" Style="{StaticResource CardHeaderStyle}"/>
 
-                        <!-- Handels-UserControl einbinden - NUR HIER das Binding setzen -->
+                        <!-- Handels-UserControl einbinden -->
                         <views:HandelsUserControl Grid.Row="1" DataContext="{Binding AktienhandelViewModel}"/>
                     </Grid>
                 </Border>

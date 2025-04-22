@@ -9,5 +9,6 @@
         <converters:GewinnVerlustFarbeConverter x:Key="GewinnVerlustFarbeConverter"/>
         <converters:BooleanToBooleanInverterConverter x:Key="BooleanToBooleanInverterConverter"/>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:BoolToBackgroundConverter x:Key="BoolToBackgroundConverter"/>
     </Application.Resources>
 </Application>

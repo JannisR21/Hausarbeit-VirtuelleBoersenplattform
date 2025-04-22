@@ -10,6 +10,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 
+
+
 namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 {
     /// <summary>
@@ -34,6 +36,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 
         // Kultur für korrekte Formatierung
         private CultureInfo _germanCulture = new CultureInfo("de-DE");
+        private string apiKey;
 
         #endregion
 
@@ -121,7 +124,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// </summary>
         /// <param name="mainViewModel">Hauptinstanz des MainViewModel</param>
         /// <param name="apiKey">API-Schlüssel für Twelve Data</param>
-        public MarktdatenViewModel(MainViewModel mainViewModel, string apiKey = "dein_api_key_hier")
+        public MarktdatenViewModel(MainViewModel mainViewModel, string apiKey = "cb617aba18ea46b3a974d878d3c7310b")
         {
             _mainViewModel = mainViewModel;
             Debug.WriteLine($"MarktdatenViewModel wird initialisiert mit API-Key: {apiKey}");
@@ -139,6 +142,11 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 
             // Timer für regelmäßige Aktualisierungen
             StartUpdateTimer();
+        }
+
+        public MarktdatenViewModel(string apiKey)
+        {
+            this.apiKey = apiKey;
         }
 
         #endregion

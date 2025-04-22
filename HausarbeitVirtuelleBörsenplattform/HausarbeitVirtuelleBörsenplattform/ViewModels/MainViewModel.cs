@@ -41,17 +41,17 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// <summary>
         /// ViewModel für den Portfolio-Bereich
         /// </summary>
-        public PortfolioViewModel PortfolioViewModel { get; private set; }
+        public PortfolioViewModel PortfolioViewModel { get; }
 
         /// <summary>
         /// ViewModel für den Marktdaten-Bereich
         /// </summary>
-        public MarktdatenViewModel MarktdatenViewModel { get; private set; }
+        public MarktdatenViewModel MarktdatenViewModel { get; }
 
         /// <summary>
         /// ViewModel für den Aktienhandel-Bereich
         /// </summary>
-        public AktienhandelViewModel AktienhandelViewModel { get; private set; }
+        public AktienhandelViewModel AktienhandelViewModel { get; }
 
         // Alternativ-Property für HandelsViewModel
         public AktienhandelViewModel HandelsViewModel => AktienhandelViewModel;
@@ -65,28 +65,22 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// </summary>
         public MainViewModel()
         {
-            // Daten vom angemeldeten Benutzer laden, falls vorhanden
+            // Benutzer laden oder Beispiele setzen
             if (App.AuthService?.CurrentUser != null)
-            {
                 AktuellerBenutzer = App.AuthService.CurrentUser;
-            }
             else
-            {
-                // Beispieldaten initialisieren, falls kein Benutzer angemeldet ist
                 InitializeData();
-            }
 
-            // API-Key festlegen - Verwende den in der Anwendung bereits enthaltenen API-Key
-            // In der echten Anwendung sollte dieser aus einer Konfigurationsdatei oder Umgebungsvariable kommen
+            // API-Key (besser aus Config)
             string apiKey = "cb617aba18ea46b3a974d878d3c7310b";
 
-            // ViewModels für die verschiedenen Bereiche erstellen
+            // Sub‑ViewModels initialisieren und MainViewModel injizieren
             PortfolioViewModel = new PortfolioViewModel();
             MarktdatenViewModel = new MarktdatenViewModel(this, apiKey);
             AktienhandelViewModel = new AktienhandelViewModel(this);
 
-            // Event-Handler hinzufügen, um das Portfolio zu aktualisieren, wenn Marktdaten aktualisiert werden
-            MarktdatenViewModel.PropertyChanged += (sender, args) =>
+            // Wenn Marktdaten aktualisiert wurden, synchronisiere Portfolio
+            MarktdatenViewModel.PropertyChanged += (s, args) =>
             {
                 if (args.PropertyName == nameof(MarktdatenViewModel.LetzteAktualisierung))
                 {
@@ -101,11 +95,10 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         #region Private Methoden
 
         /// <summary>
-        /// Initialisiert Beispieldaten für das MainViewModel
+        /// Initialisiert Beispieldaten für Benutzer und Marktstatus
         /// </summary>
         private void InitializeData()
         {
-            // Beispiel-Benutzer erstellen
             AktuellerBenutzer = new Benutzer
             {
                 BenutzerID = 1,
@@ -114,7 +107,6 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 Kontostand = 10000.00m
             };
 
-            // Beispiel-Marktstatus erstellen
             MarktStatus = new MarktStatus
             {
                 IsOpen = true,

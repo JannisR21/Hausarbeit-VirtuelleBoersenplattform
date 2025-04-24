@@ -1,9 +1,12 @@
-﻿using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Diagnostics;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using HausarbeitVirtuelleBörsenplattform.Models;
+using HausarbeitVirtuelleBörsenplattform.Services;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 {
@@ -17,6 +20,8 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         private ObservableCollection<PortfolioEintrag> _portfolioEintraege;
         private decimal _gesamtwert;
         private decimal _gesamtGewinnVerlust;
+        private readonly DatabaseService _databaseService;
+        private readonly int _benutzerId;
 
         #endregion
 
@@ -58,8 +63,66 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// </summary>
         public PortfolioViewModel()
         {
-            // Beispieldaten für das Portfolio laden
+            // Standard-Konstruktor für Designer-Unterstützung
+            PortfolioEintraege = new ObservableCollection<PortfolioEintrag>();
             InitializePortfolioData();
+        }
+
+        /// <summary>
+        /// Initialisiert eine neue Instanz des PortfolioViewModel mit Datenbankzugriff
+        /// </summary>
+        /// <param name="databaseService">Der zu verwendende DatabaseService</param>
+        /// <param name="benutzerId">ID des aktuellen Benutzers</param>
+        public PortfolioViewModel(DatabaseService databaseService, int benutzerId)
+        {
+            _databaseService = databaseService;
+            _benutzerId = benutzerId;
+            PortfolioEintraege = new ObservableCollection<PortfolioEintrag>();
+
+            // Daten werden asynchron geladen in LoadPortfolioDataAsync()
+        }
+
+        #endregion
+
+        #region Methoden für Datenzugriff
+
+        /// <summary>
+        /// Lädt die Portfolio-Daten des Benutzers aus der Datenbank
+        /// </summary>
+        public async Task LoadPortfolioDataAsync()
+        {
+            if (_databaseService == null || _benutzerId <= 0)
+            {
+                Debug.WriteLine("Lade Beispieldaten, da kein Datenbankzugriff oder Benutzer-ID vorhanden ist.");
+                InitializePortfolioData();
+                return;
+            }
+
+            try
+            {
+                var portfolioData = await _databaseService.GetPortfolioByBenutzerIdAsync(_benutzerId);
+
+                // UI-Thread-Aktualisierung
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    PortfolioEintraege.Clear();
+                    foreach (var item in portfolioData)
+                    {
+                        PortfolioEintraege.Add(item);
+                    }
+
+                    // Gesamtwerte berechnen
+                    BerechneGesamtwerte();
+                });
+
+                Debug.WriteLine($"Portfolio-Daten für Benutzer {_benutzerId} geladen: {portfolioData.Count} Einträge");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Laden der Portfolio-Daten: {ex.Message}");
+                // Im Fehlerfall, Beispieldaten laden
+                InitializePortfolioData();
+            }
         }
 
         #endregion
@@ -72,36 +135,37 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         private void InitializePortfolioData()
         {
             // Beispieldaten für das Portfolio
-            PortfolioEintraege = new ObservableCollection<PortfolioEintrag>
+            PortfolioEintraege.Clear();
+            PortfolioEintraege.Add(new PortfolioEintrag
             {
-                new PortfolioEintrag
-                {
-                    AktienID = 1,
-                    AktienSymbol = "AAPL",
-                    AktienName = "Apple Inc.",
-                    Anzahl = 10,
-                    AktuellerKurs = 150.00m,
-                    EinstandsPreis = 145.00m
-                },
-                new PortfolioEintrag
-                {
-                    AktienID = 2,
-                    AktienSymbol = "TSLA",
-                    AktienName = "Tesla Inc.",
-                    Anzahl = 5,
-                    AktuellerKurs = 200.20m,
-                    EinstandsPreis = 210.00m
-                },
-                new PortfolioEintrag
-                {
-                    AktienID = 3,
-                    AktienSymbol = "MSFT",
-                    AktienName = "Microsoft Corp.",
-                    Anzahl = 8,
-                    AktuellerKurs = 320.45m,
-                    EinstandsPreis = 305.80m
-                }
-            };
+                BenutzerID = _benutzerId > 0 ? _benutzerId : 1,
+                AktienID = 1,
+                AktienSymbol = "AAPL",
+                AktienName = "Apple Inc.",
+                Anzahl = 10,
+                AktuellerKurs = 150.00m,
+                EinstandsPreis = 145.00m
+            });
+            PortfolioEintraege.Add(new PortfolioEintrag
+            {
+                BenutzerID = _benutzerId > 0 ? _benutzerId : 1,
+                AktienID = 2,
+                AktienSymbol = "TSLA",
+                AktienName = "Tesla Inc.",
+                Anzahl = 5,
+                AktuellerKurs = 200.20m,
+                EinstandsPreis = 210.00m
+            });
+            PortfolioEintraege.Add(new PortfolioEintrag
+            {
+                BenutzerID = _benutzerId > 0 ? _benutzerId : 1,
+                AktienID = 3,
+                AktienSymbol = "MSFT",
+                AktienName = "Microsoft Corp.",
+                Anzahl = 8,
+                AktuellerKurs = 320.45m,
+                EinstandsPreis = 305.80m
+            });
 
             // Gesamtwerte berechnen
             BerechneGesamtwerte();
@@ -151,6 +215,33 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             {
                 // Gesamtwerte neu berechnen, wenn mindestens ein Kurs aktualisiert wurde
                 BerechneGesamtwerte();
+
+                // Änderungen zur Datenbank synchronisieren, wenn möglich
+                SynchronisierenAsync().ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>
+        /// Speichert die Änderungen im Portfolio in der Datenbank
+        /// </summary>
+        private async Task SynchronisierenAsync()
+        {
+            if (_databaseService == null || _benutzerId <= 0)
+                return;
+
+            try
+            {
+                // Portfolio-Änderungen speichern
+                foreach (var eintrag in PortfolioEintraege)
+                {
+                    await _databaseService.AddOrUpdatePortfolioEintragAsync(eintrag);
+                }
+
+                Debug.WriteLine("Portfolio-Daten mit der Datenbank synchronisiert");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Synchronisieren des Portfolios: {ex.Message}");
             }
         }
 
@@ -179,19 +270,26 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             else
             {
                 // Wenn die Aktie noch nicht im Portfolio ist, füge einen neuen Eintrag hinzu
-                PortfolioEintraege.Add(new PortfolioEintrag
+                var neuerEintrag = new PortfolioEintrag
                 {
+                    BenutzerID = _benutzerId > 0 ? _benutzerId : 1,
                     AktienID = aktienID,
                     AktienSymbol = symbol,
                     AktienName = name,
                     Anzahl = anzahl,
                     EinstandsPreis = kaufkurs,
-                    AktuellerKurs = aktuellerKurs
-                });
+                    AktuellerKurs = aktuellerKurs,
+                    LetzteAktualisierung = System.DateTime.Now
+                };
+
+                PortfolioEintraege.Add(neuerEintrag);
             }
 
             // Gesamtwerte neu berechnen
             BerechneGesamtwerte();
+
+            // Änderungen zur Datenbank synchronisieren, wenn möglich
+            SynchronisierenAsync().ConfigureAwait(false);
         }
 
         /// <summary>
@@ -202,25 +300,51 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// <returns>True, wenn der Verkauf erfolgreich war, sonst False</returns>
         public bool VerkaufeAktie(int aktienID, int anzahl)
         {
-            var portfolioEntry = PortfolioEintraege.FirstOrDefault(pe => pe.AktienID == aktienID);
-
-            if (portfolioEntry == null || portfolioEntry.Anzahl < anzahl)
+            try
             {
-                return false; // Aktie nicht vorhanden oder nicht genug Stück im Portfolio
+                var portfolioEntry = PortfolioEintraege.FirstOrDefault(pe => pe.AktienID == aktienID);
+
+                if (portfolioEntry == null || portfolioEntry.Anzahl < anzahl)
+                {
+                    Debug.WriteLine($"Verkauf nicht möglich: AktienID {aktienID} nicht gefunden oder nicht genug Stück");
+                    return false; // Aktie nicht vorhanden oder nicht genug Stück im Portfolio
+                }
+
+                // Wichtig: Aktuellen Kurswert speichern, bevor wir den Eintrag entfernen!
+                decimal aktuellerKurs = portfolioEntry.AktuellerKurs;
+                Debug.WriteLine($"Verkauf: Aktueller Kurs für Aktie {portfolioEntry.AktienSymbol}: {aktuellerKurs:F2}€");
+
+                // Anzahl reduzieren
+                portfolioEntry.Anzahl -= anzahl;
+
+                // Wenn alle Aktien verkauft wurden, entferne den Eintrag aus dem Portfolio
+                if (portfolioEntry.Anzahl == 0)
+                {
+                    PortfolioEintraege.Remove(portfolioEntry);
+
+                    // Wenn Datenbankzugriff vorhanden, Eintrag aus der Datenbank entfernen
+                    if (_databaseService != null && _benutzerId > 0)
+                    {
+                        Debug.WriteLine($"Entferne Aktie {aktienID} aus Datenbank für Benutzer {_benutzerId}");
+                        _ = _databaseService.RemovePortfolioEintragAsync(_benutzerId, aktienID);
+                    }
+                }
+                else
+                {
+                    // Sonst Änderungen zur Datenbank synchronisieren
+                    Debug.WriteLine($"Aktualisiere Aktie {aktienID}, neue Anzahl: {portfolioEntry.Anzahl}");
+                    _ = SynchronisierenAsync();
+                }
+
+                // Gesamtwerte neu berechnen
+                BerechneGesamtwerte();
+                return true;
             }
-
-            // Anzahl reduzieren
-            portfolioEntry.Anzahl -= anzahl;
-
-            // Wenn alle Aktien verkauft wurden, entferne den Eintrag aus dem Portfolio
-            if (portfolioEntry.Anzahl == 0)
+            catch (Exception ex)
             {
-                PortfolioEintraege.Remove(portfolioEntry);
+                Debug.WriteLine($"Fehler beim Verkaufen der Aktie: {ex.Message}");
+                return false;
             }
-
-            // Gesamtwerte neu berechnen
-            BerechneGesamtwerte();
-            return true;
         }
 
         /// <summary>
@@ -229,16 +353,29 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// <param name="aktuelleKurse">Dictionary mit Aktien-IDs und ihren aktuellen Kursen</param>
         public void AktualisiereKurse(Dictionary<int, decimal> aktuelleKurse)
         {
+            bool wurdeAktualisiert = false;
+
             foreach (var eintrag in PortfolioEintraege)
             {
                 if (aktuelleKurse.TryGetValue(eintrag.AktienID, out decimal neuerKurs))
                 {
                     eintrag.AktuellerKurs = neuerKurs;
+                    eintrag.LetzteAktualisierung = System.DateTime.Now;
+                    wurdeAktualisiert = true;
                 }
             }
 
-            // Gesamtwerte neu berechnen
-            BerechneGesamtwerte();
+            if (wurdeAktualisiert)
+            {
+                // Gesamtwerte neu berechnen
+                BerechneGesamtwerte();
+
+                // Änderungen zur Datenbank synchronisieren, wenn möglich
+                if (_databaseService != null && _benutzerId > 0)
+                {
+                    _databaseService.UpdatePortfolioKurseAsync(_benutzerId, aktuelleKurse).ConfigureAwait(false);
+                }
+            }
         }
 
         #endregion

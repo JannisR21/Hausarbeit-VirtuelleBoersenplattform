@@ -1,5 +1,8 @@
-﻿using System.Windows;
+﻿using HausarbeitVirtuelleBörsenplattform.ViewModels;
+using System.Diagnostics;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace HausarbeitVirtuelleBörsenplattform
 {
@@ -13,59 +16,57 @@ namespace HausarbeitVirtuelleBörsenplattform
         /// </summary>
         public MainWindow()
         {
-            InitializeComponent();
-
-            // Warten, bis das Fenster komplett geladen ist, dann Kontextmenü initialisieren
-            this.Loaded += (s, e) => InitializeUserContextMenu();
-        }
-
-
-        /// <summary>
-        /// Initialisiert das Kontextmenü für den Benutzer-Button und verbindet die Event-Handler
-        /// </summary>
-        private void InitializeUserContextMenu()
-        {
-            // Stellt sicher, dass das Kontextmenü angezeigt wird, wenn der Button geklickt wird
-            UserButton.Click += (sender, e) =>
+            try
             {
-                UserButton.ContextMenu.IsOpen = true;
-            };
+                InitializeComponent();
+                Debug.WriteLine("MainWindow geladen");
 
-            // Event-Handler für Menüelemente (können später implementiert werden)
-            if (UserButton.ContextMenu != null)
+                this.DataContext = new MainViewModel(); // Explizit im Code setzen
+                Debug.WriteLine("MainViewModel gesetzt");
+
+                // Event-Handler hinzufügen, der ausgeführt wird, wenn das Fenster vollständig geladen ist
+                this.Loaded += MainWindow_Loaded;
+            }
+            catch (System.Exception ex)
             {
-                foreach (var item in UserButton.ContextMenu.Items)
-                {
-                    if (item is MenuItem menuItem)
-                    {
-                        menuItem.Click += UserMenuItem_Click;
-                    }
-                }
+                MessageBox.Show($"Fehler im MainWindow-Konstruktor: {ex.Message}");
             }
         }
 
-        /// <summary>
-        /// Event-Handler für Klicks auf die Menüelemente des Benutzer-Dropdown-Menüs
-        /// </summary>
-        private void UserMenuItem_Click(object sender, RoutedEventArgs e)
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            if (sender is MenuItem menuItem)
+            Debug.WriteLine("MainWindow_Loaded-Event ausgelöst");
+
+            // Nach HandelsUserControl im visuellen Baum suchen
+            FindAndCheckHandelsUserControl(this);
+        }
+
+        /// <summary>
+        /// Durchsucht rekursiv den visuellen Baum nach dem HandelsUserControl und prüft die ComboBox
+        /// </summary>
+        private void FindAndCheckHandelsUserControl(DependencyObject parent)
+        {
+            Debug.WriteLine($"Suche HandelsUserControl in {parent.GetType().Name}");
+
+            // Anzahl der Child-Elemente
+            int childCount = VisualTreeHelper.GetChildrenCount(parent);
+
+            for (int i = 0; i < childCount; i++)
             {
-                switch (menuItem.Header.ToString())
+                DependencyObject child = VisualTreeHelper.GetChild(parent, i);
+
+                // Prüfen, ob das aktuelle Child ein HandelsUserControl ist
+                if (child is Views.HandelsUserControl handelsControl)
                 {
-                    case "Profil":
-                        // Öffne das Benutzerprofil (noch zu implementieren)
-                        MessageBox.Show("Profil öffnen (noch nicht implementiert)");
-                        break;
-                    case "Konto":
-                        // Öffne die Kontoeinstellungen (noch zu implementieren)
-                        MessageBox.Show("Kontoeinstellungen öffnen (noch nicht implementiert)");
-                        break;
-                    case "Ausloggen":
-                        // Ausloggen-Logik (noch zu implementieren)
-                        MessageBox.Show("Ausloggen (noch nicht implementiert)");
-                        break;
+                    Debug.WriteLine("HandelsUserControl gefunden!");
+
+                    // CheckAndUpdateComboBox-Methode aufrufen, die wir hinzugefügt haben
+                    handelsControl.CheckAndUpdateComboBox();
+                    return;
                 }
+
+                // Rekursiv weitersuchen
+                FindAndCheckHandelsUserControl(child);
             }
         }
     }

@@ -161,16 +161,19 @@
 
             <!-- Benutzerinformationen -->
             <StackPanel Grid.Column="0" Orientation="Horizontal">
-                <TextBlock Text="Willkommen, Jannis Ruhland" VerticalAlignment="Center"/>
-                <Border Background="#f1f8e9" CornerRadius="4" Margin="15,0,0,0" Padding="10,5">
-                    <TextBlock Text="Kontostand: 10.000,00 €" Foreground="#33691e" FontWeight="SemiBold"/>
-                </Border>
-            </StackPanel>
+                <!-- Korrigierte Version des Bindings für den Benutzernamen -->
+                <TextBlock VerticalAlignment="Center">
+                    <TextBlock.Text>
+                        <MultiBinding StringFormat="Willkommen, {0}">
+                            <Binding Path="AktuellerBenutzer.Benutzername"/>
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
 
-            <!-- Marktstatus -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <Ellipse Width="10" Height="10" Fill="#2ecc71" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                <TextBlock Text="Markt geöffnet" VerticalAlignment="Center"/>
+                <!-- Hier verwenden wir jetzt die Kontostand-Property direkt -->
+                <Border Background="#f1f8e9" CornerRadius="4" Margin="15,0,0,0" Padding="10,5">
+                    <TextBlock Text="{Binding Kontostand, StringFormat=Kontostand: {0:N2} €}" Foreground="#33691e" FontWeight="SemiBold"/>
+                </Border>
             </StackPanel>
         </Grid>
 
@@ -211,7 +214,7 @@
                             <TextBlock Grid.Column="1" 
                                Text="{Binding PortfolioViewModel.Gesamtwert, StringFormat=Gesamtwert: {0:N2} €}" 
                                FontWeight="SemiBold" 
-                               Foreground="#2c3e50"/>       
+                               Foreground="#2c3e50"/>
                         </Grid>
 
                         <!-- Portfolio-UserControl einbinden -->

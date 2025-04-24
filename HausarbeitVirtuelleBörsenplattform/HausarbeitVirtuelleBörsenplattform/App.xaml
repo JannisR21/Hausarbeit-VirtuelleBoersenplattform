@@ -2,13 +2,14 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:HausarbeitVirtuelleBörsenplattform"
-             xmlns:converters="clr-namespace:HausarbeitVirtuelleBörsenplattform.Converters">
-    <!-- StartupUri="MainWindow.xaml" wurde entfernt, da wir zuerst das Login-Fenster anzeigen wollen -->
+             xmlns:converters="clr-namespace:HausarbeitVirtuelleBörsenplattform.Converters"
+             xmlns:helpers="clr-namespace:HausarbeitVirtuelleBörsenplattform.Helpers">
     <Application.Resources>
         <!-- Globale Converter -->
-        <converters:GewinnVerlustFarbeConverter x:Key="GewinnVerlustFarbeConverter"/>
         <converters:BooleanToBooleanInverterConverter x:Key="BooleanToBooleanInverterConverter"/>
-        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:GewinnVerlustFarbeConverter x:Key="GewinnVerlustFarbeConverter"/>
         <converters:BoolToBackgroundConverter x:Key="BoolToBackgroundConverter"/>
+        <helpers:InverseViewMatchConverter x:Key="InverseViewMatchConverter"/>
+        <helpers:WatermarkHelper x:Key="WatermarkHelper"/>
     </Application.Resources>
 </Application>

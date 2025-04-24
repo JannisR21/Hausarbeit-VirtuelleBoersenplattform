@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.Globalization;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
@@ -246,39 +247,47 @@ namespace HausarbeitVirtuelleBörsenplattform.Helpers
                 }
             }
 
-            protected override void OnRender(System.Windows.Media.DrawingContext drawingContext)
+            protected override void OnRender(DrawingContext drawingContext)
             {
-                Control control = (Control)AdornedElement;
+                var control = (Control)AdornedElement;
 
-                // Position für das Wasserzeichen festlegen
-                double left = 7; // Standardmäßiger linker Rand
-                double top = (control.ActualHeight - _watermark.ActualHeight) / 2;
+                // Linken Offset (Padding) ermitteln
+                double left = 7;
+                if (control is TextBoxBase tb && tb.Padding != null)
+                    left = tb.Padding.Left;
+                else if (control is PasswordBox pb && pb.Padding != null)
+                    left = pb.Padding.Left;
 
-                // Für TextBox und PasswordBox mit Padding
-                if (control is TextBoxBase textBox && textBox.Padding != null)
-                {
-                    left = textBox.Padding.Left;
-                }
-                else if (control is PasswordBox passwordBox && passwordBox.Padding != null)
-                {
-                    left = passwordBox.Padding.Left;
-                }
+                // verfügbare Größe berechnen
+                double availWidth = control.ActualWidth - left - 5;
+                double availHeight = control.ActualHeight;
 
-                _watermark.Arrange(new Rect(new Point(left, top), new Size(control.ActualWidth - left - 5, control.ActualHeight)));
-                drawingContext.DrawRectangle(System.Windows.Media.Brushes.Transparent, null, new Rect(0, 0, control.ActualWidth, control.ActualHeight));
+                // Guard: nichts malen, wenn zu schmal oder flach
+                if (availWidth <= 0 || availHeight <= 0)
+                    return;
+
+                // Arrange & Draw
+                _watermark.Arrange(new Rect(new Point(left, (availHeight - _watermark.ActualHeight) / 2),
+                                            new Size(availWidth, availHeight)));
+
+                // Transparenten Hintergrund (optional)
+                drawingContext.DrawRectangle(Brushes.Transparent, null,
+                    new Rect(0, 0, control.ActualWidth, control.ActualHeight));
+
                 drawingContext.PushOpacity(_watermark.Opacity);
                 drawingContext.DrawText(new FormattedText(
                     _watermark.Text,
-                    System.Globalization.CultureInfo.CurrentCulture,
+                    CultureInfo.CurrentCulture,
                     FlowDirection.LeftToRight,
-                    new System.Windows.Media.Typeface(_watermark.FontFamily, _watermark.FontStyle, _watermark.FontWeight, _watermark.FontStretch),
+                    new Typeface(_watermark.FontFamily, _watermark.FontStyle, _watermark.FontWeight, _watermark.FontStretch),
                     _watermark.FontSize,
                     _watermark.Foreground,
-                    new System.Windows.Media.NumberSubstitution(),
+                    new NumberSubstitution(),
                     1.0),
-                    new Point(left, top));
+                    new Point(left, (availHeight - _watermark.FontSize) / 2));
                 drawingContext.Pop();
             }
+
         }
     }
 }

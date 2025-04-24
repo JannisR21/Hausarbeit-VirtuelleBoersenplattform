@@ -5,7 +5,6 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:HausarbeitVirtuelleBörsenplattform.Views"
              xmlns:viewmodels="clr-namespace:HausarbeitVirtuelleBörsenplattform.ViewModels"
-             xmlns:converters="clr-namespace:HausarbeitVirtuelleBörsenplattform.Converters"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="900">
 
@@ -14,20 +13,17 @@
     </UserControl.DataContext>
 
     <UserControl.Resources>
-        <!-- BooleanToVisibilityConverter -->
-        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-        <converters:BooleanToBooleanInverterConverter x:Key="BooleanToBooleanInverterConverter"/>
-
-        <!-- Animierte Kurve für den Hintergrund -->
-        <PathGeometry x:Key="ChartLine">M0,50 L10,45 L20,60 L30,40 L40,55 L50,35 L60,50 L70,30 L80,45 L90,25 L100,40</PathGeometry>
-
         <!-- Stil für die animierten Linien -->
         <Style x:Key="ChartLineStyle" TargetType="Path">
             <Setter Property="Stroke" Value="White"/>
             <Setter Property="StrokeThickness" Value="1"/>
             <Setter Property="Opacity" Value="0.2"/>
             <Setter Property="Stretch" Value="Fill"/>
-            <Setter Property="Data" Value="{StaticResource ChartLine}"/>
+            <Setter Property="Data">
+                <Setter.Value>
+                    <PathGeometry>M0,50 L10,45 L20,60 L30,40 L40,55 L50,35 L60,50 L70,30 L80,45 L90,25 L100,40</PathGeometry>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <!-- Stil für die Funktion-Features der Plattform -->
@@ -259,8 +255,17 @@
                             BorderThickness="1" 
                             CornerRadius="8" 
                             Padding="15" 
-                            Margin="0,0,0,20"
-                            Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            Margin="0,0,0,20">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasError}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
                             <TextBlock Text="{Binding ErrorMessage}" 
                                    Foreground="#d32f2f" 
                                    TextWrapping="Wrap"/>
@@ -269,48 +274,71 @@
                         <!-- Benutzername/E-Mail -->
                         <StackPanel Margin="0,0,0,20">
                             <TextBlock Text="E-Mail oder Benutzername" 
-               Foreground="#333333" 
-               FontWeight="Medium" 
-               Margin="0,0,0,8"/>
+                               Foreground="#333333" 
+                               FontWeight="Medium" 
+                               Margin="0,0,0,8"/>
                             <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
-             Height="40"
-             Padding="12,0"
-             VerticalContentAlignment="Center"
-             BorderThickness="1"
-             BorderBrush="#DDDDDD"/>
+                             Height="40"
+                             Padding="12,0"
+                             VerticalContentAlignment="Center"
+                             BorderThickness="1"
+                             BorderBrush="#DDDDDD"/>
                         </StackPanel>
 
                         <!-- Passwort -->
                         <StackPanel Margin="0,0,0,20">
                             <TextBlock Text="Passwort" 
-               Foreground="#333333" 
-               FontWeight="Medium" 
-               Margin="0,0,0,8"/>
+                               Foreground="#333333" 
+                               FontWeight="Medium" 
+                               Margin="0,0,0,8"/>
                             <Grid>
+                                <!-- Standard-PasswordBox (wird angezeigt, wenn IsPasswordVisible false ist) -->
                                 <PasswordBox x:Name="PasswordBox"
-                     Height="40"
-                     Padding="12,0"
-                     VerticalContentAlignment="Center"
-                     BorderThickness="1"
-                     BorderBrush="#DDDDDD"
-                     Visibility="{Binding IsPasswordVisible, Converter={StaticResource BooleanToBooleanInverterConverter}}"
-                     PasswordChanged="PasswordBox_PasswordChanged"/>
+                                     Height="40"
+                                     Padding="12,0"
+                                     VerticalContentAlignment="Center"
+                                     BorderThickness="1"
+                                     BorderBrush="#DDDDDD"
+                                     PasswordChanged="PasswordBox_PasswordChanged">
+                                    <PasswordBox.Style>
+                                        <Style TargetType="PasswordBox">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsPasswordVisible}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </PasswordBox.Style>
+                                </PasswordBox>
 
+                                <!-- TextBox für sichtbares Passwort (wird angezeigt, wenn IsPasswordVisible true ist) -->
                                 <TextBox x:Name="PasswordTextBox"
-                 Height="40"
-                 Padding="12,0"
-                 VerticalContentAlignment="Center"
-                 BorderThickness="1"
-                 BorderBrush="#DDDDDD"
-                 Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}" 
-                 Visibility="{Binding IsPasswordVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                 Height="40"
+                                 Padding="12,0"
+                                 VerticalContentAlignment="Center"
+                                 BorderThickness="1"
+                                 BorderBrush="#DDDDDD"
+                                 Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}">
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsPasswordVisible}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
 
+                                <!-- Auge-Symbol zum Umschalten der Passwort-Sichtbarkeit -->
                                 <Button HorizontalAlignment="Right" 
-                VerticalAlignment="Center" 
-                Margin="0,0,5,0"
-                Background="Transparent" 
-                BorderThickness="0"
-                Command="{Binding TogglePasswordVisibilityCommand}">
+                                        VerticalAlignment="Center" 
+                                        Margin="0,0,5,0"
+                                        Background="Transparent" 
+                                        BorderThickness="0"
+                                        Command="{Binding TogglePasswordVisibilityCommand}">
                                     <TextBlock Text="👁️" FontSize="14"/>
                                 </Button>
                             </Grid>

@@ -14,6 +14,21 @@ namespace HausarbeitVirtuelleBörsenplattform.Models
         public string PasswortHash { get; set; }
         public DateTime Erstellungsdatum { get; set; }
 
+        /// <summary>
+        /// Vorname des Benutzers
+        /// </summary>
+        public string Vorname { get; set; }
+
+        /// <summary>
+        /// Nachname des Benutzers
+        /// </summary>
+        public string Nachname { get; set; }
+
+        /// <summary>
+        /// Vollständiger Name des Benutzers (Vorname + Nachname)
+        /// </summary>
+        public string VollName { get; set; }
+
         private decimal _kontostand;
         /// <summary>
         /// Aktueller Kontostand des Benutzers in Euro

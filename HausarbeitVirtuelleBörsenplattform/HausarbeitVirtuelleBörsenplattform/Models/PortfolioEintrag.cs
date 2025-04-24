@@ -8,6 +8,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Models
     /// </summary>
     public class PortfolioEintrag : ObservableObject
     {
+        private int _benutzerID;
         private int _aktienID;
         private string _aktienSymbol;
         private string _aktienName;
@@ -15,6 +16,15 @@ namespace HausarbeitVirtuelleBörsenplattform.Models
         private decimal _aktuellerKurs;
         private decimal _einstandsPreis;
         private DateTime _letzteAktualisierung;
+
+        /// <summary>
+        /// ID des Benutzers, dem dieses Portfolio-Element gehört
+        /// </summary>
+        public int BenutzerID
+        {
+            get => _benutzerID;
+            set => SetProperty(ref _benutzerID, value);
+        }
 
         public int AktienID
         {
@@ -82,9 +92,10 @@ namespace HausarbeitVirtuelleBörsenplattform.Models
         }
 
         public decimal Wert => Anzahl * AktuellerKurs;
+
         public decimal GewinnVerlust => Wert - (Anzahl * EinstandsPreis);
-        public decimal GewinnVerlustProzent => EinstandsPreis > 0
-            ? ((AktuellerKurs / EinstandsPreis) - 1) * 100
-            : 0;
+
+        public decimal GewinnVerlustProzent =>
+            EinstandsPreis > 0 ? ((AktuellerKurs / EinstandsPreis) - 1) * 100 : 0;
     }
 }

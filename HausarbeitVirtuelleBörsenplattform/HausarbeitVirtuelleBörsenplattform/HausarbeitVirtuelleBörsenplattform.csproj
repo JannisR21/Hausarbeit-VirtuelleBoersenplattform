@@ -8,6 +8,10 @@
     <UseWPF>true</UseWPF>
     <LongPathsEnabled>true</LongPathsEnabled>
     <PathMap>$(MSBuildProjectDirectory)=X:\</PathMap>
+    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)\obj-short\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildProjectDirectory)\bin-short\</BaseOutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
   </PropertyGroup>
 
   <ItemGroup>

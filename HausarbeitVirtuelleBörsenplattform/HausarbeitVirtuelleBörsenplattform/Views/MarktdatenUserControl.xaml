@@ -4,14 +4,11 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:HausarbeitVirtuelleBörsenplattform.Views"
-             xmlns:converters="clr-namespace:HausarbeitVirtuelleBörsenplattform.Converters"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
 
     <!-- Ressourcen für das UserControl -->
     <UserControl.Resources>
-        <converters:GewinnVerlustFarbeConverter x:Key="GewinnVerlustFarbeConverter"/>
-
         <!-- Style für den Aktualisieren-Button -->
         <Style x:Key="RefreshButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="#f0f0f0"/>
@@ -59,6 +56,12 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <!-- Hier fügen wir den DataTrigger direkt zum Basisstil hinzu -->
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                    <Setter Property="IsEnabled" Value="False"/>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
     </UserControl.Resources>
 
@@ -81,8 +84,7 @@
             <Button Grid.Column="0"
                     Content="Aktualisieren" 
                     Command="{Binding AktualisierenCommand}"
-                    Style="{StaticResource RefreshButtonStyle}"
-                    IsEnabled="{Binding IsLoading, Converter={StaticResource BooleanToBooleanInverterConverter}}"/>
+                    Style="{StaticResource RefreshButtonStyle}"/>
 
             <!-- Status und letzte Aktualisierung -->
             <StackPanel Grid.Column="1" 
@@ -91,7 +93,18 @@
                         VerticalAlignment="Center">
 
                 <!-- Ladeindikator -->
-                <Grid Width="16" Height="16" Margin="0,0,5,0" Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid Width="16" Height="16" Margin="0,0,5,0">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+
                     <Path x:Name="SpinnerPath"
                           Data="M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z"
                           Fill="#2c3e50"
@@ -140,8 +153,18 @@
                 BorderThickness="1" 
                 CornerRadius="4" 
                 Padding="10" 
-                Margin="0,0,0,10"
-                Visibility="{Binding HatFehler, Converter={StaticResource BooleanToVisibilityConverter}}">
+                Margin="0,0,0,10">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HatFehler}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -166,7 +189,8 @@
         </Border>
 
         <!-- Aktien-Tabelle -->
-        <DataGrid Grid.Row="2"
+        <DataGrid x:Name="AktienDataGrid"
+                  Grid.Row="2"
                   ItemsSource="{Binding AktienListe}"
                   SelectedItem="{Binding AusgewählteAktie, Mode=TwoWay}"
                   AutoGenerateColumns="False"
@@ -177,7 +201,7 @@
                   Background="Transparent"
                   RowBackground="White"
                   AlternatingRowBackground="#f8f9fa">
-            <!-- Änderungen für die DataGrid-Spalten in MarktdatenUserControl.xaml -->
+            <!-- Spalten für die DataGrid -->
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Symbol" 
                         Binding="{Binding AktienSymbol}" 
@@ -188,24 +212,31 @@
                 <DataGridTextColumn Header="Aktueller Preis" 
                         Binding="{Binding AktuellerPreis, StringFormat={}{0:N2} €, ConverterCulture=de-DE}" 
                         Width="120"/>
+
+                <!-- Änderung-Spalte mit Farbkodierung über Code-Behind -->
                 <DataGridTemplateColumn Header="Änderung" Width="100">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Änderung, StringFormat={}{0:+0.00;-0.00;0.00} €, ConverterCulture=de-DE}" 
-                           Foreground="{Binding Änderung, Converter={StaticResource GewinnVerlustFarbeConverter}}"
-                           HorizontalAlignment="Right"/>
+                                      HorizontalAlignment="Right"
+                                      x:Name="ÄnderungTextBlock"
+                                      Loaded="ÄnderungTextBlock_Loaded"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
+
+                <!-- Änderung-Prozent-Spalte mit Farbkodierung über Code-Behind -->
                 <DataGridTemplateColumn Header="Änderung %" Width="100">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding ÄnderungProzent, StringFormat={}{0:+0.00;-0.00;0.00} %, ConverterCulture=de-DE}" 
-                           Foreground="{Binding Änderung, Converter={StaticResource GewinnVerlustFarbeConverter}}"
-                           HorizontalAlignment="Right"/>
+                                      HorizontalAlignment="Right"
+                                      x:Name="ÄnderungProzentTextBlock"
+                                      Loaded="ÄnderungProzentTextBlock_Loaded"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
+
                 <DataGridTextColumn Header="Letzte Aktualisierung" 
                         Binding="{Binding LetzteAktualisierung, StringFormat={}{0:HH:mm:ss}}" 
                         Width="120"/>

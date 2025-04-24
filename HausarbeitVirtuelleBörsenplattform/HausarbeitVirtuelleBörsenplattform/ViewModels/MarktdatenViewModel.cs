@@ -3,14 +3,13 @@ using CommunityToolkit.Mvvm.Input;
 using HausarbeitVirtuelleBörsenplattform.Models;
 using HausarbeitVirtuelleBörsenplattform.Services;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Threading;
-
-
 
 namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 {
@@ -23,7 +22,6 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 
         private ObservableCollection<Aktie> _aktienListe;
         private Aktie _ausgewählteAktie;
-        private MainViewModel _mainViewModel;
         private readonly TwelveDataService _twelveDatenService;
         private DispatcherTimer _updateTimer;
         private bool _isUpdating;
@@ -32,11 +30,13 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         private bool _hatFehler;
         private DateTime _letzteAktualisierung;
         private bool _isLoading;
-        private TimeSpan _aktualisierungsIntervall = TimeSpan.FromMinutes(2); // 2 Minuten Intervall
+        private TimeSpan _aktualisierungsIntervall = TimeSpan.FromMinutes(15); // Von 5 auf 15 Minuten erhöht
+        private readonly MainViewModel _mainViewModel;
+        private int _fehlerCounter = 0; // Zählt API-Fehler, um Intervall anzupassen
+        private HashSet<string> _portfolioSymbole = new HashSet<string>();
 
         // Kultur für korrekte Formatierung
         private CultureInfo _germanCulture = new CultureInfo("de-DE");
-        private string apiKey;
 
         #endregion
 
@@ -122,11 +122,18 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// <summary>
         /// Initialisiert eine neue Instanz des MarktdatenViewModel
         /// </summary>
-        /// <param name="mainViewModel">Hauptinstanz des MainViewModel</param>
         /// <param name="apiKey">API-Schlüssel für Twelve Data</param>
-        public MarktdatenViewModel(MainViewModel mainViewModel, string apiKey = "cb617aba18ea46b3a974d878d3c7310b")
+        public MarktdatenViewModel(MainViewModel mainViewModel = null, string apiKey = null)
         {
             _mainViewModel = mainViewModel;
+
+            // Wenn kein API-Key übergeben wurde, aus der App-Konfiguration lesen
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                apiKey = App.TwelveDataApiKey;
+                Debug.WriteLine($"API-Key aus App-Konfiguration geladen: {apiKey ?? "null"}");
+            }
+
             Debug.WriteLine($"MarktdatenViewModel wird initialisiert mit API-Key: {apiKey}");
 
             _twelveDatenService = new TwelveDataService(apiKey);
@@ -137,16 +144,43 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             // Collection initialisieren
             AktienListe = new ObservableCollection<Aktie>();
 
-            // Beispieldaten für den Start laden
-            InitializeMarktdaten();
+            // Daten laden - zuerst aus Datenbank, dann aus API
+            InitializeMarktdatenAsync();
 
             // Timer für regelmäßige Aktualisierungen
             StartUpdateTimer();
+
+            // Event-Handler registrieren für Portfolio-Änderungen (falls MainViewModel existiert)
+            if (_mainViewModel?.PortfolioViewModel != null)
+            {
+                // Initialen Zustand erfassen
+                AktualisierePortfolioSymbole();
+
+                // Auf Property-Changed-Events reagieren
+                _mainViewModel.PortfolioViewModel.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(_mainViewModel.PortfolioViewModel.PortfolioEintraege))
+                    {
+                        AktualisierePortfolioSymbole();
+                    }
+                };
+            }
         }
 
-        public MarktdatenViewModel(string apiKey)
+        /// <summary>
+        /// Aktualisiert die Liste der Portfolio-Symbole
+        /// </summary>
+        private void AktualisierePortfolioSymbole()
         {
-            this.apiKey = apiKey;
+            if (_mainViewModel?.PortfolioViewModel?.PortfolioEintraege != null)
+            {
+                _portfolioSymbole.Clear();
+                foreach (var portfolioEintrag in _mainViewModel.PortfolioViewModel.PortfolioEintraege)
+                {
+                    _portfolioSymbole.Add(portfolioEintrag.AktienSymbol.ToUpper());
+                }
+                Debug.WriteLine($"Portfolio-Symbole aktualisiert: {string.Join(", ", _portfolioSymbole)}");
+            }
         }
 
         #endregion
@@ -154,14 +188,81 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         #region Private Methoden
 
         /// <summary>
+        /// Asynchrone Version der Initialisierungsmethode
+        /// </summary>
+        private async void InitializeMarktdatenAsync()
+        {
+            try
+            {
+                // Erst versuchen, Aktien aus der Datenbank zu laden
+                if (App.DbService != null)
+                {
+                    var aktienAusDatenbank = await App.DbService.GetAllAktienAsync();
+                    Debug.WriteLine($"Aktien aus Datenbank geladen: {aktienAusDatenbank.Count}");
+
+                    if (aktienAusDatenbank.Count > 0)
+                    {
+                        System.Windows.Application.Current.Dispatcher.Invoke(() => {
+                            AktienListe.Clear();
+                            foreach (var aktie in aktienAusDatenbank)
+                            {
+                                AktienListe.Add(aktie);
+                            }
+                        });
+
+                        LetzteAktualisierung = DateTime.Now;
+                        NächsteAktualisierung = DateTime.Now.Add(_aktualisierungsIntervall);
+                        StatusText = "Daten aus Datenbank geladen";
+
+                        // Auch wenn wir Daten aus der DB haben, aktualisieren wir sie trotzdem,
+                        // aber mit Verzögerung, um nicht sofort API-Anfragen zu machen
+                        await Task.Delay(5000); // 5 Sekunden warten
+                        await AktualisiereMarktdaten();
+                        return;
+                    }
+                }
+
+                // Wenn keine Daten aus der Datenbank geladen werden konnten, Standard-Aktien laden
+                InitializeMarktdaten();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Laden der Aktien aus der Datenbank: {ex.Message}");
+                // Fallback zu Standard-Aktien
+                InitializeMarktdaten();
+            }
+        }
+
+        /// <summary>
         /// Initialisiert Beispieldaten für die Aktienliste
         /// </summary>
         private void InitializeMarktdaten()
         {
-            // Standard-Aktien, die wir überwachen wollen
-            var standardAktien = new ObservableCollection<Aktie>
+            // Stattdessen App.StandardAktien verwenden, falls vorhanden
+            if (App.StandardAktien != null && App.StandardAktien.Count > 0)
             {
-                new Aktie
+                Debug.WriteLine($"Verwende App.StandardAktien mit {App.StandardAktien.Count} Einträgen");
+
+                AktienListe.Clear();
+                foreach (var aktie in App.StandardAktien)
+                {
+                    AktienListe.Add(new Aktie
+                    {
+                        AktienID = aktie.AktienID,
+                        AktienSymbol = aktie.AktienSymbol,
+                        AktienName = aktie.AktienName,
+                        AktuellerPreis = aktie.AktuellerPreis,
+                        Änderung = aktie.Änderung,
+                        ÄnderungProzent = aktie.ÄnderungProzent,
+                        LetzteAktualisierung = DateTime.Now
+                    });
+                }
+            }
+            else
+            {
+                // Standard-Aktien, die wir überwachen wollen
+                AktienListe.Clear();
+                AktienListe.Add(new Aktie
                 {
                     AktienID = 1,
                     AktienSymbol = "AAPL",
@@ -170,8 +271,8 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     Änderung = 1.25m,
                     ÄnderungProzent = 0.84m,
                     LetzteAktualisierung = DateTime.Now
-                },
-                new Aktie
+                });
+                AktienListe.Add(new Aktie
                 {
                     AktienID = 2,
                     AktienSymbol = "TSLA",
@@ -180,8 +281,8 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     Änderung = -0.70m,
                     ÄnderungProzent = -0.35m,
                     LetzteAktualisierung = DateTime.Now
-                },
-                new Aktie
+                });
+                AktienListe.Add(new Aktie
                 {
                     AktienID = 3,
                     AktienSymbol = "AMZN",
@@ -190,8 +291,8 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     Änderung = 0.72m,
                     ÄnderungProzent = 0.76m,
                     LetzteAktualisierung = DateTime.Now
-                },
-                new Aktie
+                });
+                AktienListe.Add(new Aktie
                 {
                     AktienID = 4,
                     AktienSymbol = "MSFT",
@@ -200,8 +301,8 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     Änderung = 4.75m,
                     ÄnderungProzent = 1.50m,
                     LetzteAktualisierung = DateTime.Now
-                },
-                new Aktie
+                });
+                AktienListe.Add(new Aktie
                 {
                     AktienID = 5,
                     AktienSymbol = "GOOGL",
@@ -210,16 +311,19 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     Änderung = -0.28m,
                     ÄnderungProzent = -0.22m,
                     LetzteAktualisierung = DateTime.Now
-                }
-            };
+                });
+            }
 
-            AktienListe = standardAktien;
             LetzteAktualisierung = DateTime.Now;
             NächsteAktualisierung = DateTime.Now.Add(_aktualisierungsIntervall);
             StatusText = "Initiale Daten geladen";
 
-            // Live-Daten sofort laden
-            _ = AktualisiereMarktdaten();
+            // Live-Daten mit Verzögerung laden, um API-Anfragen zu reduzieren
+            Dispatcher.CurrentDispatcher.BeginInvoke(new Action(async () =>
+            {
+                await Task.Delay(5000); // 5 Sekunden warten
+                await AktualisiereMarktdaten();
+            }));
         }
 
         /// <summary>
@@ -229,7 +333,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         {
             _updateTimer = new DispatcherTimer
             {
-                Interval = _aktualisierungsIntervall // Update alle 2 Minuten
+                Interval = _aktualisierungsIntervall // Auf 15 Minuten erhöht (siehe oben)
             };
             _updateTimer.Tick += async (s, e) => await AktualisiereMarktdaten();
             _updateTimer.Start();
@@ -254,12 +358,78 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 
             try
             {
-                // Alle Aktien-Symbole aus der aktuellen Liste extrahieren
-                var symbole = AktienListe.Select(a => a.AktienSymbol).ToList();
-                Debug.WriteLine($"Aktualisiere Symbole: {string.Join(", ", symbole)}");
+                // Zuerst die Portfolio-Symbole aktualisieren
+                AktualisierePortfolioSymbole();
+
+                // Alle zu überwachenden Symbole sammeln
+                var alleSymbole = new List<string>();
+
+                // Zuerst die Symbole aus dem Portfolio hinzufügen (höchste Priorität)
+                alleSymbole.AddRange(_portfolioSymbole);
+
+                // Dann die verbleibenden Symbole aus der AktienListe hinzufügen (falls nicht schon im Portfolio)
+                foreach (var aktie in AktienListe)
+                {
+                    if (!alleSymbole.Contains(aktie.AktienSymbol.ToUpper()))
+                    {
+                        alleSymbole.Add(aktie.AktienSymbol.ToUpper());
+                    }
+                }
+
+                // Standardsymbole hinzufügen, falls sie noch nicht enthalten sind
+                string[] standardSymbole = new[] { "AAPL", "MSFT", "TSLA", "AMZN", "GOOGL" };
+                foreach (var symbol in standardSymbole)
+                {
+                    if (!alleSymbole.Contains(symbol))
+                    {
+                        alleSymbole.Add(symbol);
+                    }
+                }
+
+                // Prüfen, wie viele Aktien angefragt werden sollten - bei vielen Anfragen ist Limit-Überschreitung wahrscheinlicher
+                // Wir beschränken uns auf max. 2 Symbole pro Anfrage, um das API-Limit zu schonen
+                int maxSymbole = Math.Min(2, alleSymbole.Count);
+
+                // Bei früheren API-Fehlern die Anzahl weiter reduzieren
+                if (_fehlerCounter > 0)
+                {
+                    maxSymbole = Math.Min(1, alleSymbole.Count);
+                }
+
+                // Priorisierte Auswahl: Zuerst Portfolio-Aktien, dann andere
+                var priorisierteSymbole = new List<string>();
+
+                // Zuerst Portfolio-Symbole hinzufügen (bis maxSymbole erreicht ist)
+                foreach (var portfolioSymbol in _portfolioSymbole)
+                {
+                    if (priorisierteSymbole.Count < maxSymbole)
+                    {
+                        priorisierteSymbole.Add(portfolioSymbol);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                // Dann weitere Symbole hinzufügen, falls noch Platz ist
+                foreach (var symbol in alleSymbole)
+                {
+                    if (priorisierteSymbole.Count < maxSymbole && !priorisierteSymbole.Contains(symbol))
+                    {
+                        priorisierteSymbole.Add(symbol);
+                    }
+
+                    if (priorisierteSymbole.Count >= maxSymbole)
+                    {
+                        break;
+                    }
+                }
+
+                Debug.WriteLine($"Aktualisiere priorisierte Symbole: {string.Join(", ", priorisierteSymbole)}");
 
                 // Aktiendaten von der API abrufen
-                var aktienDaten = await _twelveDatenService.HoleAktienKurse(symbole);
+                var aktienDaten = await _twelveDatenService.HoleAktienKurse(priorisierteSymbole);
 
                 // Prüfen, ob ein API-Fehler aufgetreten ist
                 if (!string.IsNullOrEmpty(_twelveDatenService.LastErrorMessage))
@@ -267,16 +437,22 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     Debug.WriteLine($"API-Fehler erkannt: {_twelveDatenService.LastErrorMessage}");
                     HatFehler = true;
                     FehlerText = _twelveDatenService.LastErrorMessage;
+                    _fehlerCounter++; // Zähler erhöhen
 
                     // Bei API-Limit-Fehler, verlängere das Intervall
                     if (_twelveDatenService.LastErrorMessage.Contains("API credits") &&
                         _twelveDatenService.LastErrorMessage.Contains("limit"))
                     {
-                        // Intervall auf 3 Minuten erhöhen
-                        _aktualisierungsIntervall = TimeSpan.FromMinutes(3);
+                        // Intervall verdoppeln, aber maximal 30 Minuten
+                        _aktualisierungsIntervall = TimeSpan.FromMinutes(Math.Min(30, _aktualisierungsIntervall.TotalMinutes * 2));
                         _updateTimer.Interval = _aktualisierungsIntervall;
                         Debug.WriteLine($"API-Limit erreicht. Intervall auf {_aktualisierungsIntervall.TotalMinutes} Minuten erhöht.");
                     }
+                }
+                else
+                {
+                    // Fehler-Zähler zurücksetzen, wenn keine Fehler auftreten
+                    _fehlerCounter = Math.Max(0, _fehlerCounter - 1);
                 }
 
                 // UI-Thread-Zugriff sicherstellen
@@ -285,21 +461,40 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     // Aktualisiere die bestehenden Aktien mit den neuen Daten
                     foreach (var aktienInfo in aktienDaten)
                     {
-                        var existingAktie = AktienListe.FirstOrDefault(a => a.AktienSymbol == aktienInfo.AktienSymbol);
+                        // Finde die bestehende Aktie nach Symbol
+                        var aktie = AktienListe.FirstOrDefault(a => a.AktienSymbol == aktienInfo.AktienSymbol);
 
-                        if (existingAktie != null)
+                        if (aktie != null)
                         {
-                            existingAktie.AktuellerPreis = aktienInfo.AktuellerPreis;
-                            existingAktie.Änderung = aktienInfo.Änderung;
-                            existingAktie.ÄnderungProzent = aktienInfo.ÄnderungProzent;
-                            existingAktie.AktienName = aktienInfo.AktienName; // Übernehme auch den Namen (wichtig für Fehlermeldungen)
-                            existingAktie.LetzteAktualisierung = DateTime.Now;
+                            // Aktualisiere die Eigenschaften direkt
+                            aktie.AktuellerPreis = aktienInfo.AktuellerPreis;
+                            aktie.Änderung = aktienInfo.Änderung;
+                            aktie.ÄnderungProzent = aktienInfo.ÄnderungProzent;
+                            aktie.LetzteAktualisierung = DateTime.Now;
+
+                            Debug.WriteLine($"Aktie {aktie.AktienSymbol} aktualisiert: Preis={aktie.AktuellerPreis:F2}, Änderung={aktie.Änderung:F2}");
+                        }
+                        else
+                        {
+                            // Neue Aktie hinzufügen, wenn sie noch nicht existiert
+                            Debug.WriteLine($"Neue Aktie {aktienInfo.AktienSymbol} wird hinzugefügt");
+                            AktienListe.Add(new Aktie
+                            {
+                                AktienID = AktienListe.Count + 1, // Einfache ID-Generierung
+                                AktienSymbol = aktienInfo.AktienSymbol,
+                                AktienName = aktienInfo.AktienName,
+                                AktuellerPreis = aktienInfo.AktuellerPreis,
+                                Änderung = aktienInfo.Änderung,
+                                ÄnderungProzent = aktienInfo.ÄnderungProzent,
+                                LetzteAktualisierung = DateTime.Now
+                            });
                         }
                     }
 
                     LetzteAktualisierung = DateTime.Now;
                     NächsteAktualisierung = DateTime.Now.Add(_aktualisierungsIntervall);
 
+                    // Status aktualisieren
                     if (HatFehler)
                     {
                         StatusText = $"Fehler bei der Aktualisierung um {LetzteAktualisierung.ToString("HH:mm:ss", _germanCulture)}";
@@ -308,7 +503,25 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     {
                         StatusText = $"Daten aktualisiert um {LetzteAktualisierung.ToString("HH:mm:ss", _germanCulture)}";
                     }
+
+                    // Property-Changed-Event manuell auslösen
+                    OnPropertyChanged(nameof(AktienListe));
                 });
+
+                // Nach der Aktualisierung in Datenbank speichern
+                if (!HatFehler && App.DbService != null)
+                {
+                    try
+                    {
+                        var aktienListe = AktienListe.ToList();
+                        await App.DbService.UpdateAktienBatchAsync(aktienListe);
+                        Debug.WriteLine("Aktualisierte Aktien in Datenbank gespeichert");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Fehler beim Speichern der Aktien in der Datenbank: {ex.Message}");
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -318,12 +531,22 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 HatFehler = true;
                 FehlerText = $"Unbehandelte Ausnahme: {ex.Message}";
                 StatusText = $"Fehler bei der Aktualisierung: {ex.Message}";
+
+                // Fehler-Zähler erhöhen
+                _fehlerCounter++;
             }
             finally
             {
                 _isUpdating = false;
                 IsLoading = false;
                 Debug.WriteLine("Aktualisierung der Marktdaten abgeschlossen.");
+
+                // Eventuell das Portfolio aktualisieren
+                if (_mainViewModel?.PortfolioViewModel != null)
+                {
+                    Debug.WriteLine("Aktualisiere Portfolio nach Marktdaten-Update");
+                    _mainViewModel.PortfolioViewModel.AktualisiereKurseMitMarktdaten(AktienListe);
+                }
             }
         }
 

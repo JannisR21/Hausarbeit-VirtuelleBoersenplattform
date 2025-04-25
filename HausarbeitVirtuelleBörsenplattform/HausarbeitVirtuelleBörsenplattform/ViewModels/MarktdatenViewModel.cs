@@ -123,6 +123,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// Initialisiert eine neue Instanz des MarktdatenViewModel
         /// </summary>
         /// <param name="apiKey">API-Schlüssel für Twelve Data</param>
+        // In MarktdatenViewModel.cs Konstruktor anpassen:
         public MarktdatenViewModel(MainViewModel mainViewModel = null, string apiKey = null)
         {
             _mainViewModel = mainViewModel;
@@ -144,11 +145,11 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             // Collection initialisieren
             AktienListe = new ObservableCollection<Aktie>();
 
-            // Daten laden - zuerst aus Datenbank, dann aus API
-            InitializeMarktdatenAsync();
+            // Keine automatische Datenladung mehr
+            // Entferne InitializeMarktdatenAsync()-Aufruf
 
-            // Timer für regelmäßige Aktualisierungen
-            StartUpdateTimer();
+            // Timer für regelmäßige Aktualisierungen entfernen oder deaktivieren
+            // StartUpdateTimer();
 
             // Event-Handler registrieren für Portfolio-Änderungen (falls MainViewModel existiert)
             if (_mainViewModel?.PortfolioViewModel != null)
@@ -222,108 +223,15 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     }
                 }
 
-                // Wenn keine Daten aus der Datenbank geladen werden konnten, Standard-Aktien laden
-                InitializeMarktdaten();
+                // Wenn keine Daten aus der Datenbank geladen werden konnten, sofort API anfragen
+                await AktualisiereMarktdaten();
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Fehler beim Laden der Aktien aus der Datenbank: {ex.Message}");
-                // Fallback zu Standard-Aktien
-                InitializeMarktdaten();
-            }
-        }
-
-        /// <summary>
-        /// Initialisiert Beispieldaten für die Aktienliste
-        /// </summary>
-        private void InitializeMarktdaten()
-        {
-            // Stattdessen App.StandardAktien verwenden, falls vorhanden
-            if (App.StandardAktien != null && App.StandardAktien.Count > 0)
-            {
-                Debug.WriteLine($"Verwende App.StandardAktien mit {App.StandardAktien.Count} Einträgen");
-
-                AktienListe.Clear();
-                foreach (var aktie in App.StandardAktien)
-                {
-                    AktienListe.Add(new Aktie
-                    {
-                        AktienID = aktie.AktienID,
-                        AktienSymbol = aktie.AktienSymbol,
-                        AktienName = aktie.AktienName,
-                        AktuellerPreis = aktie.AktuellerPreis,
-                        Änderung = aktie.Änderung,
-                        ÄnderungProzent = aktie.ÄnderungProzent,
-                        LetzteAktualisierung = DateTime.Now
-                    });
-                }
-            }
-            else
-            {
-                // Standard-Aktien, die wir überwachen wollen
-                AktienListe.Clear();
-                AktienListe.Add(new Aktie
-                {
-                    AktienID = 1,
-                    AktienSymbol = "AAPL",
-                    AktienName = "Apple Inc.",
-                    AktuellerPreis = 150.00m,
-                    Änderung = 1.25m,
-                    ÄnderungProzent = 0.84m,
-                    LetzteAktualisierung = DateTime.Now
-                });
-                AktienListe.Add(new Aktie
-                {
-                    AktienID = 2,
-                    AktienSymbol = "TSLA",
-                    AktienName = "Tesla Inc.",
-                    AktuellerPreis = 200.20m,
-                    Änderung = -0.70m,
-                    ÄnderungProzent = -0.35m,
-                    LetzteAktualisierung = DateTime.Now
-                });
-                AktienListe.Add(new Aktie
-                {
-                    AktienID = 3,
-                    AktienSymbol = "AMZN",
-                    AktienName = "Amazon.com Inc.",
-                    AktuellerPreis = 95.10m,
-                    Änderung = 0.72m,
-                    ÄnderungProzent = 0.76m,
-                    LetzteAktualisierung = DateTime.Now
-                });
-                AktienListe.Add(new Aktie
-                {
-                    AktienID = 4,
-                    AktienSymbol = "MSFT",
-                    AktienName = "Microsoft Corp.",
-                    AktuellerPreis = 320.45m,
-                    Änderung = 4.75m,
-                    ÄnderungProzent = 1.50m,
-                    LetzteAktualisierung = DateTime.Now
-                });
-                AktienListe.Add(new Aktie
-                {
-                    AktienID = 5,
-                    AktienSymbol = "GOOGL",
-                    AktienName = "Alphabet Inc.",
-                    AktuellerPreis = 128.75m,
-                    Änderung = -0.28m,
-                    ÄnderungProzent = -0.22m,
-                    LetzteAktualisierung = DateTime.Now
-                });
-            }
-
-            LetzteAktualisierung = DateTime.Now;
-            NächsteAktualisierung = DateTime.Now.Add(_aktualisierungsIntervall);
-            StatusText = "Initiale Daten geladen";
-
-            // Live-Daten mit Verzögerung laden, um API-Anfragen zu reduzieren
-            Dispatcher.CurrentDispatcher.BeginInvoke(new Action(async () =>
-            {
-                await Task.Delay(5000); // 5 Sekunden warten
+                // Sofort API verwenden, da Datenbankzugriff fehlgeschlagen ist
                 await AktualisiereMarktdaten();
-            }));
+            }
         }
 
         /// <summary>
@@ -361,72 +269,27 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 // Zuerst die Portfolio-Symbole aktualisieren
                 AktualisierePortfolioSymbole();
 
-                // Alle zu überwachenden Symbole sammeln
-                var alleSymbole = new List<string>();
+                // Nur Portfolio-Symbole laden, wenn vorhanden
+                var symboleListe = new List<string>();
 
-                // Zuerst die Symbole aus dem Portfolio hinzufügen (höchste Priorität)
-                alleSymbole.AddRange(_portfolioSymbole);
-
-                // Dann die verbleibenden Symbole aus der AktienListe hinzufügen (falls nicht schon im Portfolio)
-                foreach (var aktie in AktienListe)
+                if (_portfolioSymbole.Count > 0)
                 {
-                    if (!alleSymbole.Contains(aktie.AktienSymbol.ToUpper()))
-                    {
-                        alleSymbole.Add(aktie.AktienSymbol.ToUpper());
-                    }
+                    symboleListe.AddRange(_portfolioSymbole);
+                    Debug.WriteLine($"Lade nur Portfolio-Symbole: {string.Join(", ", symboleListe)}");
+                }
+                else
+                {
+                    // Wenn kein Portfolio vorhanden, lade nur Standardsymbole als Beispiel
+                    string[] standardSymbole = new[] { "AAPL", "MSFT" };
+                    symboleListe.AddRange(standardSymbole);
+                    Debug.WriteLine($"Kein Portfolio vorhanden, lade Standardsymbole: {string.Join(", ", symboleListe)}");
                 }
 
-                // Standardsymbole hinzufügen, falls sie noch nicht enthalten sind
-                string[] standardSymbole = new[] { "AAPL", "MSFT", "TSLA", "AMZN", "GOOGL" };
-                foreach (var symbol in standardSymbole)
-                {
-                    if (!alleSymbole.Contains(symbol))
-                    {
-                        alleSymbole.Add(symbol);
-                    }
-                }
+                // Beschränkung auf max. 2 Symbole pro Anfrage
+                int maxSymbole = Math.Min(2, symboleListe.Count);
+                var priorisierteSymbole = symboleListe.Take(maxSymbole).ToList();
 
-                // Prüfen, wie viele Aktien angefragt werden sollten - bei vielen Anfragen ist Limit-Überschreitung wahrscheinlicher
-                // Wir beschränken uns auf max. 2 Symbole pro Anfrage, um das API-Limit zu schonen
-                int maxSymbole = Math.Min(2, alleSymbole.Count);
-
-                // Bei früheren API-Fehlern die Anzahl weiter reduzieren
-                if (_fehlerCounter > 0)
-                {
-                    maxSymbole = Math.Min(1, alleSymbole.Count);
-                }
-
-                // Priorisierte Auswahl: Zuerst Portfolio-Aktien, dann andere
-                var priorisierteSymbole = new List<string>();
-
-                // Zuerst Portfolio-Symbole hinzufügen (bis maxSymbole erreicht ist)
-                foreach (var portfolioSymbol in _portfolioSymbole)
-                {
-                    if (priorisierteSymbole.Count < maxSymbole)
-                    {
-                        priorisierteSymbole.Add(portfolioSymbol);
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-
-                // Dann weitere Symbole hinzufügen, falls noch Platz ist
-                foreach (var symbol in alleSymbole)
-                {
-                    if (priorisierteSymbole.Count < maxSymbole && !priorisierteSymbole.Contains(symbol))
-                    {
-                        priorisierteSymbole.Add(symbol);
-                    }
-
-                    if (priorisierteSymbole.Count >= maxSymbole)
-                    {
-                        break;
-                    }
-                }
-
-                Debug.WriteLine($"Aktualisiere priorisierte Symbole: {string.Join(", ", priorisierteSymbole)}");
+                Debug.WriteLine($"Aktualisiere Symbole: {string.Join(", ", priorisierteSymbole)}");
 
                 // Aktiendaten von der API abrufen
                 var aktienDaten = await _twelveDatenService.HoleAktienKurse(priorisierteSymbole);

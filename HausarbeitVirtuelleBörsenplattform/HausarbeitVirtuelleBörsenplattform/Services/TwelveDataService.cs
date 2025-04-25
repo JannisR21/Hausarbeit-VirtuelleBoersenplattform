@@ -46,7 +46,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
         }
 
         /// <summary>
-        /// Holt die aktuellen Kursdaten für die angegebenen Aktien-Symbole
+        /// Holt die aktuellen Kursdaten für die angegebenen Aktien-Symbole mit verbesserter Symbolbehandlung
         /// </summary>
         public async Task<List<Aktie>> HoleAktienKurse(List<string> symbole)
         {
@@ -57,10 +57,30 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
             {
                 Debug.WriteLine($"HoleAktienKurse aufgerufen für Symbole: {string.Join(", ", symbole)}");
 
+                // Symbole überprüfen und ggf. korrigieren
+                var korrigierteSymbole = new List<string>();
+                foreach (var symbol in symbole)
+                {
+                    // Symbole nach oben normalisieren
+                    var normalisiert = symbol.Trim().ToUpper();
+
+                    // Prüfen, ob es ein Symbol einer deutschen Aktie ist
+                    bool istDeutscheAktie = normalisiert.EndsWith(".DE", StringComparison.OrdinalIgnoreCase);
+
+                    // Wenn es ein deutsches Symbol ist, entfernen wir das Suffix nicht mehr - die API unterstützt .DE-Symbole
+                    // Stattdessen ein besseres Debug-Log
+                    if (istDeutscheAktie)
+                    {
+                        Debug.WriteLine($"Deutsche Aktie erkannt: {normalisiert}");
+                    }
+
+                    korrigierteSymbole.Add(normalisiert);
+                }
+
                 // Zuerst alle gecachten Aktien verwenden
                 lock (_cacheLock)
                 {
-                    foreach (var symbol in symbole)
+                    foreach (var symbol in korrigierteSymbole)
                     {
                         if (_aktienCache.TryGetValue(symbol, out var cachedEntry) &&
                             (DateTime.Now - cachedEntry.Zeitstempel) < _cacheGültigkeit)
@@ -72,11 +92,11 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                 }
 
                 // Nur die Symbole abfragen, die nicht im Cache sind oder deren Cache abgelaufen ist
-                var abzufragendeSymbole = symbole
+                var abzufragendeSymbole = korrigierteSymbole
                     .Where(s => !ergebnisse.Any(e => e.AktienSymbol == s))
                     .ToList();
 
-                Debug.WriteLine($"Aus Cache: {symbole.Count - abzufragendeSymbole.Count}, Neu abzufragen: {abzufragendeSymbole.Count}");
+                Debug.WriteLine($"Aus Cache: {korrigierteSymbole.Count - abzufragendeSymbole.Count}, Neu abzufragen: {abzufragendeSymbole.Count}");
 
                 // Wenn alle Symbole im Cache sind, direkt zurückgeben
                 if (abzufragendeSymbole.Count == 0)
@@ -108,7 +128,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                         {
                             // URL für die API-Anfrage
                             var url = $"{_baseUrl}/quote?symbol={symbol}&apikey={_apiKey}";
-                            Debug.WriteLine($"API-Anfrage URL für {symbol}");
+                            Debug.WriteLine($"API-Anfrage URL für {symbol}: {url}");
 
                             // API-Anfrage senden
                             _apiCallCount++;
@@ -118,6 +138,9 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                             {
                                 string responseContent = await response.Content.ReadAsStringAsync();
                                 Debug.WriteLine($"API-Antwort für {symbol} erhalten: {responseContent.Length} Zeichen");
+
+                                // Zusätzliche Debug-Ausgabe, um den genauen Inhalt zu sehen
+                                Debug.WriteLine($"API-Antwort-Inhalt für {symbol}: {responseContent}");
 
                                 if (!response.IsSuccessStatusCode)
                                 {
@@ -164,6 +187,10 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                                         ergebnisse.Add(aktie);
                                         Debug.WriteLine($"Aktie {symbol} erfolgreich geladen: {aktie.AktuellerPreis}€");
                                     }
+                                    else
+                                    {
+                                        Debug.WriteLine($"FEHLER: Aktie {symbol} konnte nicht geparst werden");
+                                    }
                                 }
                                 catch (JsonException jsonEx)
                                 {
@@ -193,6 +220,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
             {
                 LastErrorMessage = $"Allgemeiner Fehler: {ex.Message}";
                 Debug.WriteLine(LastErrorMessage);
+                Debug.WriteLine($"Stacktrace: {ex.StackTrace}");
             }
 
             Debug.WriteLine($"HoleAktienKurse liefert {ergebnisse.Count} Ergebnisse zurück");
@@ -266,17 +294,25 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                     string name = root.TryGetProperty("name", out JsonElement nameElement) ?
                         nameElement.GetString() : symbol;
 
-                    // Für AAPL, falls nichts genaues zurückkommt
-                    if (symbol == "AAPL" && string.IsNullOrEmpty(name))
-                        name = "Apple Inc.";
-                    else if (symbol == "MSFT" && string.IsNullOrEmpty(name))
-                        name = "Microsoft Corp.";
-                    else if (symbol == "TSLA" && string.IsNullOrEmpty(name))
-                        name = "Tesla Inc.";
-                    else if (symbol == "AMZN" && string.IsNullOrEmpty(name))
-                        name = "Amazon.com Inc.";
-                    else if (symbol == "GOOGL" && string.IsNullOrEmpty(name))
-                        name = "Alphabet Inc.";
+                    // Für bekannte Aktien, falls nichts genaues zurückkommt
+                    if (string.IsNullOrEmpty(name) || name == symbol)
+                    {
+                        // Standard-Aktiennamen
+                        if (symbol == "AAPL") name = "Apple Inc.";
+                        else if (symbol == "MSFT") name = "Microsoft Corp.";
+                        else if (symbol == "TSLA") name = "Tesla Inc.";
+                        else if (symbol == "AMZN") name = "Amazon.com Inc.";
+                        else if (symbol == "GOOGL") name = "Alphabet Inc.";
+
+                        // Deutsche Aktien - nur Namen, keine Kurse
+                        else if (symbol == "SAP.DE") name = "SAP SE";
+                        else if (symbol == "SIE.DE") name = "Siemens AG";
+                        else if (symbol == "ALV.DE") name = "Allianz SE";
+                        else if (symbol == "BAYN.DE") name = "Bayer AG";
+                        else if (symbol == "BAS.DE") name = "BASF SE";
+                        else if (symbol.EndsWith(".DE", StringComparison.OrdinalIgnoreCase))
+                            name = symbol.Replace(".DE", " AG");
+                    }
 
                     decimal close = 0;
                     if (root.TryGetProperty("close", out JsonElement closeElement))

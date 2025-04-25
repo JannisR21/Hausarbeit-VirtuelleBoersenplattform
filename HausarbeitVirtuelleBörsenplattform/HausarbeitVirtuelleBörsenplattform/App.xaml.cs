@@ -20,9 +20,10 @@ namespace HausarbeitVirtuelleBörsenplattform
         public static string TwelveDataApiKey { get; private set; }
         public static TwelveDataService TwelveDataService { get; private set; }
 
-        // Statische Liste von Standard-Aktien, die überall in der App verwendet werden kann
+        // Diese Collection enthält nur API-geladene Aktien, keine Dummy-Daten mehr
         public static ObservableCollection<Aktie> StandardAktien { get; private set; }
 
+        // In App.xaml.cs, InitializeServices-Methode ändern:
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
@@ -30,14 +31,14 @@ namespace HausarbeitVirtuelleBörsenplattform
             // Konfiguration laden
             LoadConfiguration();
 
-            // Standard-Aktien initialisieren (leer, werden später gefüllt)
+            // StandardAktien initialisieren (leer, werden später mit API-Daten gefüllt)
             StandardAktien = new ObservableCollection<Aktie>();
 
             // Services initialisieren
             InitializeServices();
 
-            // Marktdaten beim Start laden
-            _ = LadeAktuelleMarktdaten();
+            // Marktdaten beim Start NICHT laden - entferne diesen Aufruf
+            // _ = LadeAktuelleMarktdaten();
 
             // Nur das LoginWindow starten!
             var loginWindow = new LoginWindow();
@@ -98,27 +99,17 @@ namespace HausarbeitVirtuelleBörsenplattform
                 else
                 {
                     Debug.WriteLine("Keine Aktien von Twelve Data erhalten");
-                    InitializeDefaultAktien();
+                    // Anstatt Dummy-Daten zu laden, zeigen wir eine Warnung an
+                    MessageBox.Show("Keine Aktien konnten von der API geladen werden. Bitte überprüfen Sie Ihre Internetverbindung.",
+                        "API-Fehler", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Fehler beim Laden der Marktdaten: {ex.Message}");
-                InitializeDefaultAktien();
+                MessageBox.Show($"Fehler beim Laden der Marktdaten: {ex.Message}\nDie Anwendung benötigt eine Internetverbindung.",
+                    "API-Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-        }
-
-        /// <summary>
-        /// Initialisiert Dummy-Aktien als Fallback
-        /// </summary>
-        private void InitializeDefaultAktien()
-        {
-            StandardAktien.Clear();
-            StandardAktien.Add(new Aktie { AktienID = 1, AktienSymbol = "AAPL", AktienName = "Apple Inc.", AktuellerPreis = 150.00m, Änderung = 1.25m, ÄnderungProzent = 0.84m, LetzteAktualisierung = DateTime.Now });
-            StandardAktien.Add(new Aktie { AktienID = 2, AktienSymbol = "MSFT", AktienName = "Microsoft Corp.", AktuellerPreis = 320.45m, Änderung = 4.75m, ÄnderungProzent = 1.50m, LetzteAktualisierung = DateTime.Now });
-            StandardAktien.Add(new Aktie { AktienID = 3, AktienSymbol = "TSLA", AktienName = "Tesla Inc.", AktuellerPreis = 200.20m, Änderung = -0.70m, ÄnderungProzent = -0.35m, LetzteAktualisierung = DateTime.Now });
-            StandardAktien.Add(new Aktie { AktienID = 4, AktienSymbol = "AMZN", AktienName = "Amazon.com Inc.", AktuellerPreis = 95.10m, Änderung = 0.72m, ÄnderungProzent = 0.76m, LetzteAktualisierung = DateTime.Now });
-            StandardAktien.Add(new Aktie { AktienID = 5, AktienSymbol = "GOOGL", AktienName = "Alphabet Inc.", AktuellerPreis = 128.75m, Änderung = -0.28m, ÄnderungProzent = -0.22m, LetzteAktualisierung = DateTime.Now });
         }
 
         private void LoadConfiguration()
@@ -127,7 +118,7 @@ namespace HausarbeitVirtuelleBörsenplattform
             {
                 TwelveDataApiKey = ConfigurationManager.AppSettings["TwelveDataApiKey"];
                 if (string.IsNullOrEmpty(TwelveDataApiKey))
-                    TwelveDataApiKey = "cb617aba18ea46b3a974d878d3c7310b"; // Fallback
+                    TwelveDataApiKey = "cb617aba18ea46b3a974d878d3c7310b"; // Fallback-API-Key
             }
             catch (Exception ex)
             {
@@ -141,7 +132,7 @@ namespace HausarbeitVirtuelleBörsenplattform
             try
             {
                 var options = new DbContextOptionsBuilder<BörsenplattformDbContext>()
-                    .UseSqlServer(@"Server=(localdb)\mssqllocaldb;Database=VirtuelleBörsenplattform;Trusted_Connection=True;TrustServerCertificate=True")
+                    .UseSqlServer(ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString)
                     .EnableSensitiveDataLogging()
                     .Options;
 
@@ -151,28 +142,30 @@ namespace HausarbeitVirtuelleBörsenplattform
                 if (dbContext.Database.CanConnect())
                 {
                     Debug.WriteLine("Datenbankverbindung ist möglich.");
-                    DbService = new DatabaseService(dbContext);
+                    DbService = new DatabaseService(dbContext, options);
                     AuthService = new AuthenticationService(DbService);
+
+                    // Konfiguriere EmailService mit den korrekten SMTP-Einstellungen
+                    EmailService = new EmailService(
+                        "smtp.web.de", 587,
+                        "Jannisr32@web.de", "KSIYD2GR4AIKOMIH7ZCK",
+                        "Jannisr32@web.de", "Virtuelle Börsenplattform",
+                        false); // isTestMode auf false setzen, um echte E-Mails zu senden
+
+                    // TwelveDataService initialisieren
+                    TwelveDataService = new TwelveDataService(TwelveDataApiKey);
                 }
                 else
                 {
                     throw new Exception("Datenbankverbindung fehlgeschlagen.");
                 }
-
-                // Konfiguriere EmailService mit den korrekten SMTP-Einstellungen
-                EmailService = new EmailService(
-                    "smtp.web.de", 587,
-                    "Jannisr32@web.de", "KSIYD2GR4AIKOMIH7ZCK",
-                    "Jannisr32@web.de", "Virtuelle Börsenplattform",
-                    false); // isTestMode auf false setzen, um echte E-Mails zu senden
-
-                // TwelveDataService initialisieren
-                TwelveDataService = new TwelveDataService(TwelveDataApiKey);
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Fehler bei der Initialisierung der Services: {ex.Message}",
                     "Initialisierungsfehler", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                // Fallback-Initialisierung
                 AuthService = new AuthenticationService(null);
                 EmailService = new EmailService("localhost", 25, "", "", "", "", true);
             }

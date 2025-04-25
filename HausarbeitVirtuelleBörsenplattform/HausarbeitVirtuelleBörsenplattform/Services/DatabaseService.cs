@@ -12,17 +12,26 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
     public class DatabaseService
     {
         private readonly BörsenplattformDbContext _context;
+        private readonly DbContextOptions<BörsenplattformDbContext> _options;
 
-        public DatabaseService(BörsenplattformDbContext context)
+        public DatabaseService(BörsenplattformDbContext context, DbContextOptions<BörsenplattformDbContext> options)
         {
-            _context = context;
+            _context = context ?? throw new ArgumentNullException(nameof(context), "Der Datenbankkontext darf nicht null sein.");
+            _options = options ?? throw new ArgumentNullException(nameof(options), "Die Datenbankkontext-Optionen dürfen nicht null sein.");
+        }
+
+        // Hilfsmethode, um einen neuen Kontext für jede Operation zu erstellen
+        private BörsenplattformDbContext CreateContext()
+        {
+            return new BörsenplattformDbContext(_options);
         }
 
         #region Benutzer
 
         public async Task<Benutzer> GetBenutzerByIdAsync(int id)
         {
-            return await _context.Benutzer.FindAsync(id);
+            using var context = CreateContext();
+            return await context.Benutzer.FindAsync(id);
         }
 
         public async Task<Benutzer> GetBenutzerByUsernameOrEmailAsync(string usernameOrEmail)
@@ -37,8 +46,10 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                     return null;
                 }
 
+                using var context = CreateContext();
+                
                 // Zuerst versuchen, alle Benutzer zu laden (sollte für kleine Datenmengen funktionieren)
-                var alleBenutzer = await _context.Benutzer.ToListAsync();
+                var alleBenutzer = await context.Benutzer.ToListAsync();
                 Debug.WriteLine($"Alle Benutzer geladen: {alleBenutzer.Count} gefunden");
 
                 // Direkter Vergleich im Speicher
@@ -77,13 +88,15 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
 
         public async Task<Benutzer> GetBenutzerByUsernameAsync(string username)
         {
-            return await _context.Benutzer
+            using var context = CreateContext();
+            return await context.Benutzer
                 .FirstOrDefaultAsync(b => b.Benutzername.ToLower() == username.ToLower());
         }
 
         public async Task<Benutzer> GetBenutzerByEmailAsync(string email)
         {
-            return await _context.Benutzer
+            using var context = CreateContext();
+            return await context.Benutzer
                 .FirstOrDefaultAsync(b => b.Email.ToLower() == email.ToLower());
         }
 
@@ -91,12 +104,14 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
         {
             try
             {
-                _context.Benutzer.Add(benutzer);
-                await _context.SaveChangesAsync();
+                using var context = CreateContext();
+                context.Benutzer.Add(benutzer);
+                await context.SaveChangesAsync();
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Debug.WriteLine($"Fehler beim Hinzufügen des Benutzers: {ex.Message}");
                 return false;
             }
         }
@@ -105,12 +120,14 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
         {
             try
             {
-                _context.Benutzer.Update(benutzer);
-                await _context.SaveChangesAsync();
+                using var context = CreateContext();
+                context.Benutzer.Update(benutzer);
+                await context.SaveChangesAsync();
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Debug.WriteLine($"Fehler beim Aktualisieren des Benutzers: {ex.Message}");
                 return false;
             }
         }
@@ -121,28 +138,32 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
 
         public async Task<List<Aktie>> GetAllAktienAsync()
         {
-            return await _context.Aktien.ToListAsync();
+            using var context = CreateContext();
+            return await context.Aktien.ToListAsync();
         }
 
         public async Task<Aktie> GetAktieBySymbolAsync(string symbol)
         {
-            return await _context.Aktien
+            using var context = CreateContext();
+            return await context.Aktien
                 .FirstOrDefaultAsync(a => a.AktienSymbol.ToUpper() == symbol.ToUpper());
         }
 
         public async Task<Aktie> GetAktieByIdAsync(int id)
         {
-            return await _context.Aktien.FindAsync(id);
+            using var context = CreateContext();
+            return await context.Aktien.FindAsync(id);
         }
 
         public async Task<bool> UpdateAktieAsync(Aktie aktie)
         {
             try
             {
-                var existingAktie = await _context.Aktien.FindAsync(aktie.AktienID);
+                using var context = CreateContext();
+                var existingAktie = await context.Aktien.FindAsync(aktie.AktienID);
                 if (existingAktie == null)
                 {
-                    _context.Aktien.Add(aktie);
+                    context.Aktien.Add(aktie);
                 }
                 else
                 {
@@ -152,11 +173,12 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                     existingAktie.LetzteAktualisierung = aktie.LetzteAktualisierung;
                 }
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Debug.WriteLine($"Fehler beim Aktualisieren der Aktie: {ex.Message}");
                 return false;
             }
         }
@@ -165,14 +187,15 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
         {
             try
             {
+                using var context = CreateContext();
                 foreach (var aktie in aktien)
                 {
-                    var existingAktie = await _context.Aktien
+                    var existingAktie = await context.Aktien
                         .FirstOrDefaultAsync(a => a.AktienSymbol == aktie.AktienSymbol);
 
                     if (existingAktie == null)
                     {
-                        _context.Aktien.Add(aktie);
+                        context.Aktien.Add(aktie);
                     }
                     else
                     {
@@ -184,11 +207,12 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                     }
                 }
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Debug.WriteLine($"Fehler beim Batch-Update der Aktien: {ex.Message}");
                 return false;
             }
         }
@@ -199,7 +223,8 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
 
         public async Task<List<PortfolioEintrag>> GetPortfolioByBenutzerIdAsync(int benutzerId)
         {
-            return await _context.PortfolioEintraege
+            using var context = CreateContext();
+            return await context.PortfolioEintraege
                 .Where(p => p.BenutzerID == benutzerId)
                 .ToListAsync();
         }
@@ -208,12 +233,13 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
         {
             try
             {
-                var existingEintrag = await _context.PortfolioEintraege
+                using var context = CreateContext();
+                var existingEintrag = await context.PortfolioEintraege
                     .FirstOrDefaultAsync(p => p.BenutzerID == eintrag.BenutzerID && p.AktienID == eintrag.AktienID);
 
                 if (existingEintrag == null)
                 {
-                    _context.PortfolioEintraege.Add(eintrag);
+                    context.PortfolioEintraege.Add(eintrag);
                 }
                 else
                 {
@@ -223,11 +249,12 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                     existingEintrag.LetzteAktualisierung = eintrag.LetzteAktualisierung;
                 }
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Debug.WriteLine($"Fehler beim Hinzufügen/Aktualisieren des Portfolio-Eintrags: {ex.Message}");
                 return false;
             }
         }
@@ -236,7 +263,8 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
         {
             try
             {
-                var portfolio = await _context.PortfolioEintraege
+                using var context = CreateContext();
+                var portfolio = await context.PortfolioEintraege
                     .Where(p => p.BenutzerID == benutzerId)
                     .ToListAsync();
 
@@ -249,11 +277,12 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                     }
                 }
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Debug.WriteLine($"Fehler beim Aktualisieren der Portfolio-Kurse: {ex.Message}");
                 return false;
             }
         }
@@ -262,20 +291,22 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
         {
             try
             {
-                var eintrag = await _context.PortfolioEintraege
+                using var context = CreateContext();
+                var eintrag = await context.PortfolioEintraege
                     .FirstOrDefaultAsync(p => p.BenutzerID == benutzerId && p.AktienID == aktienId);
 
                 if (eintrag != null)
                 {
-                    _context.PortfolioEintraege.Remove(eintrag);
-                    await _context.SaveChangesAsync();
+                    context.PortfolioEintraege.Remove(eintrag);
+                    await context.SaveChangesAsync();
                     return true;
                 }
 
                 return false;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Debug.WriteLine($"Fehler beim Entfernen des Portfolio-Eintrags: {ex.Message}");
                 return false;
             }
         }

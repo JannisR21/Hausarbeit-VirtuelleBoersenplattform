@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
-using System.Collections.ObjectModel;
 
 namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 {
@@ -113,7 +112,6 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             }
         }
 
-
         #endregion
 
         #region Asynchrone Initialisierung
@@ -128,7 +126,8 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 }
                 else
                 {
-                    InitializeData();
+                    // Wenn kein angemeldeter Benutzer, einen Fehler anzeigen
+                    throw new InvalidOperationException("Kein angemeldeter Benutzer gefunden.");
                 }
 
                 if (AktuellerBenutzer == null || AktuellerBenutzer.BenutzerID <= 0)
@@ -145,7 +144,8 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 // API-Key abrufen
                 string apiKey = App.TwelveDataApiKey;
 
-                // Explizite Initialisierung der ViewModels
+                // Explizite Initialisierung der ViewModels in der richtigen Reihenfolge
+                // WICHTIG: AktienhandelViewModel sollte erst nach MarktdatenViewModel erstellt werden
                 Debug.WriteLine("Initialisiere MarktdatenViewModel...");
                 MarktdatenViewModel = new MarktdatenViewModel(this, apiKey);
 
@@ -154,25 +154,24 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 await PortfolioViewModel.LoadPortfolioDataAsync();
 
                 Debug.WriteLine("Initialisiere AktienhandelViewModel...");
-
-                // Erstelle einige Standard-Aktien für das AktienhandelViewModel
-                var standardAktien = new ObservableCollection<Aktie>
-                {
-                    new Aktie { AktienID = 1, AktienSymbol = "AAPL", AktienName = "Apple Inc.", AktuellerPreis = 150.00m },
-                    new Aktie { AktienID = 2, AktienSymbol = "MSFT", AktienName = "Microsoft Corp.", AktuellerPreis = 320.45m },
-                    new Aktie { AktienID = 3, AktienSymbol = "TSLA", AktienName = "Tesla Inc.", AktuellerPreis = 200.20m },
-                    new Aktie { AktienID = 4, AktienSymbol = "AMZN", AktienName = "Amazon.com Inc.", AktuellerPreis = 95.10m },
-                    new Aktie { AktienID = 5, AktienSymbol = "GOOGL", AktienName = "Alphabet Inc.", AktuellerPreis = 128.75m }
-                };
-
-                // AktienhandelViewModel mit Standard-Aktien initialisieren
                 AktienhandelViewModel = new AktienhandelViewModel(this);
-                AktienhandelViewModel.InitializeWithAktien(standardAktien);
+                if (AktienhandelViewModel != null)
+                {
+                    // Explizit das MainViewModel setzen
+                    AktienhandelViewModel.SetMainViewModel(this);
+                }
+                else
+                {
+                    Debug.WriteLine("FEHLER: AktienhandelViewModel konnte nicht erstellt werden!");
+                }
 
                 // Timer starten
                 StartPortfolioUpdateTimer();
 
                 Debug.WriteLine("Alle ViewModels erfolgreich initialisiert");
+
+                // Explizit eine PropertyChanged-Benachrichtigung für AktienhandelViewModel auslösen
+                OnPropertyChanged(nameof(AktienhandelViewModel));
             }
             catch (Exception ex)
             {
@@ -228,25 +227,6 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 Debug.WriteLine("Aktualisiere Portfolio mit Marktdaten...");
                 PortfolioViewModel.AktualisiereKurseMitMarktdaten(MarktdatenViewModel.AktienListe);
             }
-        }
-
-        #endregion
-
-        #region Beispiel‑Daten für den Design‑Mode / Fallback
-
-        private void InitializeData()
-        {
-            // Beispiel-Benutzer
-            AktuellerBenutzer = new Benutzer
-            {
-                BenutzerID = 1,
-                Benutzername = "Jannis Ruhland",
-                Email = "jannis.ruhland@example.com",
-                Kontostand = 10000.00m
-            };
-
-            // Kontostand explizit initialisieren
-            Kontostand = AktuellerBenutzer.Kontostand;
         }
 
         #endregion

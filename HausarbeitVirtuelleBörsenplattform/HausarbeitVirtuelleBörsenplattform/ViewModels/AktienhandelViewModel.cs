@@ -1,11 +1,14 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using HausarbeitVirtuelleBörsenplattform.Data;
 using HausarbeitVirtuelleBörsenplattform.Models;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace HausarbeitVirtuelleBörsenplattform.ViewModels
@@ -27,7 +30,9 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         private bool _zeigeWarnung;
         private string _transaktionsText = "Aktien kaufen"; // Mit Standardwert initialisieren
         private ObservableCollection<Aktie> _aktienListe;
-        private Aktie _selectedAktie; // Neue Property für ausgewählte Aktie
+        private Aktie _selectedAktie; // Property für ausgewählte Aktie
+        private bool _isLoading; // Zeigt an, ob Kursdaten geladen werden
+        private string _suchText = string.Empty; // Suchtext für die Filterung der Aktien
         #endregion
 
         #region Konstruktor
@@ -40,8 +45,12 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             // Debugging-Info
             Debug.WriteLine("AktienhandelViewModel wird initialisiert...");
 
-            // Commands initialisieren
-            AktienSuchenCommand = new RelayCommand(AktienSuchen);
+            // KRITISCH: Sofort die AktienListe initialisieren, um NullReferenceException zu vermeiden
+            _aktienListe = new ObservableCollection<Aktie>();
+            Debug.WriteLine("Leere AktienListe wurde erstellt");
+
+            // Commands initialisieren - Namen ohne "Async"-Suffix
+            AktienSuchenCommand = new AsyncRelayCommand(AktienSuchen);
             TransaktionAusführenCommand = new RelayCommand(TransaktionAusführen, KannTransaktionAusführen);
             IncrementMengeCommand = new RelayCommand(IncrementMenge);
             DecrementMengeCommand = new RelayCommand(DecrementMenge);
@@ -59,8 +68,8 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             // MainViewModel setzen
             _mainViewModel = mainViewModel;
 
-            // Aktien-Liste initialisieren
-            _aktienListe = new ObservableCollection<Aktie>();
+            // Aktien-Liste initialisieren mit bekannten Börsensymbolen
+            InitializeAktienListe();
 
             // Listener für SelectedAktie-Änderungen
             PropertyChanged += (s, e) =>
@@ -71,42 +80,16 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     AktienSymbol = SelectedAktie.AktienSymbol;
                     AktienName = SelectedAktie.AktienName;
 
-                    // Hier verwenden wir die aktuellen Marktdaten, falls verfügbar
-                    if (_mainViewModel?.MarktdatenViewModel?.AktienListe != null)
-                    {
-                        var aktieAusMarktdaten = _mainViewModel.MarktdatenViewModel.AktienListe
-                            .FirstOrDefault(a => a.AktienSymbol.Equals(AktienSymbol, StringComparison.OrdinalIgnoreCase));
-
-                        if (aktieAusMarktdaten != null && aktieAusMarktdaten.AktuellerPreis > 0)
-                        {
-                            // Verwende den aktuellen Marktpreis
-                            Debug.WriteLine($"Aktienhandel: Verwende aktuellen Marktpreis für {AktienSymbol}: {aktieAusMarktdaten.AktuellerPreis:F2}€");
-                            AktuellerKurs = aktieAusMarktdaten.AktuellerPreis;
-                        }
-                        else
-                        {
-                            // Fallback auf den Preis aus der ComboBox-Aktie
-                            AktuellerKurs = SelectedAktie.AktuellerPreis;
-                        }
-                    }
-                    else
-                    {
-                        // Fallback auf den Preis aus der ComboBox-Aktie wenn keine Marktdaten verfügbar
-                        AktuellerKurs = SelectedAktie.AktuellerPreis;
-                    }
-
-                    BerechneGesamtwert();
-                    PrüfeTransaktionsDurchführbarkeit();
+                    // Da wir Lazy-Loading implementieren, laden wir jetzt erst die Kursdaten
+                    LadeAktienKursdaten(SelectedAktie.AktienSymbol);
+                }
+                if (_aktienListe == null || _aktienListe.Count == 0)
+                {
+                    MessageBox.Show("Achtung: Es wurden keine Aktien geladen.", "Ladefehler", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
             };
 
-            // Wenn App.StandardAktien vorhanden ist, verwenden wir diese
-            if (App.StandardAktien != null && App.StandardAktien.Count > 0)
-            {
-                InitializeWithAktien(App.StandardAktien);
-            }
-
-            // Listener für Änderungen an MainViewModel registrieren
+            // Event-Handler für Änderungen an MainViewModel registrieren
             if (_mainViewModel != null)
             {
                 _mainViewModel.PropertyChanged += (s, e) =>
@@ -134,9 +117,6 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 
             if (e.PropertyName == nameof(_mainViewModel.MarktdatenViewModel.AktienListe))
             {
-                // Aktien-Liste aktualisieren, wenn sich die Marktdaten ändern
-                SynchronisiereAktienListe();
-
                 // Aktuelle Aktie aktualisieren, falls ausgewählt
                 AktualisiereAktuelleAktie();
             }
@@ -165,112 +145,80 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         }
 
         /// <summary>
-        /// Aktualisiert die lokale AktienListe aus dem MarktdatenViewModel
+        /// Initialisiert die AktienListe mit Basisinformationen (ohne Kursdaten)
         /// </summary>
-        private void SynchronisiereAktienListe()
+        private void InitializeAktienListe()
         {
-            if (_mainViewModel?.MarktdatenViewModel?.AktienListe == null ||
-                _mainViewModel.MarktdatenViewModel.AktienListe.Count == 0)
-            {
-                Debug.WriteLine("Keine Aktien im MarktdatenViewModel vorhanden.");
-                return;
-            }
+            Debug.WriteLine("Initialisiere erweiterte Aktien-Liste...");
 
-            Debug.WriteLine("Synchronisiere AktienListe im AktienhandelViewModel");
-
-            // UI-Thread verwenden
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            try
             {
-                try
+                // WICHTIG: Prüfe, ob _aktienListe null ist und initialisiere sie in diesem Fall
+                if (_aktienListe == null)
                 {
-                    // Vorhandene Elemente löschen, aber nur wenn wir neue haben
-                    var marktdatenAktien = _mainViewModel.MarktdatenViewModel.AktienListe;
-                    if (marktdatenAktien.Count > 0)
-                    {
-                        Debug.WriteLine($"Aktuelle AktienListe: {_aktienListe.Count} Einträge, MarktdatenViewModel hat {marktdatenAktien.Count} Einträge");
-
-                        _aktienListe.Clear();
-
-                        // Neue Elemente hinzufügen
-                        foreach (var aktie in marktdatenAktien)
-                        {
-                            _aktienListe.Add(aktie);
-                        }
-
-                        Debug.WriteLine($"AktienListe aktualisiert, jetzt {_aktienListe.Count} Einträge");
-
-                        // Benachrichtigung auslösen
-                        OnPropertyChanged(nameof(AktienListe));
-                    }
-                    else
-                    {
-                        Debug.WriteLine("MarktdatenViewModel hat keine Aktien. Behalte vorhandene Liste.");
-                    }
+                    Debug.WriteLine("AktienListe war null und wird neu erstellt");
+                    _aktienListe = new ObservableCollection<Aktie>();
                 }
-                catch (Exception ex)
+                else
                 {
-                    Debug.WriteLine($"Fehler bei der Aktualisierung der AktienListe: {ex.Message}");
+                    Debug.WriteLine($"AktienListe bereits vorhanden mit {_aktienListe.Count} Elementen");
                 }
-            });
-        }
 
-        /// <summary>
-        /// Initialisiert die AktienListe mit den übergebenen Aktien
-        /// </summary>
-        /// <param name="aktien">Die Aktien, mit denen die Liste gefüllt werden soll</param>
-        public void InitializeWithAktien(ObservableCollection<Aktie> aktien)
-        {
-            if (aktien == null || aktien.Count == 0)
-            {
-                Debug.WriteLine("Keine Aktien zum Initialisieren übergeben");
-                return;
-            }
-
-            Debug.WriteLine($"Initialisiere AktienListe mit {aktien.Count} Aktien");
-
-            // UI-Thread verwenden
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
-            {
-                try
+                // Falls bereits Daten vorhanden sind, diese beibehalten
+                if (_aktienListe.Count > 0)
                 {
-                    // Liste leeren
-                    _aktienListe.Clear();
-
-                    // Neue Aktien hinzufügen
-                    foreach (var aktie in aktien)
-                    {
-                        _aktienListe.Add(aktie);
-                    }
-
-                    Debug.WriteLine($"AktienListe erfolgreich mit {_aktienListe.Count} Aktien initialisiert");
-
-                    // Benachrichtigung auslösen
+                    Debug.WriteLine("AktienListe hat bereits Elemente, überspringe erneutes Laden");
                     OnPropertyChanged(nameof(AktienListe));
+                    OnPropertyChanged(nameof(GefilterteAktienListe));
+                    return;
                 }
-                catch (Exception ex)
+
+                // Bekannte Aktien aus dem FTSE All-World und anderen wichtigen Indizes laden
+                var bekannteBörsenAktien = Data.AktienListe.GetBekannteBörsenAktien();
+
+                Debug.WriteLine($"Anzahl bekannter Börsenaktien: {bekannteBörsenAktien.Count}");
+
+                // In die ObservableCollection übertragen
+                foreach (var aktie in bekannteBörsenAktien)
                 {
-                    Debug.WriteLine($"Fehler beim Initialisieren der AktienListe: {ex.Message}");
+                    _aktienListe.Add(aktie);
                 }
-            });
-        }
 
-        /// <summary>
-        /// Methode zum nachträglichen Setzen des MainViewModel
-        /// </summary>
-        public void SetMainViewModel(MainViewModel mainViewModel)
-        {
-            Debug.WriteLine("SetMainViewModel aufgerufen");
+                Debug.WriteLine($"AktienListe erfolgreich mit {_aktienListe.Count} Aktien initialisiert");
 
-            _mainViewModel = mainViewModel ?? throw new ArgumentNullException(nameof(mainViewModel));
-
-            // Aktien-Liste neu laden
-            if (_mainViewModel.MarktdatenViewModel != null)
+                // Explizite PropertyChanged-Benachrichtigungen
+                OnPropertyChanged(nameof(AktienListe));
+                OnPropertyChanged(nameof(GefilterteAktienListe));
+            }
+            catch (Exception ex)
             {
-                SynchronisiereAktienListe();
-                // Für zukünftige Änderungen registrieren
-                _mainViewModel.MarktdatenViewModel.PropertyChanged += MarktdatenViewModel_PropertyChanged;
+                Debug.WriteLine($"Fehler beim Initialisieren der Aktien-Liste: {ex.Message}");
+                Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
+
+                // Fallback-Initialisierung mit Beispieldaten
+                if (_aktienListe == null)
+                {
+                    _aktienListe = new ObservableCollection<Aktie>();
+                }
+
+                if (_aktienListe.Count == 0)
+                {
+                    _aktienListe.Add(new Aktie { AktienID = 1, AktienSymbol = "AAPL", AktienName = "Apple Inc." });
+                    _aktienListe.Add(new Aktie { AktienID = 2, AktienSymbol = "MSFT", AktienName = "Microsoft Corporation" });
+                    _aktienListe.Add(new Aktie { AktienID = 3, AktienSymbol = "GOOGL", AktienName = "Alphabet Inc." });
+
+                    Debug.WriteLine("Fallback-Initialisierung mit 3 Standard-Aktien durchgeführt");
+                    OnPropertyChanged(nameof(AktienListe));
+                    OnPropertyChanged(nameof(GefilterteAktienListe));
+                }
+            }
+
+            if (_aktienListe == null || !_aktienListe.Any())
+            {
+                MessageBox.Show("AktienListe ist leer!", "Debug", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
+
         #endregion
 
         #region Public Properties
@@ -279,8 +227,81 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// </summary>
         public ObservableCollection<Aktie> AktienListe
         {
-            get => _aktienListe;
-            private set => SetProperty(ref _aktienListe, value);
+            get
+            {
+                // SCHUTZMASSNAHME: Stelle sicher, dass AktienListe nie null zurückgibt
+                if (_aktienListe == null)
+                {
+                    Debug.WriteLine("WARNUNG: AktienListe wurde null abgerufen, erstelle neue Liste");
+                    _aktienListe = new ObservableCollection<Aktie>();
+
+                    // Füllen mit Fallback-Daten
+                    _aktienListe.Add(new Aktie { AktienID = 1, AktienSymbol = "AAPL", AktienName = "Apple Inc." });
+                    _aktienListe.Add(new Aktie { AktienID = 2, AktienSymbol = "MSFT", AktienName = "Microsoft Corporation" });
+                    _aktienListe.Add(new Aktie { AktienID = 3, AktienSymbol = "GOOGL", AktienName = "Alphabet Inc." });
+                }
+                return _aktienListe;
+            }
+            private set
+            {
+                // Sicherstellung, dass _aktienListe nie null wird
+                if (value == null)
+                {
+                    Debug.WriteLine("WARNUNG: Versuch, AktienListe auf null zu setzen, wurde verhindert");
+                    return;
+                }
+                SetProperty(ref _aktienListe, value);
+            }
+        }
+
+        /// <summary>
+        /// Suchtext für die Filterung der Aktien
+        /// </summary>
+        public string SuchText
+        {
+            get => _suchText;
+            set
+            {
+                if (SetProperty(ref _suchText, value))
+                {
+                    // Bei Änderung des Suchtexts filtern
+                    OnPropertyChanged(nameof(GefilterteAktienListe));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gefilterte Liste der Aktien basierend auf dem Suchtext
+        /// </summary>
+        public IEnumerable<Aktie> GefilterteAktienListe
+        {
+            get
+            {
+                Debug.WriteLine($"GefilterteAktienListe aufgerufen. Suchtext: '{SuchText}'");
+
+                if (AktienListe == null)
+                {
+                    Debug.WriteLine("WARNUNG: AktienListe ist null in GefilterteAktienListe");
+                    return Enumerable.Empty<Aktie>();
+                }
+
+                if (string.IsNullOrWhiteSpace(SuchText))
+                    return AktienListe;
+
+                var suchBegriff = SuchText.Trim().ToLower();
+                return AktienListe.Where(a =>
+                    a.AktienSymbol.ToLower().Contains(suchBegriff) ||
+                    a.AktienName.ToLower().Contains(suchBegriff));
+            }
+        }
+
+        /// <summary>
+        /// Zeigt an, ob Kursdaten geladen werden
+        /// </summary>
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set => SetProperty(ref _isLoading, value);
         }
 
         /// <summary>
@@ -313,11 +334,6 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                         {
                             // Wir haben eine passende Aktie gefunden
                             SelectedAktie = aktie;
-                        }
-                        else
-                        {
-                            // Manuelles Laden der Aktiendaten
-                            LadeAktienDaten();
                         }
                     }
                     else
@@ -464,7 +480,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// <summary>
         /// Command zum Suchen/Laden von Aktieninformationen
         /// </summary>
-        public IRelayCommand AktienSuchenCommand { get; }
+        public IAsyncRelayCommand AktienSuchenCommand { get; }
 
         /// <summary>
         /// Command zum Ausführen der Transaktion
@@ -482,83 +498,240 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         public IRelayCommand DecrementMengeCommand { get; }
         #endregion
 
-        #region Private Methoden
+        #region Methoden
+
         /// <summary>
-        /// Lädt Daten für die ausgewählte Aktie
+        /// Methode zum nachträglichen Setzen des MainViewModel
         /// </summary>
-        private void LadeAktienDaten()
+        public void SetMainViewModel(MainViewModel mainViewModel)
         {
+            Debug.WriteLine("SetMainViewModel aufgerufen");
+
+            _mainViewModel = mainViewModel ?? throw new ArgumentNullException(nameof(mainViewModel));
+
+            // Für zukünftige Änderungen in Marktdaten registrieren
+            if (_mainViewModel.MarktdatenViewModel != null)
+            {
+                _mainViewModel.MarktdatenViewModel.PropertyChanged += MarktdatenViewModel_PropertyChanged;
+            }
+
+            // Wenn AktienListe leer ist, neu initialisieren
+            if (_aktienListe == null || _aktienListe.Count == 0)
+            {
+                InitializeAktienListe();
+            }
+
+            // Explizit PropertyChanged für alle relevanten Properties auslösen
+            OnPropertyChanged(nameof(AktienListe));
+            OnPropertyChanged(nameof(GefilterteAktienListe));
+            OnPropertyChanged(nameof(AktuellerKontostand));
+        }
+
+        /// <summary>
+        /// Führt die Aktiensuche durch - KORRIGIERT ohne "Async" im Namen
+        /// </summary>
+        private async Task AktienSuchen()
+        {
+            Debug.WriteLine($"AktienSuchenCommand aufgerufen für Symbol: {AktienSymbol}");
             if (string.IsNullOrWhiteSpace(AktienSymbol))
             {
-                AktienName = string.Empty;
-                AktuellerKurs = 0;
+                Debug.WriteLine("Kein Symbol eingegeben");
                 return;
             }
 
-            Debug.WriteLine($"Lade Daten für Aktie: {AktienSymbol}");
-
-            // Zuerst in Marktdaten suchen (höchste Priorität für aktuelle Kurse)
-            Aktie aktie = null;
-            if (_mainViewModel?.MarktdatenViewModel?.AktienListe != null)
-            {
-                aktie = _mainViewModel.MarktdatenViewModel.AktienListe
-                    .FirstOrDefault(a => a.AktienSymbol.Equals(AktienSymbol.Trim(), StringComparison.OrdinalIgnoreCase));
-
-                if (aktie != null)
-                {
-                    Debug.WriteLine($"Aktie in Marktdaten gefunden: {aktie.AktienSymbol} - {aktie.AktienName} - Kurs: {aktie.AktuellerPreis}");
-                }
-            }
-
-            // Wenn nicht in Marktdaten, dann in lokaler AktienListe suchen
-            if (aktie == null)
-            {
-                Debug.WriteLine($"AktienListe enthält {AktienListe.Count} Einträge");
-
-                aktie = AktienListe
-                    .FirstOrDefault(a => a.AktienSymbol
-                        .Equals(AktienSymbol.Trim(), StringComparison.OrdinalIgnoreCase));
-            }
-
-            // Fallback auf App.StandardAktien
-            if (aktie == null && App.StandardAktien != null)
-            {
-                aktie = App.StandardAktien
-                    .FirstOrDefault(a => a.AktienSymbol
-                        .Equals(AktienSymbol.Trim(), StringComparison.OrdinalIgnoreCase));
-            }
+            // Zuerst nach einer passenden Aktie in der Liste suchen
+            var aktie = AktienListe.FirstOrDefault(a =>
+                a.AktienSymbol.Equals(AktienSymbol.Trim(), StringComparison.OrdinalIgnoreCase));
 
             if (aktie != null)
             {
-                Debug.WriteLine($"Aktie gefunden: {aktie.AktienSymbol} - {aktie.AktienName} - Kurs: {aktie.AktuellerPreis}");
+                Debug.WriteLine($"Aktie in Liste gefunden: {aktie.AktienSymbol} - {aktie.AktienName}");
+                SelectedAktie = aktie;
                 AktienName = aktie.AktienName;
-                AktuellerKurs = aktie.AktuellerPreis;
 
-                // Explizit den Gesamtwert neu berechnen
-                BerechneGesamtwert();
-
-                // CanExecuteChanged explizit auslösen
-                TransaktionAusführenCommand.NotifyCanExecuteChanged();
-
-                OnPropertyChanged(nameof(VerfügbareAktien));
-                OnPropertyChanged(nameof(IsAktieAusgewählt));
-
-                // Aktualisiere auch SelectedAktie, wenn sie sich geändert hat
-                if (SelectedAktie == null || !SelectedAktie.AktienSymbol.Equals(AktienSymbol, StringComparison.OrdinalIgnoreCase))
-                {
-                    SelectedAktie = aktie;
-                }
+                // Kursdaten laden
+                await LadeAktienKursdaten(AktienSymbol);
             }
             else
             {
-                Debug.WriteLine($"Aktie nicht gefunden: {AktienSymbol}");
-                AktienName = "Aktie nicht gefunden";
-                AktuellerKurs = 0;
+                Debug.WriteLine($"Aktie mit Symbol {AktienSymbol} nicht in der Liste gefunden");
 
-                // Sicherstellen, dass Commands aktualisiert werden
-                BerechneGesamtwert();
-                TransaktionAusführenCommand.NotifyCanExecuteChanged();
-                OnPropertyChanged(nameof(IsAktieAusgewählt));
+                // Versuchen, Daten direkt über API zu laden
+                IsLoading = true;
+                try
+                {
+                    var aktienDaten = await App.TwelveDataService.HoleAktienKurse(new List<string> { AktienSymbol });
+
+                    if (aktienDaten != null && aktienDaten.Count > 0)
+                    {
+                        var aktienInfo = aktienDaten.FirstOrDefault();
+                        if (aktienInfo != null)
+                        {
+                            Debug.WriteLine($"Aktie über API gefunden: {aktienInfo.AktienSymbol} - {aktienInfo.AktienName}");
+                            AktienName = aktienInfo.AktienName;
+                            AktuellerKurs = aktienInfo.AktuellerPreis;
+                            BerechneGesamtwert();
+
+                            // Neue Aktie zur Liste hinzufügen
+                            if (!AktienListe.Any(a => a.AktienSymbol.Equals(aktienInfo.AktienSymbol, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                aktienInfo.AktienID = AktienListe.Count + 1;
+                                AktienListe.Add(aktienInfo);
+                                Debug.WriteLine($"Neue Aktie zur AktienListe hinzugefügt: {aktienInfo.AktienSymbol}");
+                            }
+                        }
+                        else
+                        {
+                            MessageBox.Show($"Die Aktie mit dem Symbol '{AktienSymbol}' wurde nicht gefunden.",
+                                "Aktie nicht gefunden", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Die Aktie mit dem Symbol '{AktienSymbol}' wurde nicht gefunden.",
+                            "Aktie nicht gefunden", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Fehler beim Laden der Aktie: {ex.Message}");
+                    MessageBox.Show($"Fehler beim Laden der Aktie: {ex.Message}",
+                        "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                finally
+                {
+                    IsLoading = false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Lädt Kursdaten für eine spezifische Aktie und stellt sicher, dass echte Preise verwendet werden
+        /// </summary>
+        private async Task LadeAktienKursdaten(string symbol)
+        {
+            if (string.IsNullOrWhiteSpace(symbol))
+                return;
+
+            try
+            {
+                IsLoading = true;
+                Debug.WriteLine($"Lade Kursdaten für Aktie: {symbol}");
+
+                // Aktie in der lokalen Liste finden und Basisinformationen übernehmen
+                var aktieInAktienListe = AktienListe.FirstOrDefault(a =>
+                    a.AktienSymbol.Equals(symbol, StringComparison.OrdinalIgnoreCase));
+
+                if (aktieInAktienListe != null)
+                {
+                    // Temporäre Zuweisung des Namens und der ID für den Fall, dass API-Abfrage fehlschlägt
+                    AktienName = aktieInAktienListe.AktienName;
+                }
+
+                // Kurs über TwelveData API abrufen
+                if (App.TwelveDataService != null)
+                {
+                    Debug.WriteLine($"Rufe aktuellen Kurs für {symbol} von Twelve Data API ab");
+
+                    // Korrektes Symbol für die API ermitteln (ohne .DE Suffix, falls nötig)
+                    string apiSymbol = symbol;
+                    if (symbol.EndsWith(".DE", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Debug.WriteLine($"Deutsche Aktie erkannt: {symbol}, verwende Symbol ohne Suffix für API-Abfrage");
+                        apiSymbol = symbol; // Tatsächlich werden wir das Symbol mit .DE belassen, falls die API damit umgehen kann
+                    }
+
+                    var aktienDaten = await App.TwelveDataService.HoleAktienKurse(new List<string> { apiSymbol });
+
+                    if (aktienDaten != null && aktienDaten.Count > 0)
+                    {
+                        var aktienInfo = aktienDaten.FirstOrDefault();
+                        if (aktienInfo != null)
+                        {
+                            Debug.WriteLine($"Aktie über API geladen: {aktienInfo.AktienSymbol} - {aktienInfo.AktienName} - Kurs: {aktienInfo.AktuellerPreis:F2}€");
+
+                            // ÜBERPRÜFUNG: Stellen sicher, dass wir einen gültigen Preis haben (nicht 0)
+                            if (aktienInfo.AktuellerPreis <= 0)
+                            {
+                                Debug.WriteLine($"WARNUNG: API hat ungültigen Preis zurückgegeben ({aktienInfo.AktuellerPreis}).");
+                                MessageBox.Show($"Für die Aktie {symbol} konnte kein gültiger Kurs ermittelt werden. Bitte versuchen Sie es später erneut.",
+                                    "Ungültiger Kurs", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            }
+                            else
+                            {
+                                // Den echten Preis von der API verwenden
+                                AktuellerKurs = aktienInfo.AktuellerPreis;
+                                AktienName = aktienInfo.AktienName; // Den Namen von der API übernehmen
+
+                                // Aktie in der lokalen Liste aktualisieren
+                                if (aktieInAktienListe != null)
+                                {
+                                    Debug.WriteLine($"Aktualisiere Aktie in AktienListe: {aktieInAktienListe.AktienSymbol} mit Kurs {aktienInfo.AktuellerPreis:F2}€");
+                                    aktieInAktienListe.AktuellerPreis = aktienInfo.AktuellerPreis;
+                                    aktieInAktienListe.Änderung = aktienInfo.Änderung;
+                                    aktieInAktienListe.ÄnderungProzent = aktienInfo.ÄnderungProzent;
+                                    aktieInAktienListe.LetzteAktualisierung = DateTime.Now;
+                                }
+
+                                // Auch in Marktdaten aktualisieren
+                                if (_mainViewModel?.MarktdatenViewModel?.AktienListe != null)
+                                {
+                                    var aktieInMarktdaten = _mainViewModel.MarktdatenViewModel.AktienListe
+                                        .FirstOrDefault(a => a.AktienSymbol.Equals(symbol, StringComparison.OrdinalIgnoreCase));
+
+                                    if (aktieInMarktdaten != null)
+                                    {
+                                        Debug.WriteLine($"Aktualisiere Aktie in Marktdaten: {aktieInMarktdaten.AktienSymbol} mit Kurs {aktienInfo.AktuellerPreis:F2}€");
+                                        aktieInMarktdaten.AktuellerPreis = aktienInfo.AktuellerPreis;
+                                        aktieInMarktdaten.Änderung = aktienInfo.Änderung;
+                                        aktieInMarktdaten.ÄnderungProzent = aktienInfo.ÄnderungProzent;
+                                        aktieInMarktdaten.LetzteAktualisierung = DateTime.Now;
+                                    }
+                                }
+
+                                BerechneGesamtwert();
+                                IsLoading = false;
+                                Debug.WriteLine($"Kursdaten für {symbol} erfolgreich geladen und aktualisiert");
+                                return;
+                            }
+                        }
+                    }
+
+                    // Wenn die Aktie nicht über die API gefunden wurde, aber in Marktdaten existiert
+                    if (_mainViewModel?.MarktdatenViewModel?.AktienListe != null)
+                    {
+                        var aktieInMarktdaten = _mainViewModel.MarktdatenViewModel.AktienListe
+                            .FirstOrDefault(a => a.AktienSymbol.Equals(symbol, StringComparison.OrdinalIgnoreCase));
+
+                        if (aktieInMarktdaten != null && aktieInMarktdaten.AktuellerPreis > 0)
+                        {
+                            Debug.WriteLine($"Kurs aus Marktdaten verwendet: {aktieInMarktdaten.AktienSymbol} - {aktieInMarktdaten.AktuellerPreis:F2}€");
+                            AktuellerKurs = aktieInMarktdaten.AktuellerPreis;
+                            AktienName = aktieInMarktdaten.AktienName;
+                            BerechneGesamtwert();
+                            IsLoading = false;
+                            return;
+                        }
+                    }
+                }
+
+                // Wenn keine Daten gefunden wurden
+                Debug.WriteLine($"Keine Kursdaten für {symbol} gefunden");
+                MessageBox.Show($"Für die Aktie {symbol} konnten keine aktuellen Kursdaten abgerufen werden. " +
+                                $"Bitte versuchen Sie es später erneut oder wählen Sie eine andere Aktie.",
+                               "Keine Kursdaten verfügbar", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Laden der Kursdaten: {ex.Message}\nStackTrace: {ex.StackTrace}");
+
+                // Benutzerfreundliche Fehlermeldung
+                MessageBox.Show($"Beim Abrufen der Kursdaten für {symbol} ist ein Fehler aufgetreten: {ex.Message}",
+                               "Fehler beim Laden der Kursdaten", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsLoading = false;
             }
         }
 
@@ -578,32 +751,6 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             // Nach Gesamtwertberechnung prüfen, ob Transaktion durchführbar ist
             PrüfeTransaktionsDurchführbarkeit();
             TransaktionAusführenCommand.NotifyCanExecuteChanged();
-        }
-
-
-        /// <summary>
-        /// Sucht die Aktie anhand des eingegebenen Symbols
-        /// </summary>
-        private void AktienSuchen()
-        {
-            Debug.WriteLine($"AktienSuchenCommand aufgerufen für Symbol: {AktienSymbol}");
-            if (string.IsNullOrWhiteSpace(AktienSymbol))
-            {
-                Debug.WriteLine("Kein Symbol eingegeben");
-                return;
-            }
-
-            // Hier explizit LadeAktienDaten aufrufen
-            LadeAktienDaten();
-
-            // Wenn keine Aktie gefunden wurde, eine Meldung anzeigen
-            if (AktuellerKurs <= 0)
-            {
-                MessageBox.Show($"Die Aktie mit dem Symbol '{AktienSymbol}' wurde nicht gefunden.",
-                    "Aktie nicht gefunden",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-            }
         }
 
         /// <summary>
@@ -638,16 +785,25 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         }
 
         /// <summary>
-        /// Führt die Transaktion (Kauf oder Verkauf) durch
+        /// Führt die Transaktion (Kauf oder Verkauf) durch mit verbesserten Preis-Checks
         /// </summary>
         private void TransaktionAusführen()
         {
             Debug.WriteLine($"TransaktionAusführenCommand aufgerufen: {(IsKauf ? "Kauf" : "Verkauf")} von {Menge} {AktienSymbol}");
 
-            if (string.IsNullOrWhiteSpace(AktienSymbol) || AktuellerKurs <= 0 || Menge <= 0)
+            if (string.IsNullOrWhiteSpace(AktienSymbol) || Menge <= 0)
             {
                 Debug.WriteLine("Ungültige Transaktionsparameter");
                 MessageBox.Show("Bitte wählen Sie eine Aktie aus und geben Sie eine Menge an.", "Eingabefehler", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Zusätzliche Prüfung auf gültigen Kurs
+            if (AktuellerKurs <= 0)
+            {
+                Debug.WriteLine("Ungültiger Kurs: " + AktuellerKurs);
+                MessageBox.Show("Der aktuelle Kurs für diese Aktie ist nicht verfügbar oder ungültig. Bitte wählen Sie eine andere Aktie oder versuchen Sie es später erneut.",
+                    "Ungültiger Kurs", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -677,33 +833,26 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                             .Equals(AktienSymbol.Trim(), StringComparison.OrdinalIgnoreCase));
                 }
 
+                // Wenn Aktie nicht gefunden wurde, eine neue erstellen
                 if (aktModell == null)
                 {
-                    Debug.WriteLine($"Aktie {AktienSymbol} nicht in der AktienListe gefunden");
+                    Debug.WriteLine($"Aktie {AktienSymbol} nicht in der AktienListe gefunden, erstelle neue Aktie");
 
-                    // Als Fallback in der MarktdatenViewModel-Liste suchen
-                    aktModell = _mainViewModel.MarktdatenViewModel?.AktienListe?
-                        .FirstOrDefault(a => a.AktienSymbol
-                            .Equals(AktienSymbol.Trim(), StringComparison.OrdinalIgnoreCase));
-
-                    if (aktModell == null)
+                    // Neue Aktie erstellen mit den aktuellen Daten
+                    aktModell = new Aktie
                     {
-                        // Wenn immer noch nicht gefunden, erstellen wir eine neue Aktie mit den aktuellen Werten
-                        aktModell = new Aktie
-                        {
-                            AktienID = AktienListe.Count + 1,
-                            AktienSymbol = AktienSymbol.Trim().ToUpper(),
-                            AktienName = AktienName,
-                            AktuellerPreis = AktuellerKurs,
-                            LetzteAktualisierung = DateTime.Now
-                        };
-                    }
+                        AktienID = AktienListe.Count + 1,
+                        AktienSymbol = AktienSymbol.Trim().ToUpper(),
+                        AktienName = AktienName,
+                        AktuellerPreis = AktuellerKurs,
+                        LetzteAktualisierung = DateTime.Now
+                    };
                 }
 
                 int id = aktModell.AktienID;
-                var name = aktModell.AktienName;
+                var name = string.IsNullOrEmpty(aktModell.AktienName) ? AktienName : aktModell.AktienName;
 
-                // WICHTIG: Hier verwenden wir explizit den aktuellen Kurs aus unserer View
+                // WICHTIG: Den aktuell angezeigten Kurs verwenden, der von der API geladen wurde
                 var kurs = AktuellerKurs;
                 var gesamtWert = kurs * Menge;
 
@@ -721,11 +870,54 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                         return;
                     }
 
+                    // WICHTIG: Vor dem Kauf Bestätigung einholen mit allen Details
+                    var kaufBestätigt = MessageBox.Show(
+                        $"Möchten Sie {Menge} Aktien von {name} ({AktienSymbol}) zum Kurs von {kurs:N2}€ pro Aktie kaufen?\n\n" +
+                        $"Gesamtbetrag: {gesamtWert:N2}€",
+                        "Kauf bestätigen", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                    if (kaufBestätigt != MessageBoxResult.Yes)
+                    {
+                        Debug.WriteLine("Kauf wurde vom Benutzer abgebrochen");
+                        return;
+                    }
+
                     // Aktie zum Portfolio hinzufügen
                     portfolio.FügeAktieHinzu(id, AktienSymbol.Trim().ToUpper(), name, Menge, kurs, kurs);
 
                     // Kontostand direkt im MainViewModel aktualisieren
                     _mainViewModel.VerringereKontostand(gesamtWert);
+
+                    // NEU: Prüfen, ob Aktie bereits in Marktdaten vorhanden ist, sonst hinzufügen
+                    if (_mainViewModel.MarktdatenViewModel != null)
+                    {
+                        // Aktie zu Marktdaten hinzufügen, wenn sie noch nicht vorhanden ist
+                        bool bereitsInMarktdaten = _mainViewModel.MarktdatenViewModel.AktienListe.Any(
+                            a => a.AktienSymbol.Equals(AktienSymbol.Trim(), StringComparison.OrdinalIgnoreCase));
+
+                        if (!bereitsInMarktdaten)
+                        {
+                            Debug.WriteLine($"Füge Aktie {AktienSymbol} zu Marktdaten hinzu, da sie gekauft wurde");
+
+                            // Neue Aktie für Marktdaten erstellen
+                            var neueAktie = new Aktie
+                            {
+                                AktienID = id,
+                                AktienSymbol = AktienSymbol.Trim().ToUpper(),
+                                AktienName = name,
+                                AktuellerPreis = kurs,
+                                Änderung = 0,  // Zunächst keine Änderung
+                                ÄnderungProzent = 0,
+                                LetzteAktualisierung = DateTime.Now
+                            };
+
+                            // Aktie zu Marktdaten hinzufügen - per Dispatcher, da dies eine UI-Operation sein könnte
+                            Application.Current.Dispatcher.Invoke(() =>
+                            {
+                                _mainViewModel.MarktdatenViewModel.AktienListe.Add(neueAktie);
+                            });
+                        }
+                    }
 
                     // Erfolgsmeldung anzeigen
                     MessageBox.Show($"{Menge} Aktien von {name} wurden erfolgreich gekauft für {gesamtWert:N2}€.",
@@ -740,6 +932,18 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     {
                         MessageBox.Show($"Nicht genügend Aktien verfügbar. Sie besitzen nur {VerfügbareAktien} Aktien.",
                             "Unzureichender Bestand", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
+                    // WICHTIG: Vor dem Verkauf Bestätigung einholen mit allen Details
+                    var verkaufBestätigt = MessageBox.Show(
+                        $"Möchten Sie {Menge} Aktien von {name} ({AktienSymbol}) zum Kurs von {kurs:N2}€ pro Aktie verkaufen?\n\n" +
+                        $"Gesamterlös: {gesamtWert:N2}€",
+                        "Verkauf bestätigen", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                    if (verkaufBestätigt != MessageBoxResult.Yes)
+                    {
+                        Debug.WriteLine("Verkauf wurde vom Benutzer abgebrochen");
                         return;
                     }
 

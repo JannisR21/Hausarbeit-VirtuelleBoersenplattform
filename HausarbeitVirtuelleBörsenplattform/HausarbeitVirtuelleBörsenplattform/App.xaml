@@ -11,5 +11,7 @@
         <converters:BoolToBackgroundConverter x:Key="BoolToBackgroundConverter"/>
         <helpers:InverseViewMatchConverter x:Key="InverseViewMatchConverter"/>
         <helpers:WatermarkHelper x:Key="WatermarkHelper"/>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:InverseVisibilityConverter x:Key="InverseVisibilityConverter"/>
     </Application.Resources>
 </Application>

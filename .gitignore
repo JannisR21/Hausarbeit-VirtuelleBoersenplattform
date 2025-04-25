@@ -3,6 +3,9 @@ bin/
 obj/
 out/
 
+# Auch bin-short und obj-short ignorieren
+bin-short/
+obj-short/
 # User-specific files
 *.rsuser
 *.suo

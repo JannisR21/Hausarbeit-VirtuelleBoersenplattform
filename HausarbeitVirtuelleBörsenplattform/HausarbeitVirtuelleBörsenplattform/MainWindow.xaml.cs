@@ -60,7 +60,7 @@ namespace HausarbeitVirtuelleBörsenplattform
                 {
                     Debug.WriteLine("HandelsUserControl gefunden!");
 
-                    // CheckAndUpdateComboBox-Methode aufrufen, die wir hinzugefügt haben
+                    // CheckAndUpdateComboBox-Methode aufrufen
                     handelsControl.CheckAndUpdateComboBox();
                     return;
                 }

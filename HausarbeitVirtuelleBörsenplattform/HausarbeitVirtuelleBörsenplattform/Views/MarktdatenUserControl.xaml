@@ -214,13 +214,26 @@
                         Width="120"/>
 
                 <!-- Änderung-Spalte mit Farbkodierung über Code-Behind -->
+                <!-- Änderung-Spalte mit Farbkodierung -->
                 <DataGridTemplateColumn Header="Änderung" Width="100">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Änderung, StringFormat={}{0:+0.00;-0.00;0.00} €, ConverterCulture=de-DE}" 
-                                      HorizontalAlignment="Right"
-                                      x:Name="ÄnderungTextBlock"
-                                      Loaded="ÄnderungTextBlock_Loaded"/>
+                       HorizontalAlignment="Right"
+                       x:Name="ÄnderungTextBlock"
+                       Loaded="ÄnderungTextBlock_Loaded"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Änderung-Prozent-Spalte mit Farbkodierung -->
+                <DataGridTemplateColumn Header="Änderung %" Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding ÄnderungProzent, StringFormat={}{0:+0.00;-0.00;0.00} %, ConverterCulture=de-DE}" 
+                       HorizontalAlignment="Right"
+                       x:Name="ÄnderungProzentTextBlock"
+                       Loaded="ÄnderungProzentTextBlock_Loaded"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>

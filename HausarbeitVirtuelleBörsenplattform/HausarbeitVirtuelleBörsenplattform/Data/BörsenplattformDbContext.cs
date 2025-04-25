@@ -83,23 +83,24 @@ namespace HausarbeitVirtuelleBörsenplattform.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // Hier könnten Seed-Daten eingefügt werden
+            // Basis-Benutzer für die erste Anmeldung, aber keine Dummy-Aktien mehr
             SeedData(modelBuilder);
         }
 
         /// <summary>
-        /// Initialisiert die Datenbank mit Beispieldaten
+        /// Initialisiert die Datenbank mit Basis-Benutzerdaten
         /// </summary>
         private void SeedData(ModelBuilder modelBuilder)
         {
-            // Beispiel-Benutzer
+            // Basis-Benutzer für die Administration
             modelBuilder.Entity<Benutzer>().HasData(
                 new Benutzer
                 {
                     BenutzerID = 1,
                     Benutzername = "admin",
                     Email = "admin@example.com",
-                    PasswortHash = "AQAAAAIAAYagAAAAECsUTzp+asdsa87d9sa9d87as9d879sa9d87a9sd7as97d9as87d=", // "admin" (Beispiel-Hash)
+                    // Hash für 'admin'
+                    PasswortHash = "$2a$12$eTxedgRvWVqcV9gOJ5ZOz.zqbTLwc7E0gIOZTSLVMPzb0OFaZqNQK",
                     Kontostand = 10000.00m,
                     Erstellungsdatum = System.DateTime.Now.AddDays(-30),
                     Vorname = "Admin",
@@ -111,30 +112,14 @@ namespace HausarbeitVirtuelleBörsenplattform.Data
                     BenutzerID = 2,
                     Benutzername = "demo",
                     Email = "demo@example.com",
-                    PasswortHash = "AQAAAAIAAYagAAAAEFGdg5c+dsadsad9sa7d9sa7d9sa7d8a7sd98as7d98as7d98as7d=", // "demo" (Beispiel-Hash)
+                    // Hash für 'demo'
+                    PasswortHash = "$2a$12$T30V4QZDsHRbGHqLPBPwleF0K27z0CFkFRgYLBVT8G3V36Ou.wJbu",
                     Kontostand = 10000.00m,
                     Erstellungsdatum = System.DateTime.Now.AddDays(-15),
                     Vorname = "Demo",
                     Nachname = "User",
                     VollName = "Demo User"
                 }
-            );
-
-            // Beispiel-Aktien
-            modelBuilder.Entity<Aktie>().HasData(
-                new Aktie { AktienID = 1, AktienSymbol = "AAPL", AktienName = "Apple Inc.", AktuellerPreis = 150.00m, Änderung = 1.25m, ÄnderungProzent = 0.84m, LetzteAktualisierung = System.DateTime.Now },
-                new Aktie { AktienID = 2, AktienSymbol = "TSLA", AktienName = "Tesla Inc.", AktuellerPreis = 200.20m, Änderung = -0.70m, ÄnderungProzent = -0.35m, LetzteAktualisierung = System.DateTime.Now },
-                new Aktie { AktienID = 3, AktienSymbol = "AMZN", AktienName = "Amazon.com Inc.", AktuellerPreis = 95.10m, Änderung = 0.72m, ÄnderungProzent = 0.76m, LetzteAktualisierung = System.DateTime.Now },
-                new Aktie { AktienID = 4, AktienSymbol = "MSFT", AktienName = "Microsoft Corp.", AktuellerPreis = 320.45m, Änderung = 4.75m, ÄnderungProzent = 1.50m, LetzteAktualisierung = System.DateTime.Now },
-                new Aktie { AktienID = 5, AktienSymbol = "GOOGL", AktienName = "Alphabet Inc.", AktuellerPreis = 128.75m, Änderung = -0.28m, ÄnderungProzent = -0.22m, LetzteAktualisierung = System.DateTime.Now }
-            );
-
-            // Beispiel-Portfolio-Einträge
-            modelBuilder.Entity<PortfolioEintrag>().HasData(
-                new PortfolioEintrag { BenutzerID = 1, AktienID = 1, AktienSymbol = "AAPL", AktienName = "Apple Inc.", Anzahl = 10, AktuellerKurs = 150.00m, EinstandsPreis = 145.00m, LetzteAktualisierung = System.DateTime.Now },
-                new PortfolioEintrag { BenutzerID = 1, AktienID = 2, AktienSymbol = "TSLA", AktienName = "Tesla Inc.", Anzahl = 5, AktuellerKurs = 200.20m, EinstandsPreis = 210.00m, LetzteAktualisierung = System.DateTime.Now },
-                new PortfolioEintrag { BenutzerID = 2, AktienID = 3, AktienSymbol = "AMZN", AktienName = "Amazon.com Inc.", Anzahl = 8, AktuellerKurs = 95.10m, EinstandsPreis = 90.00m, LetzteAktualisierung = System.DateTime.Now },
-                new PortfolioEintrag { BenutzerID = 2, AktienID = 4, AktienSymbol = "MSFT", AktienName = "Microsoft Corp.", Anzahl = 12, AktuellerKurs = 320.45m, EinstandsPreis = 305.80m, LetzteAktualisierung = System.DateTime.Now }
             );
         }
     }

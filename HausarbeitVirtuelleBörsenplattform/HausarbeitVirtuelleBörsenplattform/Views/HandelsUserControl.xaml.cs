@@ -30,28 +30,73 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
         {
             Debug.WriteLine("HandelsUserControl_Loaded ausgelöst");
 
-            if (DataContext is AktienhandelViewModel viewModel)
+            if (DataContext is AktienhandelViewModel aktienViewModel)
             {
                 Debug.WriteLine("ViewModel ist ein AktienhandelViewModel");
+
+                // Wichtig: Prüfen, ob AktienListe Daten enthält
+                if (aktienViewModel.AktienListe == null || aktienViewModel.AktienListe.Count == 0)
+                {
+                    Debug.WriteLine("AktienListe ist leer oder null, initialisiere erneut");
+
+                    // Explizit die Aktienliste initialisieren
+                    Dispatcher.BeginInvoke(new Action(() => {
+                        try
+                        {
+                            // Methode zum Neuinitialisieren aufrufen
+                            var methode = aktienViewModel.GetType().GetMethod("InitializeAktienListe",
+                                System.Reflection.BindingFlags.NonPublic |
+                                System.Reflection.BindingFlags.Instance);
+
+                            if (methode != null)
+                            {
+                                Debug.WriteLine("Rufe InitializeAktienListe explizit auf");
+                                methode.Invoke(aktienViewModel, null);
+                            }
+                            else
+                            {
+                                Debug.WriteLine("InitializeAktienListe Methode nicht gefunden");
+                            }
+
+                            // Property-Changed auslösen
+                            aktienViewModel.GetType().GetMethod("OnPropertyChanged",
+                                System.Reflection.BindingFlags.NonPublic |
+                                System.Reflection.BindingFlags.Instance)?.Invoke(aktienViewModel,
+                                new object[] { nameof(aktienViewModel.AktienListe) });
+
+                            aktienViewModel.GetType().GetMethod("OnPropertyChanged",
+                                System.Reflection.BindingFlags.NonPublic |
+                                System.Reflection.BindingFlags.Instance)?.Invoke(aktienViewModel,
+                                new object[] { nameof(aktienViewModel.GefilterteAktienListe) });
+
+                            // Nach der Initialisierung ComboBox aktualisieren
+                            CheckAndUpdateComboBox();
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Fehler beim Initialisieren der AktienListe: {ex.Message}");
+                        }
+                    }));
+                }
 
                 // Nach einer kurzen Verzögerung die ComboBox-Bindung überprüfen
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
                     CheckAndUpdateComboBox();
 
-                    // Wenn ein Symbol in der ComboBox ausgewählt ist, manuell LadeAktienDaten auslösen
+                    // Wenn ein Symbol in der ComboBox ausgewählt ist, manuell AktienSuchenCommand auslösen
                     if (!string.IsNullOrWhiteSpace(aktienComboBox.Text))
                     {
                         Debug.WriteLine($"Aktie in ComboBox ausgewählt: {aktienComboBox.Text}");
-                        viewModel.AktienSymbol = aktienComboBox.Text;
+                        aktienViewModel.AktienSymbol = aktienComboBox.Text;
 
                         // Manuelle Aktualisierung der Aktien-Daten
-                        Dispatcher.BeginInvoke(new Action(() =>
+                        Dispatcher.BeginInvoke(new Action(async () =>
                         {
                             // Suchen-Button manuell "drücken"
-                            if (viewModel.AktienSuchenCommand.CanExecute(null))
+                            if (aktienViewModel.AktienSuchenCommand.CanExecute(null))
                             {
-                                viewModel.AktienSuchenCommand.Execute(null);
+                                await aktienViewModel.AktienSuchenCommand.ExecuteAsync(null);
                             }
                         }), System.Windows.Threading.DispatcherPriority.Background);
                     }
@@ -65,16 +110,16 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                     if (aktienComboBox.SelectedItem is Aktie ausgewählteAktie)
                     {
                         Debug.WriteLine($"Aktie ausgewählt: {ausgewählteAktie.AktienSymbol}");
-                        viewModel.SelectedAktie = ausgewählteAktie;
+                        aktienViewModel.SelectedAktie = ausgewählteAktie;
 
                         // Explizit Daten aktualisieren
-                        viewModel.AktienSymbol = ausgewählteAktie.AktienSymbol;
+                        aktienViewModel.AktienSymbol = ausgewählteAktie.AktienSymbol;
                     }
                     else if (!string.IsNullOrWhiteSpace(aktienComboBox.Text))
                     {
                         // Bei manueller Texteingabe
                         Debug.WriteLine($"Text in ComboBox geändert: {aktienComboBox.Text}");
-                        viewModel.AktienSymbol = aktienComboBox.Text;
+                        aktienViewModel.AktienSymbol = aktienComboBox.Text;
                     }
                 };
 
@@ -85,13 +130,28 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                         if (!string.IsNullOrWhiteSpace(aktienComboBox.Text))
                         {
                             Debug.WriteLine($"Text in ComboBox geändert (TextChanged): {aktienComboBox.Text}");
-                            viewModel.AktienSymbol = aktienComboBox.Text;
+                            aktienViewModel.AktienSymbol = aktienComboBox.Text;
                         }
                     }));
             }
             else
             {
                 Debug.WriteLine($"ViewModel ist kein AktienhandelViewModel, sondern: {DataContext?.GetType().Name ?? "null"}");
+            }
+        }
+
+
+        private void AktienComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var comboBox = sender as ComboBox;
+            Debug.WriteLine($"ComboBox SelectionChanged");
+            Debug.WriteLine($"Items Count: {comboBox.Items.Count}");
+            Debug.WriteLine($"SelectedItem: {comboBox.SelectedItem}");
+
+            if (DataContext is AktienhandelViewModel vm)
+            {
+                Debug.WriteLine($"ViewModel AktienListe Count: {vm.AktienListe?.Count ?? 0}");
+                Debug.WriteLine($"ViewModel GefilterteAktienListe Count: {vm.GefilterteAktienListe?.Count() ?? 0}");
             }
         }
 
@@ -109,88 +169,42 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                 {
                     Debug.WriteLine("ComboBox ist leer, versuche zu aktualisieren");
 
-                    // Prüfen, ob App.StandardAktien verfügbar ist
-                    if (App.StandardAktien != null && App.StandardAktien.Count > 0)
+                    // Logging für DataContext und ViewModel
+                    if (DataContext is AktienhandelViewModel vm)
                     {
-                        Debug.WriteLine($"App.StandardAktien enthält {App.StandardAktien.Count} Aktien");
+                        Debug.WriteLine($"AktienListe Count: {vm.AktienListe?.Count ?? 0}");
+                        Debug.WriteLine($"GefilterteAktienListe Count: {vm.GefilterteAktienListe?.Count() ?? 0}");
+                        Debug.WriteLine($"SuchText: '{vm.SuchText}'");
+                    }
 
-                        // Forced-Binding-Update für die ComboBox
-                        BindingOperations.GetBindingExpression(aktienComboBox, ItemsControl.ItemsSourceProperty)?.UpdateTarget();
-
-                        // Kurze Verzögerung, um dem Binding Zeit zu geben
-                        Dispatcher.BeginInvoke(new Action(() =>
-                        {
-                            // Nochmals prüfen
-                            if (aktienComboBox.Items.Count == 0)
-                            {
-                                Debug.WriteLine("ComboBox ist immer noch leer, versuche manuelles Zuweisen");
-
-                                // Manuelles Setzen als letzte Möglichkeit
-                                aktienComboBox.ItemsSource = null;
-                                aktienComboBox.ItemsSource = App.StandardAktien;
-
-                                // Nochmals prüfen
-                                Debug.WriteLine($"ComboBox hat jetzt {aktienComboBox.Items.Count} Elemente");
-
-                                // Wenn nötig, Data Context aktualisieren
-                                if (DataContext is AktienhandelViewModel viewModel)
-                                {
-                                    viewModel.InitializeWithAktien(App.StandardAktien);
-
-                                    // Standard-Aktie auswählen (z.B. erste in der Liste)
-                                    if (aktienComboBox.Items.Count > 0)
-                                    {
-                                        aktienComboBox.SelectedIndex = 0; // Erste Aktie auswählen
-
-                                        if (aktienComboBox.SelectedItem is Aktie ersteAktie)
-                                        {
-                                            Debug.WriteLine($"Setze erste Aktie: {ersteAktie.AktienSymbol}");
-                                            viewModel.SelectedAktie = ersteAktie;
-                                            viewModel.AktienSymbol = ersteAktie.AktienSymbol;
-
-                                            // Explizit LadeAktienDaten aufrufen
-                                            Dispatcher.BeginInvoke(new Action(() =>
-                                            {
-                                                if (viewModel.AktienSuchenCommand.CanExecute(null))
-                                                {
-                                                    viewModel.AktienSuchenCommand.Execute(null);
-                                                }
-                                            }), System.Windows.Threading.DispatcherPriority.Background);
-                                        }
-                                    }
-                                }
-                            }
-                        }), System.Windows.Threading.DispatcherPriority.Background);
+                    // Erzwinge die Aktualisierung der ItemsSource-Bindung
+                    BindingExpression bindingExpression = BindingOperations.GetBindingExpression(aktienComboBox, ItemsControl.ItemsSourceProperty);
+                    if (bindingExpression != null)
+                    {
+                        Debug.WriteLine("Binding Expression gefunden, aktualisiere Target");
+                        bindingExpression.UpdateTarget();
                     }
                     else
                     {
-                        Debug.WriteLine("App.StandardAktien ist null oder leer!");
+                        Debug.WriteLine("Keine Binding Expression gefunden!");
+                    }
 
-                        // Wenn keine Standard-Aktien in der App verfügbar sind, eigene erstellen
-                        var standardAktien = new System.Collections.ObjectModel.ObservableCollection<Models.Aktie>
+                    // Wenn nach der Aktualisierung immer noch keine Items vorhanden sind,
+                    // dann haben wir möglicherweise Probleme mit der Datenquelle
+                    if (aktienComboBox.Items.Count == 0)
+                    {
+                        Debug.WriteLine("ComboBox ist immer noch leer nach Binding-Aktualisierung");
+
+                        // Prüfen, ob wir die AktienListe direkt setzen können
+                        if (DataContext is AktienhandelViewModel aktienVm && aktienVm.AktienListe != null && aktienVm.AktienListe.Count > 0)
                         {
-                            new Models.Aktie { AktienID = 1, AktienSymbol = "AAPL", AktienName = "Apple Inc.", AktuellerPreis = 150.00m },
-                            new Models.Aktie { AktienID = 2, AktienSymbol = "MSFT", AktienName = "Microsoft Corp.", AktuellerPreis = 320.45m },
-                            new Models.Aktie { AktienID = 3, AktienSymbol = "TSLA", AktienName = "Tesla Inc.", AktuellerPreis = 200.20m },
-                            new Models.Aktie { AktienID = 4, AktienSymbol = "AMZN", AktienName = "Amazon.com Inc.", AktuellerPreis = 95.10m },
-                            new Models.Aktie { AktienID = 5, AktienSymbol = "GOOGL", AktienName = "Alphabet Inc.", AktuellerPreis = 128.75m }
-                        };
-
-                        // Direkt zuweisen
-                        aktienComboBox.ItemsSource = standardAktien;
-
-                        // Wenn nötig, Data Context aktualisieren
-                        if (DataContext is AktienhandelViewModel viewModel)
+                            Debug.WriteLine("Setze ItemsSource direkt auf AktienListe");
+                            aktienComboBox.ItemsSource = aktienVm.AktienListe;
+                        }
+                        else
                         {
-                            viewModel.InitializeWithAktien(standardAktien);
-
-                            // Erste Aktie auswählen
-                            if (standardAktien.Count > 0)
-                            {
-                                aktienComboBox.SelectedIndex = 0;
-                                viewModel.SelectedAktie = standardAktien[0];
-                                viewModel.AktienSymbol = standardAktien[0].AktienSymbol;
-                            }
+                            MessageBox.Show("Es konnten keine Aktien geladen werden. Bitte versuchen Sie es später erneut.",
+                                "Keine Aktien verfügbar", MessageBoxButton.OK, MessageBoxImage.Warning);
                         }
                     }
                 }
@@ -205,10 +219,10 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                         aktienComboBox.SelectedIndex = 0;
 
                         // ViewModel aktualisieren
-                        if (DataContext is AktienhandelViewModel viewModel && aktienComboBox.SelectedItem is Aktie ersteAktie)
+                        if (DataContext is AktienhandelViewModel aktienVm && aktienComboBox.SelectedItem is Aktie ersteAktie)
                         {
-                            viewModel.SelectedAktie = ersteAktie;
-                            viewModel.AktienSymbol = ersteAktie.AktienSymbol;
+                            aktienVm.SelectedAktie = ersteAktie;
+                            aktienVm.AktienSymbol = ersteAktie.AktienSymbol;
                         }
                     }
                 }
@@ -218,32 +232,8 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                 Debug.WriteLine($"Fehler beim Überprüfen/Aktualisieren der ComboBox: {ex.Message}");
                 Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
 
-                try
-                {
-                    // Notfall-Fallback
-                    var fallbackAktien = new System.Collections.ObjectModel.ObservableCollection<Models.Aktie>
-                    {
-                        new Models.Aktie { AktienID = 1, AktienSymbol = "AAPL", AktienName = "Apple Inc. (Fallback)", AktuellerPreis = 150.00m }
-                    };
-
-                    aktienComboBox.ItemsSource = fallbackAktien;
-
-                    if (DataContext is AktienhandelViewModel viewModel)
-                    {
-                        viewModel.InitializeWithAktien(fallbackAktien);
-
-                        if (fallbackAktien.Count > 0)
-                        {
-                            aktienComboBox.SelectedIndex = 0;
-                            viewModel.SelectedAktie = fallbackAktien[0];
-                            viewModel.AktienSymbol = fallbackAktien[0].AktienSymbol;
-                        }
-                    }
-                }
-                catch
-                {
-                    // Ignorieren - letzter Versuch fehlgeschlagen
-                }
+                MessageBox.Show($"Beim Laden der Aktienauswahl ist ein Fehler aufgetreten: {ex.Message}",
+                    "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

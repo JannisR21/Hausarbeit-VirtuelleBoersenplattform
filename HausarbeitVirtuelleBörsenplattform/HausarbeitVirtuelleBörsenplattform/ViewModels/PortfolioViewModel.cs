@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 {
@@ -65,7 +66,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         {
             // Standard-Konstruktor für Designer-Unterstützung
             PortfolioEintraege = new ObservableCollection<PortfolioEintrag>();
-            InitializePortfolioData();
+            // Keine Beispieldaten mehr, leeres Portfolio wird angezeigt
         }
 
         /// <summary>
@@ -93,8 +94,9 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         {
             if (_databaseService == null || _benutzerId <= 0)
             {
-                Debug.WriteLine("Lade Beispieldaten, da kein Datenbankzugriff oder Benutzer-ID vorhanden ist.");
-                InitializePortfolioData();
+                Debug.WriteLine("Kein Datenbankzugriff oder Benutzer-ID vorhanden.");
+                MessageBox.Show("Portfolio-Daten konnten nicht geladen werden. Bitte melden Sie sich erneut an.",
+                    "Fehler beim Laden des Portfolios", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -120,55 +122,10 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             catch (System.Exception ex)
             {
                 Debug.WriteLine($"Fehler beim Laden der Portfolio-Daten: {ex.Message}");
-                // Im Fehlerfall, Beispieldaten laden
-                InitializePortfolioData();
+                MessageBox.Show($"Fehler beim Laden der Portfolio-Daten: {ex.Message}",
+                    "Datenbankfehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                // Keine Beispieldaten mehr laden
             }
-        }
-
-        #endregion
-
-        #region Private Methoden
-
-        /// <summary>
-        /// Lädt Beispieldaten für das Portfolio
-        /// </summary>
-        private void InitializePortfolioData()
-        {
-            // Beispieldaten für das Portfolio
-            PortfolioEintraege.Clear();
-            PortfolioEintraege.Add(new PortfolioEintrag
-            {
-                BenutzerID = _benutzerId > 0 ? _benutzerId : 1,
-                AktienID = 1,
-                AktienSymbol = "AAPL",
-                AktienName = "Apple Inc.",
-                Anzahl = 10,
-                AktuellerKurs = 150.00m,
-                EinstandsPreis = 145.00m
-            });
-            PortfolioEintraege.Add(new PortfolioEintrag
-            {
-                BenutzerID = _benutzerId > 0 ? _benutzerId : 1,
-                AktienID = 2,
-                AktienSymbol = "TSLA",
-                AktienName = "Tesla Inc.",
-                Anzahl = 5,
-                AktuellerKurs = 200.20m,
-                EinstandsPreis = 210.00m
-            });
-            PortfolioEintraege.Add(new PortfolioEintrag
-            {
-                BenutzerID = _benutzerId > 0 ? _benutzerId : 1,
-                AktienID = 3,
-                AktienSymbol = "MSFT",
-                AktienName = "Microsoft Corp.",
-                Anzahl = 8,
-                AktuellerKurs = 320.45m,
-                EinstandsPreis = 305.80m
-            });
-
-            // Gesamtwerte berechnen
-            BerechneGesamtwerte();
         }
 
         #endregion

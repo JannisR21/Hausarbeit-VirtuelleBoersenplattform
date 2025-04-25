@@ -77,6 +77,53 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Style für Loading-Indikator -->
+        <Style x:Key="LoadingSpinnerStyle" TargetType="Control">
+            <Setter Property="Width" Value="20"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Control">
+                        <Grid>
+                            <Ellipse Width="{TemplateBinding Width}" 
+                                     Height="{TemplateBinding Height}" 
+                                     Stroke="#2c3e50" 
+                                     StrokeThickness="2" 
+                                     Opacity="0.3"/>
+                            <Path x:Name="Spinner" 
+                                  Stroke="#2c3e50" 
+                                  StrokeThickness="2" 
+                                  StrokeStartLineCap="Round" 
+                                  Opacity="1">
+                                <Path.Data>
+                                    <PathGeometry>
+                                        <PathFigure StartPoint="10,2">
+                                            <ArcSegment Point="10,2" IsLargeArc="True" Size="8,8" SweepDirection="Clockwise"/>
+                                        </PathFigure>
+                                    </PathGeometry>
+                                </Path.Data>
+                                <Path.RenderTransform>
+                                    <RotateTransform x:Name="SpinnerRotate" CenterX="10" CenterY="10" Angle="0"/>
+                                </Path.RenderTransform>
+                                <Path.Triggers>
+                                    <EventTrigger RoutedEvent="Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="SpinnerRotate" 
+                                                                Storyboard.TargetProperty="Angle" 
+                                                                From="0" To="360" Duration="0:0:1" 
+                                                                RepeatBehavior="Forever"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Path.Triggers>
+                            </Path>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Border Padding="20" Background="White" CornerRadius="8">
@@ -98,43 +145,65 @@
             <StackPanel Grid.Row="1">
                 <!-- Auswahl der Aktie mit Suche -->
                 <Grid Margin="0,0,0,15">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                    <!-- Verbesserte ComboBox mit SelectedItem-Bindung -->
-                    <ComboBox Grid.Column="0" x:Name="aktienComboBox" 
-                              ItemsSource="{x:Static local:App.StandardAktien}" 
-                              SelectedItem="{Binding SelectedAktie, Mode=TwoWay}" 
+                    <!-- Suchfilter für die ComboBox -->
+                    <TextBox Grid.Row="0" 
+                             Text="{Binding SuchText, UpdateSourceTrigger=PropertyChanged}" 
+                             Height="35" 
+                             Padding="8,4" 
+                             VerticalContentAlignment="Center"
+                             helpers:WatermarkHelper.WatermarkText="Suchen Sie nach Aktien (z.B. 'Apple' oder 'AAPL')"
+                             Margin="0,0,0,5"/>
+
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Verbesserte ComboBox mit SelectedItem-Bindung und Filterung -->
+                        <ComboBox Grid.Column="0" x:Name="aktienComboBox" 
+                              ItemsSource="{Binding GefilterteAktienListe}" 
+                              SelectedItem="{Binding SelectedAktie, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                               IsEditable="True" 
                               Height="35" 
                               Padding="8,4" 
                               VerticalContentAlignment="Center" 
                               StaysOpenOnEdit="True" 
+                              IsTextSearchEnabled="True"
                               TextSearch.TextPath="AktienSymbol"
-                              Text="{Binding AktienSymbol, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding AktienSymbol}" FontWeight="Bold" Margin="0,0,5,0"/>
-                                    <TextBlock Text=" - "/>
-                                    <TextBlock Text="{Binding AktienName}" Margin="5,0,0,0" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
+                              Text="{Binding AktienSymbol, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              MaxDropDownHeight="300"
+                              SelectionChanged="AktienComboBox_SelectionChanged">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding AktienSymbol}" 
+                           FontWeight="Bold" 
+                           Margin="0,0,5,0"/>
+                                        <TextBlock Text=" - "/>
+                                        <TextBlock Text="{Binding AktienName}" 
+                           Margin="5,0,0,0" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
 
-                    <!-- Such-Button -->
-                    <Button Grid.Column="1" 
-                            Content="Suchen" 
-                            Command="{Binding AktienSuchenCommand}" 
-                            Height="35" 
-                            Width="80" 
-                            Margin="5,0,0,0" 
-                            Background="#2c3e50" 
-                            Foreground="White" 
-                            BorderThickness="0"/>
+                        <!-- Such-Button -->
+                        <Button Grid.Column="1" 
+                                Content="Suchen" 
+                                Command="{Binding AktienSuchenCommand}" 
+                                Height="35" 
+                                Width="80" 
+                                Margin="5,0,0,0" 
+                                Background="#2c3e50" 
+                                Foreground="White" 
+                                BorderThickness="0"/>
+                    </Grid>
                 </Grid>
 
                 <!-- Name & Kursinformationen -->
@@ -155,12 +224,24 @@
                                 FontWeight="SemiBold" 
                                 FontSize="14"/>
 
+                        <!-- Loading-Indikator, nur sichtbar während der Aktualisierung -->
+                        <Control Grid.Row="0" Grid.Column="1" Style="{StaticResource LoadingSpinnerStyle}" 
+                                 Margin="0,0,10,0" HorizontalAlignment="Right">
+                            <Control.Visibility>
+                                <Binding Path="IsLoading" Converter="{StaticResource ResourceKey=BooleanToVisibilityConverter}"/>
+                            </Control.Visibility>
+                        </Control>
+
                         <!-- Aktueller Kurs -->
                         <TextBlock Grid.Row="0" Grid.Column="1" 
                                 Text="{Binding AktuellerKurs, StringFormat={}{0:N2} €}" 
                                 FontWeight="Bold" 
                                 FontSize="16" 
-                                Foreground="#2c3e50"/>
+                                Foreground="#2c3e50">
+                            <TextBlock.Visibility>
+                                <Binding Path="IsLoading" Converter="{StaticResource ResourceKey=InverseVisibilityConverter}"/>
+                            </TextBlock.Visibility>
+                        </TextBlock>
 
                         <!-- Infotext -->
                         <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" 

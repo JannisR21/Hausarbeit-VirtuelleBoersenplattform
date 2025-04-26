@@ -1,0 +1,279 @@
+﻿<UserControl x:Class="HausarbeitVirtuelleBörsenplattform.Views.EinstellungenUserControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:HausarbeitVirtuelleBörsenplattform.Views"
+             xmlns:viewmodels="clr-namespace:HausarbeitVirtuelleBörsenplattform.ViewModels"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+
+    <UserControl.Resources>
+        <!-- Style für Gruppen-Header -->
+        <Style x:Key="GroupHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#2c3e50"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <!-- Style für Einstellungs-Elemente -->
+        <Style x:Key="SettingItemStyle" TargetType="Grid">
+            <Setter Property="Margin" Value="0,0,0,15"/>
+        </Style>
+
+        <!-- Style für Einstellungs-Beschreibungen -->
+        <Style x:Key="SettingDescriptionStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#666"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,5,0,0"/>
+        </Style>
+
+        <!-- Style für Hyperlink-Buttons -->
+        <Style x:Key="HyperlinkButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#3498db"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <ContentPresenter HorizontalAlignment="Center" 
+                                          VerticalAlignment="Center"/>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#2980b9"/>
+                                <Setter Property="TextBlock.TextDecorations" Value="Underline"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Style für Buttons -->
+        <Style x:Key="ActionButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Background" Value="#2c3e50"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,0"/>
+            <Setter Property="Margin" Value="0,10,0,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#34495e"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#1a2530"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Border Padding="20" Background="White" CornerRadius="8">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Überschrift -->
+                <TextBlock Text="Einstellungen" 
+                       FontSize="22" 
+                       FontWeight="Bold" 
+                       Foreground="#2c3e50" 
+                       Margin="0,0,0,20"/>
+                
+                <!-- Konto-Einstellungen -->
+                <TextBlock Text="Konto" Style="{StaticResource GroupHeaderStyle}"/>
+                
+                <!-- Passwort ändern -->
+                <Grid Style="{StaticResource SettingItemStyle}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" 
+                           Text="Passwort ändern" 
+                           FontWeight="Medium"/>
+                    
+                    <TextBlock Grid.Row="1" 
+                           Text="Hier können Sie Ihr Passwort ändern. Wählen Sie ein sicheres Passwort mit mindestens 6 Zeichen." 
+                           Style="{StaticResource SettingDescriptionStyle}"/>
+                    
+                    <Button Grid.Row="2" 
+                        Content="Passwort ändern" 
+                        Style="{StaticResource ActionButtonStyle}" 
+                        Width="150" 
+                        HorizontalAlignment="Left"
+                        Click="PasswortÄndernButton_Click"/>
+                </Grid>
+                
+                <!-- E-Mail-Adresse ändern -->
+                <Grid Style="{StaticResource SettingItemStyle}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" 
+                           Text="E-Mail-Adresse ändern" 
+                           FontWeight="Medium"/>
+                    
+                    <TextBlock Grid.Row="1" 
+                           Text="Hier können Sie Ihre E-Mail-Adresse aktualisieren. Eine Bestätigungs-E-Mail wird an die neue Adresse gesendet." 
+                           Style="{StaticResource SettingDescriptionStyle}"/>
+                    
+                    <Button Grid.Row="2" 
+                        Content="E-Mail ändern" 
+                        Style="{StaticResource ActionButtonStyle}" 
+                        Width="150" 
+                        HorizontalAlignment="Left"
+                        Click="EmailÄndernButton_Click"/>
+                </Grid>
+                
+                <!-- Darstellung -->
+                <TextBlock Text="Darstellung" Style="{StaticResource GroupHeaderStyle}" Margin="0,20,0,10"/>
+                
+                <!-- Dark Mode -->
+                <Grid Style="{StaticResource SettingItemStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="0"
+                           Text="Dark Mode" 
+                           FontWeight="Medium"/>
+                    
+                    <ToggleButton Grid.Row="0" Grid.Column="1" 
+                              Width="50" 
+                              Height="24" 
+                              VerticalAlignment="Center"
+                              Content="{Binding RelativeSource={RelativeSource Self}, Path=IsChecked}"
+                              x:Name="DarkModeToggle"/>
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                           Text="Aktivieren Sie den dunklen Modus für bessere Lesbarkeit bei wenig Umgebungslicht." 
+                           Style="{StaticResource SettingDescriptionStyle}"/>
+                </Grid>
+                
+                <!-- Aktualisierungsintervall -->
+                <Grid Style="{StaticResource SettingItemStyle}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" 
+                           Text="Aktualisierungsintervall für Marktdaten" 
+                           FontWeight="Medium"/>
+                    
+                    <TextBlock Grid.Row="1" 
+                           Text="Legen Sie fest, wie oft die Marktdaten aktualisiert werden sollen. (Beachten Sie, dass die Twelve Data API auf 8 Anfragen pro Minute limitiert ist)" 
+                           Style="{StaticResource SettingDescriptionStyle}"/>
+                    
+                    <ComboBox Grid.Row="2" 
+                          Margin="0,10,0,0" 
+                          Width="200" 
+                          HorizontalAlignment="Left"
+                          x:Name="AktualisierungsIntervallComboBox">
+                        <ComboBoxItem Content="1 Minute" Tag="60"/>
+                        <ComboBoxItem Content="5 Minuten" Tag="300" IsSelected="True"/>
+                        <ComboBoxItem Content="10 Minuten" Tag="600"/>
+                        <ComboBoxItem Content="15 Minuten" Tag="900"/>
+                    </ComboBox>
+                </Grid>
+                
+                <!-- Daten -->
+                <TextBlock Text="Daten" Style="{StaticResource GroupHeaderStyle}" Margin="0,20,0,10"/>
+                
+                <!-- API-Key -->
+                <Grid Style="{StaticResource SettingItemStyle}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" 
+                           Text="Twelve Data API-Schlüssel" 
+                           FontWeight="Medium"/>
+                    
+                    <TextBlock Grid.Row="1" 
+                           Text="Geben Sie Ihren eigenen API-Schlüssel für Twelve Data ein, um mehr Anfragen zu ermöglichen." 
+                           Style="{StaticResource SettingDescriptionStyle}"/>
+                    
+                    <TextBox Grid.Row="2" 
+                         Margin="0,10,0,0" 
+                         Height="30" 
+                         Text="{Binding ApiKey}" 
+                         x:Name="ApiKeyTextBox"/>
+                    
+                    <Button Grid.Row="3" 
+                        Content="API-Schlüssel speichern" 
+                        Style="{StaticResource ActionButtonStyle}" 
+                        Width="200" 
+                        HorizontalAlignment="Left"
+                        Click="ApiKeyButton_Click"/>
+                </Grid>
+                
+                <!-- Backup & Daten löschen -->
+                <Grid Style="{StaticResource SettingItemStyle}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" 
+                           Text="Daten löschen" 
+                           FontWeight="Medium"/>
+                    
+                    <TextBlock Grid.Row="1" 
+                           Text="Hier können Sie alle Ihre Daten zurücksetzen oder Ihr Konto löschen. Diese Aktion kann nicht rückgängig gemacht werden." 
+                           Style="{StaticResource SettingDescriptionStyle}"/>
+                    
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Portfolio zurücksetzen" 
+                            Style="{StaticResource ActionButtonStyle}" 
+                            Background="#e74c3c"
+                            Click="PortfolioZurücksetzenButton_Click"/>
+                        
+                        <Button Content="Konto löschen" 
+                            Style="{StaticResource ActionButtonStyle}" 
+                            Background="#e74c3c" 
+                            Margin="10,0,0,0"
+                            Click="KontoLöschenButton_Click"/>
+                    </StackPanel>
+                </Grid>
+                
+                <!-- Änderungen speichern -->
+                <Button Content="Änderungen speichern" 
+                    Style="{StaticResource ActionButtonStyle}" 
+                    Width="200" 
+                    HorizontalAlignment="Left" 
+                    Margin="0,30,0,0"
+                    Click="ÄnderungenSpeichernButton_Click"/>
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>

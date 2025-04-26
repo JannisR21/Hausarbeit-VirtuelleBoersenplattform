@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Globalization;
+using System.Threading;
 using HausarbeitVirtuelleBörsenplattform.Helpers;
 using HausarbeitVirtuelleBörsenplattform.Models;
 
@@ -26,6 +27,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
         private DateTime _lastApiCallTime = DateTime.MinValue;
         private int _apiCallCount = 0;
         private readonly int _maxCallsPerMinute = 8; // Basic 8 Plan
+        private readonly RateLimiter _rateLimiter;
 
         // Hilfsvariablen
         public string LastErrorMessage { get; private set; }
@@ -41,6 +43,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
         {
             _httpClient = new HttpClient();
             _apiKey = apiKey;
+            _rateLimiter = new RateLimiter(_maxCallsPerMinute, TimeSpan.FromMinutes(1));
 
             Debug.WriteLine($"TwelveDataService initialisiert mit API-Key: {apiKey}");
         }
@@ -55,6 +58,12 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
 
             try
             {
+                if (symbole == null || !symbole.Any())
+                {
+                    LastErrorMessage = "Keine Symbole zur Aktualisierung übergeben";
+                    return ergebnisse;
+                }
+
                 Debug.WriteLine($"HoleAktienKurse aufgerufen für Symbole: {string.Join(", ", symbole)}");
 
                 // Symbole überprüfen und ggf. korrigieren
@@ -110,8 +119,8 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
 
                 try
                 {
-                    // API-Limit-Prüfung und Anpassung
-                    await CheckAndWaitForApiRateLimit();
+                    // Rate-Limiter verwenden, um API-Limits zu respektieren
+                    await _rateLimiter.ThrottleAsync();
 
                     // Für jedes abzufragende Symbol eine einzelne Anfrage durchführen (max. 2 pro Aufruf)
                     var maxSymbolsToProcess = Math.Min(2, abzufragendeSymbole.Count);
@@ -121,8 +130,8 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                     {
                         var symbol = abzufragendeSymbole[i];
 
-                        // API-Rate-Limit prüfen
-                        await CheckAndWaitForApiRateLimit();
+                        // Rate-Limiter vor jeder Anfrage prüfen
+                        await _rateLimiter.ThrottleAsync();
 
                         try
                         {
@@ -138,9 +147,6 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                             {
                                 string responseContent = await response.Content.ReadAsStringAsync();
                                 Debug.WriteLine($"API-Antwort für {symbol} erhalten: {responseContent.Length} Zeichen");
-
-                                // Zusätzliche Debug-Ausgabe, um den genauen Inhalt zu sehen
-                                Debug.WriteLine($"API-Antwort-Inhalt für {symbol}: {responseContent}");
 
                                 if (!response.IsSuccessStatusCode)
                                 {
@@ -190,6 +196,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                                     else
                                     {
                                         Debug.WriteLine($"FEHLER: Aktie {symbol} konnte nicht geparst werden");
+                                        LastErrorMessage = $"Aktie {symbol} konnte nicht geladen werden. Ungültige oder fehlende Daten.";
                                     }
                                 }
                                 catch (JsonException jsonEx)
@@ -202,6 +209,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                         catch (Exception ex)
                         {
                             Debug.WriteLine($"Fehler bei der Verarbeitung von {symbol}: {ex.Message}");
+                            LastErrorMessage = $"Fehler bei der Verarbeitung von {symbol}: {ex.Message}";
                         }
 
                         // Kurze Pause zwischen den Anfragen
@@ -224,41 +232,14 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
             }
 
             Debug.WriteLine($"HoleAktienKurse liefert {ergebnisse.Count} Ergebnisse zurück");
+
+            // Fallback für leere Ergebnisse
+            if (ergebnisse.Count == 0 && !string.IsNullOrEmpty(LastErrorMessage))
+            {
+                LastErrorMessage = $"Keine Aktien konnten geladen werden. {LastErrorMessage} Bitte versuchen Sie es später erneut oder prüfen Sie Ihre Internetverbindung.";
+            }
+
             return ergebnisse;
-        }
-
-        /// <summary>
-        /// Prüft das API-Rate-Limit und wartet gegebenenfalls, bis neue Anfragen erlaubt sind
-        /// </summary>
-        private async Task CheckAndWaitForApiRateLimit()
-        {
-            var now = DateTime.Now;
-            var timeSinceLastCall = now - _lastApiCallTime;
-
-            // Wenn die letzte Anfrage in einer anderen Minute war, setzen wir den Zähler zurück
-            if (timeSinceLastCall > TimeSpan.FromMinutes(1))
-            {
-                Debug.WriteLine("Neue Minute begonnen, API-Anfragenzähler zurückgesetzt");
-                _apiCallCount = 0;
-                return;
-            }
-
-            // Wenn wir das Limit erreicht haben, warten wir
-            if (_apiCallCount >= _maxCallsPerMinute)
-            {
-                // Berechnen, wie lange wir warten müssen, bis die nächste Minute beginnt
-                var nextMinute = _lastApiCallTime.AddMinutes(1);
-                var waitTime = nextMinute - now;
-
-                if (waitTime > TimeSpan.Zero)
-                {
-                    Debug.WriteLine($"API-Limit erreicht ({_apiCallCount}/{_maxCallsPerMinute}), warte {waitTime.TotalSeconds:F1} Sekunden");
-                    await Task.Delay(waitTime);
-
-                    // Zähler zurücksetzen
-                    _apiCallCount = 0;
-                }
-            }
         }
 
         /// <summary>
@@ -310,6 +291,8 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                         else if (symbol == "ALV.DE") name = "Allianz SE";
                         else if (symbol == "BAYN.DE") name = "Bayer AG";
                         else if (symbol == "BAS.DE") name = "BASF SE";
+                        else if (symbol == "DTEGY") name = "Deutsche Telekom AG";
+                        else if (symbol == "BMWYY") name = "Bayerische Motoren Werke AG";
                         else if (symbol.EndsWith(".DE", StringComparison.OrdinalIgnoreCase))
                             name = symbol.Replace(".DE", " AG");
                     }
@@ -366,6 +349,21 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                         }
                     }
 
+                    // FALLBACK: Wenn wir keine gültigen Daten haben, verwenden wir Dummy-Daten
+                    if (close <= 0)
+                    {
+                        Debug.WriteLine($"WARNUNG: Ungültiger Kurs für {symbol}, verwende Fallback-Werte");
+
+                        // Zufällige Fallback-Werte erstellen
+                        Random random = new Random();
+                        close = Math.Round((decimal)(random.NextDouble() * 100 + 50), 2); // Zufälliger Wert zwischen 50 und 150
+                        change = Math.Round((decimal)(random.NextDouble() * 4 - 2), 2);  // Zufälliger Wert zwischen -2 und 2
+                        percentChange = Math.Round((change / close) * 100, 2);
+
+                        // Fehler markieren
+                        LastErrorMessage = $"Für {symbol} konnten keine Echtzeit-Daten abgerufen werden. Verwende Fallback-Werte.";
+                    }
+
                     // Erstellen eines Aktienobjekts
                     var aktie = new Aktie
                     {
@@ -385,6 +383,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
             catch (Exception ex)
             {
                 Debug.WriteLine($"Fehler beim Parsen der API-Antwort für {symbol}: {ex.Message}");
+                LastErrorMessage = $"Fehler beim Verarbeiten der Daten für {symbol}: {ex.Message}";
                 return null;
             }
         }

@@ -89,6 +89,11 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// </summary>
         public AktienhandelViewModel AktienhandelViewModel { get; private set; }
 
+        /// <summary>
+        /// ViewModel für den Portfolio-Chart
+        /// </summary>
+        public PortfolioChartViewModel PortfolioChartViewModel { get; private set; }
+
         // Alternativ-Property für HandelsViewModel
         public AktienhandelViewModel HandelsViewModel => AktienhandelViewModel;
 
@@ -165,6 +170,10 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     Debug.WriteLine("FEHLER: AktienhandelViewModel konnte nicht erstellt werden!");
                 }
 
+                // Neues PortfolioChartViewModel initialisieren
+                Debug.WriteLine("Initialisiere PortfolioChartViewModel...");
+                PortfolioChartViewModel = new PortfolioChartViewModel(this);
+
                 // Timer starten
                 StartPortfolioUpdateTimer();
 
@@ -172,6 +181,8 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 
                 // Explizit eine PropertyChanged-Benachrichtigung für AktienhandelViewModel auslösen
                 OnPropertyChanged(nameof(AktienhandelViewModel));
+                // Und für das neue PortfolioChartViewModel
+                OnPropertyChanged(nameof(PortfolioChartViewModel));
             }
             catch (Exception ex)
             {

@@ -133,8 +133,8 @@
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,20,0">
                 <Button Content="Dashboard" Style="{StaticResource NavButtonStyle}" IsEnabled="False"/>
                 <Button Content="Portfolio" Style="{StaticResource NavButtonStyle}"/>
-                <Button Content="Handel" Style="{StaticResource NavButtonStyle}"/>
-                <Button Content="Einstellungen" Style="{StaticResource NavButtonStyle}"/>
+                <Button x:Name="HandelsButton" Content="Aktienhandel" Style="{StaticResource NavButtonStyle}" Click="HandelsButton_Click"/>
+                <Button x:Name="EinstellungenButton" Content="Einstellungen" Style="{StaticResource NavButtonStyle}"/>
 
                 <!-- Benutzer-Icon mit Dropdown -->
                 <Button x:Name="UserButton" Style="{StaticResource UserButtonStyle}">
@@ -143,10 +143,31 @@
                     </Button.Content>
                     <Button.ContextMenu>
                         <ContextMenu>
-                            <MenuItem Header="Profil"/>
-                            <MenuItem Header="Konto"/>
+                            <MenuItem Header="Profil" x:Name="ProfilMenuItem">
+                                <MenuItem.Icon>
+                                    <Path Data="M20,21v-2a4,4,0,0,0-4-4H8a4,4,0,0,0-4,4v2 M12,7a4,4,0,1,0-4-4,4,4,0,0,0,4,4z" 
+                                          Stroke="#2c3e50" StrokeThickness="2" 
+                                          Width="16" Height="16" 
+                                          Stretch="Uniform"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Konto" x:Name="KontoMenuItem">
+                                <MenuItem.Icon>
+                                    <Path Data="M3 21h18M3 18h18M3 6h18M3 3h18" 
+                                          Stroke="#2c3e50" StrokeThickness="2" 
+                                          Width="16" Height="16" 
+                                          Stretch="Uniform"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
                             <Separator/>
-                            <MenuItem Header="Ausloggen"/>
+                            <MenuItem Header="Ausloggen" x:Name="LogoutMenuItem">
+                                <MenuItem.Icon>
+                                    <Path Data="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9" 
+                                          Stroke="#e74c3c" StrokeThickness="2" 
+                                          Width="16" Height="16" 
+                                          Stretch="Uniform"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
                         </ContextMenu>
                     </Button.ContextMenu>
                 </Button>
@@ -179,8 +200,8 @@
         </Grid>
 
         <!-- Hauptbereich mit Inhalten -->
-        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-            <Grid Margin="10">
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" x:Name="MainContentScrollViewer">
+            <Grid Margin="10" x:Name="MainContentGrid">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <!-- Obere Reihe -->
@@ -195,7 +216,7 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Portfolio-Bereich -->
-                <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource CardBorderStyle}">
+                <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Style="{StaticResource CardBorderStyle}">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -246,24 +267,6 @@
 
                         <!-- MarktdatenUserControl einbinden -->
                         <views:MarktdatenUserControl Grid.Row="1" DataContext="{Binding MarktdatenViewModel}"/>
-                    </Grid>
-                </Border>
-
-                <!-- Handels-Bereich -->
-                <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource CardBorderStyle}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <!-- Header -->
-                            <RowDefinition Height="*"/>
-                            <!-- Inhalt -->
-                        </Grid.RowDefinitions>
-
-                        <!-- Header -->
-                        <TextBlock Grid.Row="0" Text="Aktienhandel" Style="{StaticResource CardHeaderStyle}"/>
-
-                        <!-- Handels-UserControl einbinden - korrigierte Bindung -->
-                        <views:HandelsUserControl Grid.Row="1" DataContext="{Binding AktienhandelViewModel}"/>
                     </Grid>
                 </Border>
             </Grid>

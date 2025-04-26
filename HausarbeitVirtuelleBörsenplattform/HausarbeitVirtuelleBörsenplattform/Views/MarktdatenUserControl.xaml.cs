@@ -7,6 +7,7 @@ using HausarbeitVirtuelleBörsenplattform.Models;
 using HausarbeitVirtuelleBörsenplattform.ViewModels;
 using System.Diagnostics;
 using System.Collections.Specialized;
+using System.Linq;
 
 namespace HausarbeitVirtuelleBörsenplattform.Views
 {
@@ -63,7 +64,6 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                     this.Dispatcher.Invoke(() =>
                     {
                         AktienDataGrid.Items.Refresh();
-                        Debug.WriteLine("DataGrid aktualisiert!");
                     });
                 }
             }
@@ -100,17 +100,35 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                             };
                         }
 
-                        // Sofort einmal aktualisieren
-                        if (viewModel.AktualisierenCommand.CanExecute(null))
+                        // Prüfen, ob wir Aktien aus dem Portfolio haben
+                        var mainViewModel = ((App)Application.Current).MainWindow?.DataContext as MainViewModel;
+                        if (mainViewModel?.PortfolioViewModel?.PortfolioEintraege != null &&
+                            mainViewModel.PortfolioViewModel.PortfolioEintraege.Any())
                         {
-                            Debug.WriteLine("Führe AktualisierenCommand aus");
-                            viewModel.AktualisierenCommand.Execute(null);
+                            Debug.WriteLine("Portfolio gefunden, prüfe nach Portfolio-Aktien in der Marktdatenliste");
 
-                            // Nach kurzer Verzögerung UI aktualisieren
-                            Dispatcher.BeginInvoke(new Action(() =>
+                            // Prüfen, ob alle Portfolio-Aktien in der Marktdatenliste vorhanden sind
+                            var portfolioSymbole = mainViewModel.PortfolioViewModel.PortfolioEintraege
+                                .Select(p => p.AktienSymbol.ToUpper())
+                                .ToHashSet();
+
+                            var marktdatenSymbole = viewModel.AktienListe
+                                .Select(a => a.AktienSymbol.ToUpper())
+                                .ToHashSet();
+
+                            var fehlendeSymbole = portfolioSymbole.Except(marktdatenSymbole).ToList();
+
+                            if (fehlendeSymbole.Any())
                             {
-                                RefreshUI();
-                            }), DispatcherPriority.Background);
+                                Debug.WriteLine($"Fehlende Portfolio-Aktien in Marktdaten: {string.Join(", ", fehlendeSymbole)}");
+
+                                // Aktualisieren, um Portfolio-Aktien zu laden
+                                if (viewModel.AktualisierenCommand.CanExecute(null))
+                                {
+                                    Debug.WriteLine("Führe AktualisierenCommand aus, um Portfolio-Aktien zu laden");
+                                    viewModel.AktualisierenCommand.Execute(null);
+                                }
+                            }
                         }
                     }
                     else

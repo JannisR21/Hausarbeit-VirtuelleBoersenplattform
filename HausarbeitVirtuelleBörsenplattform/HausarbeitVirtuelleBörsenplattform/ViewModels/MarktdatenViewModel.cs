@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Threading;
 
 namespace HausarbeitVirtuelleBörsenplattform.ViewModels
@@ -34,6 +35,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         private readonly MainViewModel _mainViewModel;
         private int _fehlerCounter = 0; // Zählt API-Fehler, um Intervall anzupassen
         private HashSet<string> _portfolioSymbole = new HashSet<string>();
+        private int _maxApiAnfragenProMinute = 8; // Basic 8 Plan von Twelve Data
 
         // Kultur für korrekte Formatierung
         private CultureInfo _germanCulture = new CultureInfo("de-DE");
@@ -123,7 +125,6 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// Initialisiert eine neue Instanz des MarktdatenViewModel
         /// </summary>
         /// <param name="apiKey">API-Schlüssel für Twelve Data</param>
-        // In MarktdatenViewModel.cs Konstruktor anpassen:
         public MarktdatenViewModel(MainViewModel mainViewModel = null, string apiKey = null)
         {
             _mainViewModel = mainViewModel;
@@ -145,11 +146,17 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             // Collection initialisieren
             AktienListe = new ObservableCollection<Aktie>();
 
-            // Keine automatische Datenladung mehr
-            // Entferne InitializeMarktdatenAsync()-Aufruf
+            // Timer für regelmäßige Aktualisierungen starten
+            StartUpdateTimer();
 
-            // Timer für regelmäßige Aktualisierungen entfernen oder deaktivieren
-            // StartUpdateTimer();
+            // Nach der Initialisierung sofort aktualisieren
+            // Nach der Initialisierung sofort aktualisieren (verzögert, um UI nicht zu blockieren)
+            Application.Current.Dispatcher.BeginInvoke(async () =>
+            {
+                // Zeit zum Laden des UIs geben
+                await Task.Delay(2000);
+                await AktualisiereMarktdaten();
+            });
 
             // Event-Handler registrieren für Portfolio-Änderungen (falls MainViewModel existiert)
             if (_mainViewModel?.PortfolioViewModel != null)
@@ -189,52 +196,6 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         #region Private Methoden
 
         /// <summary>
-        /// Asynchrone Version der Initialisierungsmethode
-        /// </summary>
-        private async void InitializeMarktdatenAsync()
-        {
-            try
-            {
-                // Erst versuchen, Aktien aus der Datenbank zu laden
-                if (App.DbService != null)
-                {
-                    var aktienAusDatenbank = await App.DbService.GetAllAktienAsync();
-                    Debug.WriteLine($"Aktien aus Datenbank geladen: {aktienAusDatenbank.Count}");
-
-                    if (aktienAusDatenbank.Count > 0)
-                    {
-                        System.Windows.Application.Current.Dispatcher.Invoke(() => {
-                            AktienListe.Clear();
-                            foreach (var aktie in aktienAusDatenbank)
-                            {
-                                AktienListe.Add(aktie);
-                            }
-                        });
-
-                        LetzteAktualisierung = DateTime.Now;
-                        NächsteAktualisierung = DateTime.Now.Add(_aktualisierungsIntervall);
-                        StatusText = "Daten aus Datenbank geladen";
-
-                        // Auch wenn wir Daten aus der DB haben, aktualisieren wir sie trotzdem,
-                        // aber mit Verzögerung, um nicht sofort API-Anfragen zu machen
-                        await Task.Delay(5000); // 5 Sekunden warten
-                        await AktualisiereMarktdaten();
-                        return;
-                    }
-                }
-
-                // Wenn keine Daten aus der Datenbank geladen werden konnten, sofort API anfragen
-                await AktualisiereMarktdaten();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Fehler beim Laden der Aktien aus der Datenbank: {ex.Message}");
-                // Sofort API verwenden, da Datenbankzugriff fehlgeschlagen ist
-                await AktualisiereMarktdaten();
-            }
-        }
-
-        /// <summary>
         /// Startet einen Timer für die regelmäßige Aktualisierung der Marktdaten
         /// </summary>
         private void StartUpdateTimer()
@@ -269,24 +230,25 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 // Zuerst die Portfolio-Symbole aktualisieren
                 AktualisierePortfolioSymbole();
 
-                // Nur Portfolio-Symbole laden, wenn vorhanden
+                // Symbole zum Aktualisieren vorbereiten
                 var symboleListe = new List<string>();
 
+                // Priorisieren: Portfolio-Symbole IMMER aktualisieren
                 if (_portfolioSymbole.Count > 0)
                 {
                     symboleListe.AddRange(_portfolioSymbole);
-                    Debug.WriteLine($"Lade nur Portfolio-Symbole: {string.Join(", ", symboleListe)}");
+                    Debug.WriteLine($"Lade Portfolio-Symbole: {string.Join(", ", symboleListe)}");
                 }
                 else
                 {
                     // Wenn kein Portfolio vorhanden, lade nur Standardsymbole als Beispiel
-                    string[] standardSymbole = new[] { "AAPL", "MSFT" };
+                    string[] standardSymbole = new[] { "AAPL", "MSFT", "TSLA", "AMZN", "GOOGL" };
                     symboleListe.AddRange(standardSymbole);
-                    Debug.WriteLine($"Kein Portfolio vorhanden, lade Standardsymbole: {string.Join(", ", symboleListe)}");
+                    Debug.WriteLine($"Kein Portfolio vorhanden, lade Standardsymbole: {string.Join(", ", standardSymbole)}");
                 }
 
-                // Beschränkung auf max. 2 Symbole pro Anfrage
-                int maxSymbole = Math.Min(2, symboleListe.Count);
+                // Beschränkung auf max. 5 Symbole pro Anfrage, um die API-Limits zu respektieren
+                int maxSymbole = Math.Min(5, symboleListe.Count);
                 var priorisierteSymbole = symboleListe.Take(maxSymbole).ToList();
 
                 Debug.WriteLine($"Aktualisiere Symbole: {string.Join(", ", priorisierteSymbole)}");
@@ -299,7 +261,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 {
                     Debug.WriteLine($"API-Fehler erkannt: {_twelveDatenService.LastErrorMessage}");
                     HatFehler = true;
-                    FehlerText = _twelveDatenService.LastErrorMessage;
+                    FehlerText = $"Twelve Data API meldet: {_twelveDatenService.LastErrorMessage}";
                     _fehlerCounter++; // Zähler erhöhen
 
                     // Bei API-Limit-Fehler, verlängere das Intervall
@@ -310,6 +272,9 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                         _aktualisierungsIntervall = TimeSpan.FromMinutes(Math.Min(30, _aktualisierungsIntervall.TotalMinutes * 2));
                         _updateTimer.Interval = _aktualisierungsIntervall;
                         Debug.WriteLine($"API-Limit erreicht. Intervall auf {_aktualisierungsIntervall.TotalMinutes} Minuten erhöht.");
+
+                        // Fehlertext ergänzen
+                        FehlerText += $" (API-Limit von {_maxApiAnfragenProMinute} Anfragen/Minute erreicht. Nächste Aktualisierung in {_aktualisierungsIntervall.TotalMinutes} Minuten.)";
                     }
                 }
                 else
@@ -319,7 +284,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 }
 
                 // UI-Thread-Zugriff sicherstellen
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                Application.Current.Dispatcher.Invoke(() =>
                 {
                     // Aktualisiere die bestehenden Aktien mit den neuen Daten
                     foreach (var aktienInfo in aktienDaten)
@@ -392,7 +357,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 Debug.WriteLine($"StackTrace: {ex.StackTrace}");
 
                 HatFehler = true;
-                FehlerText = $"Unbehandelte Ausnahme: {ex.Message}";
+                FehlerText = $"Fehler bei der Aktualisierung: {ex.Message}";
                 StatusText = $"Fehler bei der Aktualisierung: {ex.Message}";
 
                 // Fehler-Zähler erhöhen

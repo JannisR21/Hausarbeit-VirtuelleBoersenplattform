@@ -1,0 +1,89 @@
+﻿<Window x:Class="HausarbeitVirtuelleBörsenplattform.HandelsPopupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:HausarbeitVirtuelleBörsenplattform"
+        xmlns:views="clr-namespace:HausarbeitVirtuelleBörsenplattform.Views"
+        xmlns:viewmodels="clr-namespace:HausarbeitVirtuelleBörsenplattform.ViewModels"
+        mc:Ignorable="d"
+        Title="Aktienhandel" Height="650" Width="750"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        Background="Transparent"
+        AllowsTransparency="True">
+
+    <Window.Resources>
+        <!-- Style für den Titelbereich -->
+        <Style x:Key="TitleBarStyle" TargetType="Border">
+            <Setter Property="Background" Value="#2c3e50"/>
+            <Setter Property="Height" Value="40"/>
+        </Style>
+
+        <!-- Style für die Fensterbuttons (schließen, minimieren) -->
+        <Style x:Key="WindowButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#34495e"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#1a2530"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border CornerRadius="8" Background="White" BorderBrush="#d0d0d0" BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <!-- Titelleiste -->
+                <RowDefinition Height="*"/>
+                <!-- Hauptinhalt -->
+            </Grid.RowDefinitions>
+
+            <!-- Titelleiste mit Drag-Funktionalität -->
+            <Border Grid.Row="0" Style="{StaticResource TitleBarStyle}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown" CornerRadius="8,8,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" 
+                               Text="Aktienhandel" 
+                               Foreground="White" 
+                               FontWeight="Bold"
+                               FontSize="16"
+                               VerticalAlignment="Center" 
+                               Margin="15,0,0,0"/>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Style="{StaticResource WindowButtonStyle}" Click="CloseButton_Click">
+                            <Path Data="M6,6 L18,18 M6,18 L18,6" Stroke="White" StrokeThickness="2"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Hauptinhalt: HandelsUserControl -->
+            <views:HandelsUserControl Grid.Row="1" x:Name="HandelsControl" Margin="15"/>
+        </Grid>
+    </Border>
+</Window>

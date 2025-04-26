@@ -6,7 +6,8 @@
              xmlns:local="clr-namespace:HausarbeitVirtuelleBörsenplattform.Views"
              xmlns:converters="clr-namespace:HausarbeitVirtuelleBörsenplattform.Converters"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
+             d:DesignHeight="450" d:DesignWidth="800"
+             x:Name="ThisControl">
 
     <!-- Ressourcen für das UserControl -->
     <UserControl.Resources>
@@ -14,8 +15,70 @@
     </UserControl.Resources>
 
     <Grid>
-        <!-- Portfolio-Tabelle -->
-        <DataGrid x:Name="PortfolioDataGrid" 
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Fehlerbereich -->
+        <Border Grid.Row="0" 
+                Background="#fff8e1" 
+                BorderBrush="#ffecb3" 
+                BorderThickness="1" 
+                CornerRadius="4" 
+                Padding="10" 
+                Margin="0,0,0,10">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HatFehler}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Warnsymbol -->
+                <Path Grid.Column="0"
+                      Data="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"
+                      Fill="#ffa000"
+                      Width="24"
+                      Height="24"
+                      Stretch="Uniform"
+                      Margin="0,0,10,0"/>
+
+                <!-- Fehlermeldung -->
+                <TextBlock Grid.Column="1"
+                           Text="{Binding FehlerText}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- Chart-Bereich -->
+        <Border Grid.Row="1" 
+                BorderThickness="0,0,0,1" 
+                BorderBrush="#e0e0e0"
+                Margin="0,0,0,10" 
+                Padding="0,0,0,10">
+            <!-- Der Chart zeigt die Entwicklung des Portfoliowerts -->
+            <local:PortfolioChartControl Height="300" 
+                                        DataContext="{Binding DataContext.PortfolioChartViewModel, 
+                                        RelativeSource={RelativeSource AncestorType=Window}}"/>
+        </Border>
+
+        <!-- Portfolio-Tabelle mit verbessertem Styling -->
+        <DataGrid x:Name="PortfolioDataGrid"
+                  Grid.Row="2"
                   ItemsSource="{Binding PortfolioEintraege}"
                   AutoGenerateColumns="False" 
                   IsReadOnly="True"
@@ -24,47 +87,124 @@
                   BorderThickness="0" 
                   Background="Transparent"
                   RowBackground="White" 
-                  AlternatingRowBackground="#f8f9fa"
-                  Margin="0,0,0,40">
+                  AlternatingRowBackground="#f5f9ff"
+                  Margin="0,0,0,0"
+                  CanUserSortColumns="True"
+                  RowHeight="40"
+                  HorizontalGridLinesBrush="#e0e0e0"
+                  VerticalGridLinesBrush="Transparent">
+
+            <!-- Verbesserte Stile für die DataGrid-Elemente -->
+            <DataGrid.Resources>
+                <!-- Style für die Spaltenköpfe -->
+                <Style TargetType="DataGridColumnHeader">
+                    <Setter Property="Background" Value="#f0f4f8"/>
+                    <Setter Property="Foreground" Value="#2c3e50"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="Padding" Value="10,8"/>
+                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                    <Setter Property="BorderBrush" Value="#cccccc"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                </Style>
+
+                <!-- Style für die Zellen -->
+                <Style TargetType="DataGridCell">
+                    <Setter Property="Padding" Value="10,5"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="VerticalAlignment" Value="Center"/>
+                    <Style.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="#e3f2fd"/>
+                            <Setter Property="BorderBrush" Value="#64b5f6"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.Resources>
+
             <DataGrid.Columns>
                 <!-- Spalte für das Aktiensymbol -->
                 <DataGridTextColumn Header="Symbol" 
                                     Binding="{Binding AktienSymbol}" 
-                                    Width="80"/>
+                                    Width="90">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
 
                 <!-- Spalte für den vollständigen Aktiennamen -->
                 <DataGridTextColumn Header="Name" 
                                     Binding="{Binding AktienName}" 
-                                    Width="*"/>
+                                    Width="*">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
 
                 <!-- Spalte für die Anzahl der Aktien -->
                 <DataGridTextColumn Header="Anzahl" 
                                     Binding="{Binding Anzahl}" 
-                                    Width="80"/>
+                                    Width="90">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                            <Setter Property="FontWeight" Value="Medium"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
 
                 <!-- Spalte für den Kaufkurs/Einstandspreis -->
                 <DataGridTextColumn Header="Kaufkurs" 
                                     Binding="{Binding EinstandsPreis, StringFormat={}{0:N2} €}" 
-                                    Width="100"/>
+                                    Width="110">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
 
                 <!-- Spalte für den aktuellen Kurs -->
                 <DataGridTextColumn Header="Aktueller Kurs" 
                                     Binding="{Binding AktuellerKurs, StringFormat={}{0:N2} €}" 
-                                    Width="100"/>
+                                    Width="110">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
 
                 <!-- Spalte für den Gesamtwert der Position -->
                 <DataGridTextColumn Header="Wert" 
                                     Binding="{Binding Wert, StringFormat={}{0:N2} €}" 
-                                    Width="100"/>
+                                    Width="110">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
 
                 <!-- Spalte für den Gewinn/Verlust mit farblicher Hervorhebung -->
-                <DataGridTemplateColumn Header="Gewinn/Verlust" Width="140">
+                <DataGridTemplateColumn Header="Gewinn/Verlust" Width="150">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                 <!-- Absoluter Gewinn/Verlust -->
                                 <TextBlock Text="{Binding GewinnVerlust, StringFormat={}{0:N2} €}" 
-                                           Foreground="{Binding GewinnVerlust, Converter={StaticResource GewinnVerlustFarbeConverter}}"/>
+                                           Foreground="{Binding GewinnVerlust, Converter={StaticResource GewinnVerlustFarbeConverter}}"
+                                           FontWeight="SemiBold"/>
 
                                 <!-- Relativer Gewinn/Verlust in Prozent -->
                                 <TextBlock Text="{Binding GewinnVerlustProzent, StringFormat={} ({0:N2}%)}" 
@@ -74,39 +214,127 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
+
+                <!-- Letzte Aktualisierung mit Uhrsymbol -->
+                <DataGridTemplateColumn Header="Letzte Aktualisierung" Width="140">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="M12,2C6.5,2 2,6.5 2,12C2,17.5 6.5,22 12,22C17.5,22 22,17.5 22,12C22,6.5 17.5,2 12,2M12.5,12.2L9,15.7L7.6,14.3L10,11.9V7H12V12.2" 
+                                      Fill="#999999" 
+                                      Width="14" 
+                                      Height="14" 
+                                      Stretch="Uniform"
+                                      Margin="0,0,5,0"/>
+                                <TextBlock Text="{Binding LetzteAktualisierung, StringFormat={}{0:HH:mm:ss}}" 
+                                           VerticalAlignment="Center"
+                                           Foreground="#666666"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
             </DataGrid.Columns>
+
+            <!-- Meldung bei leerem Portfolio mit verbesserten Styling -->
+            <DataGrid.Style>
+                <Style TargetType="DataGrid">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding PortfolioEintraege.Count}" Value="0">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate>
+                                        <Grid Background="#f8f9fa" Margin="0,30,0,30">
+                                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Path Data="M20 19V3H4v16H2v2h11.25c0-.67.13-1.33.38-1.96-.65-.23-1.13-.81-1.13-1.54v-1a2.5 2.5 0 012.5-2.5h4a2.5 2.5 0 012.5 2.5v1c0 .73-.48 1.31-1.13 1.54.25.63.38 1.29.38 1.96H22v-2h-2M6 7h12v2H6V7m0 4h12v2H6v-2m0 4h6v2H6v-2m14 5v-1c0-.28-.22-.5-.5-.5h-4c-.28 0-.5.22-.5.5v1c0 .28.22.5.5.5h4c.28 0 .5-.22.5-.5m0 2H16v1h1v1h1v-1h1v-1h1z" 
+                                                      Fill="#999999"
+                                                      Width="80"
+                                                      Height="80"
+                                                      Stretch="Uniform"
+                                                      Margin="0,0,0,15"/>
+                                                <TextBlock Text="Ihr Portfolio ist leer" 
+                                                           HorizontalAlignment="Center"
+                                                           FontSize="18"
+                                                           FontWeight="Medium"
+                                                           Foreground="#333333"
+                                                           Margin="0,0,0,5"/>
+                                                <TextBlock Text="Nutzen Sie den 'Aktienhandel'-Button oben, um Aktien zu Ihrem Portfolio hinzuzufügen" 
+                                                           HorizontalAlignment="Center"
+                                                           TextWrapping="Wrap"
+                                                           Width="400"
+                                                           TextAlignment="Center"
+                                                           Foreground="#666666"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.Style>
         </DataGrid>
 
         <!-- Zusammenfassung/Summen-Bereich -->
-        <Border BorderThickness="0,1,0,0" 
+        <Grid Grid.Row="3">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Letzte Aktualisierung -->
+            <TextBlock Grid.Row="0" 
+                       Text="{Binding LetzteAktualisierung, StringFormat=Letzte Aktualisierung: {0:dd.MM.yyyy HH:mm:ss}}"
+                       HorizontalAlignment="Right"
+                       Foreground="#666"
+                       FontSize="11"
+                       Margin="0,5,0,5"
+                       Visibility="{Binding PortfolioEintraege.Count, Converter={StaticResource ResourceKey=BooleanToVisibilityConverter}}"/>
+
+            <!-- Zusammenfassung -->
+            <Border Grid.Row="1" 
+                BorderThickness="0,1,0,0" 
                 BorderBrush="#e0e0e0" 
                 VerticalAlignment="Bottom" 
-                Height="40" 
+                Height="50" 
                 Padding="10,0" 
-                Background="#f8f9fa">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+                Background="#f0f4f8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                <!-- Anzahl der Positionen -->
-                <TextBlock Grid.Column="0" 
-                           Text="{Binding PortfolioEintraege.Count, StringFormat=Anzahl Positionen: {0}}" 
-                           VerticalAlignment="Center"/>
+                    <!-- Anzahl der Positionen -->
+                    <TextBlock Grid.Column="0" 
+                               Text="{Binding PortfolioEintraege.Count, StringFormat=Positionen: {0}}" 
+                               VerticalAlignment="Center"
+                               FontSize="13"/>
 
-                <!-- Gesamtgewinn/-verlust -->
-                <StackPanel Grid.Column="1" 
-                            Orientation="Horizontal" 
-                            HorizontalAlignment="Right">
-                    <TextBlock Text="Gesamtgewinn/-verlust: " 
+                    <!-- Aktualisierungszeit -->
+                    <TextBlock Grid.Column="1" 
+                               Text="{Binding LetzteAktualisierung, StringFormat=Stand: {0:dd.MM.yyyy HH:mm:ss}}"
+                               HorizontalAlignment="Right"
+                               Foreground="#555"
+                               FontSize="11"
                                VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding GesamtGewinnVerlust, StringFormat={}{0:N2} €}"
-                               Foreground="{Binding GesamtGewinnVerlust, Converter={StaticResource GewinnVerlustFarbeConverter}}"
-                               FontWeight="Bold"
-                               VerticalAlignment="Center"/>
-                </StackPanel>
-            </Grid>
-        </Border>
+
+                    <!-- Gesamtgewinn/-verlust -->
+                    <StackPanel Grid.Column="2" 
+                                Orientation="Horizontal" 
+                                HorizontalAlignment="Right"
+                                Margin="20,0,0,0">
+                        <TextBlock Text="Gesamtgewinn/-verlust: " 
+                                   VerticalAlignment="Center"
+                                   FontWeight="Medium"/>
+                        <TextBlock Text="{Binding GesamtGewinnVerlust, StringFormat={}{0:N2} €}"
+                                   Foreground="{Binding GesamtGewinnVerlust, Converter={StaticResource GewinnVerlustFarbeConverter}}"
+                                   FontWeight="Bold"
+                                   FontSize="15"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>

@@ -5,7 +5,8 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:HausarbeitVirtuelleBörsenplattform.Views"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
+             d:DesignHeight="450" d:DesignWidth="800"
+             Loaded="MarktdatenUserControl_Loaded">
 
     <!-- Ressourcen für das UserControl -->
     <UserControl.Resources>
@@ -214,7 +215,6 @@
                         Width="120"/>
 
                 <!-- Änderung-Spalte mit Farbkodierung über Code-Behind -->
-                <!-- Änderung-Spalte mit Farbkodierung -->
                 <DataGridTemplateColumn Header="Änderung" Width="100">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
@@ -238,30 +238,44 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <!-- Änderung-Prozent-Spalte mit Farbkodierung über Code-Behind -->
-                <DataGridTemplateColumn Header="Änderung %" Width="100">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding ÄnderungProzent, StringFormat={}{0:+0.00;-0.00;0.00} %, ConverterCulture=de-DE}" 
-                                      HorizontalAlignment="Right"
-                                      x:Name="ÄnderungProzentTextBlock"
-                                      Loaded="ÄnderungProzentTextBlock_Loaded"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-
                 <DataGridTextColumn Header="Letzte Aktualisierung" 
                         Binding="{Binding LetzteAktualisierung, StringFormat={}{0:HH:mm:ss}}" 
                         Width="120"/>
             </DataGrid.Columns>
+
+            <!-- Meldung bei leerer Liste -->
+            <DataGrid.Style>
+                <Style TargetType="DataGrid">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding AktienListe.Count}" Value="0">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate>
+                                        <TextBlock Text="Keine Aktien verfügbar. Bitte klicken Sie auf 'Aktualisieren', um die Daten zu laden."
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Foreground="#666"/>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.Style>
         </DataGrid>
 
         <!-- Hinweis zur Datenquelle -->
-        <TextBlock Grid.Row="3" 
-                   Text="Datenquelle: Twelve Data API | Basic 8 Plan (8 Anfragen pro Minute)" 
+        <StackPanel Grid.Row="3" Margin="0,10,0,0">
+            <TextBlock Text="Datenquelle: Twelve Data API | Basic 8 Plan (8 Anfragen pro Minute)" 
+                   Foreground="#888888"
+                   FontSize="11"
+                   HorizontalAlignment="Center"/>
+
+            <TextBlock Text="Es werden nur Aktien aus dem Portfolio automatisch aktualisiert"
                    Foreground="#888888"
                    FontSize="11"
                    HorizontalAlignment="Center"
-                   Margin="0,10,0,0"/>
+                   Margin="0,5,0,0"/>
+        </StackPanel>
     </Grid>
 </UserControl>

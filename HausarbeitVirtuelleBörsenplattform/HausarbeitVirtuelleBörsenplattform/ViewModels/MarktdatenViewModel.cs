@@ -209,9 +209,62 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 
             Debug.WriteLine($"Update-Timer gestartet mit Intervall: {_aktualisierungsIntervall.TotalMinutes} Minuten");
         }
+        /// <summary>
+        /// Setzt die Marktdaten vollständig zurück und leert die Anzeige
+        /// </summary>
+        /// <param name="clearStandardAktien">Wenn true, werden auch die Standardaktien nicht angezeigt</param>
+        /// <returns>Async Task</returns>
+        public async Task ResetMarktdatenAsync(bool clearStandardAktien = true)
+        {
+            try
+            {
+                Debug.WriteLine("Setze Marktdaten vollständig zurück");
+
+                // UI-Thread verwenden, um die Collection zu leeren
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    // 1. AktienListe komplett leeren
+                    if (AktienListe != null)
+                    {
+                        AktienListe.Clear();
+                    }
+
+                    // 2. Portfolio-Symbole zurücksetzen (interne Collection)
+                    _portfolioSymbole.Clear();
+                });
+
+                // Status aktualisieren
+                StatusText = "Marktdaten zurückgesetzt";
+                LetzteAktualisierung = DateTime.Now;
+
+                // Wenn gewünscht, keine Standard-Aktien laden
+                if (!clearStandardAktien)
+                {
+                    // Nur wenn explizit gewünscht, Standard-Aktien laden
+                    Debug.WriteLine("Lade Standard-Aktien nach Reset");
+                    await AktualisiereMarktdaten();
+                }
+                else
+                {
+                    Debug.WriteLine("Keine Standard-Aktien nach Reset geladen");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Zurücksetzen der Marktdaten: {ex.Message}");
+                HatFehler = true;
+                FehlerText = $"Fehler beim Zurücksetzen der Marktdaten: {ex.Message}";
+            }
+        }
 
         /// <summary>
         /// Aktualisiert die Marktdaten über die Twelve Data API
+        /// </summary>
+        /// <summary>
+        /// Aktualisiert die Marktdaten über die Twelve Data API mit Berücksichtigung leerer Portfolios
+        /// </summary>
+        /// <summary>
+        /// Aktualisiert die Marktdaten über die Twelve Data API mit Berücksichtigung der Börsenöffnungszeiten
         /// </summary>
         private async Task AktualisiereMarktdaten()
         {
@@ -227,6 +280,29 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 
             try
             {
+                // Prüfe zuerst, ob die Börse geöffnet ist
+                bool istBoerseGeoeffnet = _twelveDatenService.IstBoerseGeoeffnet();
+
+                // Wenn die Börse geschlossen ist, verwenden wir andere Status-Texte
+                if (!istBoerseGeoeffnet)
+                {
+                    Debug.WriteLine("Börse ist derzeit geschlossen.");
+                    StatusText = $"Börse geschlossen - Letzte Aktualisierung: {LetzteAktualisierung.ToString("dd.MM.yyyy HH:mm:ss", _germanCulture)}";
+
+                    // Wenn die Börse geschlossen ist, aktualisieren wir nur alle 60 Minuten
+                    DateTime naechsteAkt = LetzteAktualisierung.AddMinutes(60);
+                    if (DateTime.Now < naechsteAkt)
+                    {
+                        Debug.WriteLine($"Nächste Aktualisierung während geschlossener Börse erst um {naechsteAkt.ToString("HH:mm", _germanCulture)}");
+                        _isUpdating = false;
+                        IsLoading = false;
+                        return;
+                    }
+
+                    FehlerText = "Die Börse ist derzeit geschlossen. Es werden die letzten bekannten Kurse angezeigt ohne Veränderungen.";
+                    HatFehler = true;
+                }
+
                 // Zuerst die Portfolio-Symbole aktualisieren
                 AktualisierePortfolioSymbole();
 
@@ -241,10 +317,24 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 }
                 else
                 {
-                    // Wenn kein Portfolio vorhanden, lade nur Standardsymbole als Beispiel
-                    string[] standardSymbole = new[] { "AAPL", "MSFT", "TSLA", "AMZN", "GOOGL" };
-                    symboleListe.AddRange(standardSymbole);
-                    Debug.WriteLine($"Kein Portfolio vorhanden, lade Standardsymbole: {string.Join(", ", standardSymbole)}");
+                    // Wenn kein Portfolio vorhanden, keine Standardsymbole mehr laden - es wird eine leere Liste angezeigt
+                    Debug.WriteLine("Kein Portfolio vorhanden, keine Aktien werden geladen");
+
+                    // UI-Thread aktualisieren mit leerer Liste
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (AktienListe != null)
+                        {
+                            AktienListe.Clear();
+                        }
+                    });
+
+                    _isUpdating = false;
+                    IsLoading = false;
+                    StatusText = "Keine Aktien im Portfolio";
+                    LetzteAktualisierung = DateTime.Now;
+                    NächsteAktualisierung = DateTime.Now.Add(_aktualisierungsIntervall);
+                    return; // Früh zurückkehren, da keine Aktien zu laden sind
                 }
 
                 // Beschränkung auf max. 5 Symbole pro Anfrage, um die API-Limits zu respektieren
@@ -262,6 +352,13 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     Debug.WriteLine($"API-Fehler erkannt: {_twelveDatenService.LastErrorMessage}");
                     HatFehler = true;
                     FehlerText = $"Twelve Data API meldet: {_twelveDatenService.LastErrorMessage}";
+
+                    // Wenn die Börse geschlossen ist, verwenden wir eine angepasste Fehlermeldung
+                    if (!istBoerseGeoeffnet)
+                    {
+                        FehlerText = "Die Börse ist derzeit geschlossen. Es werden die letzten bekannten Kurse angezeigt.";
+                    }
+
                     _fehlerCounter++; // Zähler erhöhen
 
                     // Bei API-Limit-Fehler, verlängere das Intervall
@@ -286,21 +383,34 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 // UI-Thread-Zugriff sicherstellen
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                    // Aktualisiere die bestehenden Aktien mit den neuen Daten
-                    foreach (var aktienInfo in aktienDaten)
-                    {
-                        // Finde die bestehende Aktie nach Symbol
-                        var aktie = AktienListe.FirstOrDefault(a => a.AktienSymbol == aktienInfo.AktienSymbol);
+                // Aktualisiere die bestehenden Aktien mit den neuen Daten
+                foreach (var aktie in AktienListe)
+                {
+                    var aktienInfo = aktienDaten.FirstOrDefault(a => a.AktienSymbol == aktie.AktienSymbol);
 
-                        if (aktie != null)
+                        if (aktienInfo != null)
                         {
-                            // Aktualisiere die Eigenschaften direkt
-                            aktie.AktuellerPreis = aktienInfo.AktuellerPreis;
-                            aktie.Änderung = aktienInfo.Änderung;
-                            aktie.ÄnderungProzent = aktienInfo.ÄnderungProzent;
-                            aktie.LetzteAktualisierung = DateTime.Now;
+                            // Wenn die Börse geschlossen ist, behalten wir den aktuellen Kurs bei und setzen Änderungen auf 0
+                            if (!istBoerseGeoeffnet)
+                            {
+                                // Änderungen auf 0 setzen, damit keine falschen Bewegungen angezeigt werden
+                                aktie.Änderung = 0;
+                                aktie.ÄnderungProzent = 0;
+                                aktie.LetzteAktualisierung = DateTime.Now;
 
-                            Debug.WriteLine($"Aktie {aktie.AktienSymbol} aktualisiert: Preis={aktie.AktuellerPreis:F2}, Änderung={aktie.Änderung:F2}");
+                                // WICHTIG: Den Preis NICHT aktualisieren bei geschlossener Börse!
+                                Debug.WriteLine($"Börse geschlossen: Behalte Preis für {aktie.AktienSymbol} bei {aktie.AktuellerPreis:F2}€");
+                            }
+                            else
+                            {
+                                // Normale Aktualisierung bei geöffnetem Markt
+                                aktie.AktuellerPreis = aktienInfo.AktuellerPreis;
+                                aktie.Änderung = aktienInfo.Änderung;
+                                aktie.ÄnderungProzent = aktienInfo.ÄnderungProzent;
+                                aktie.LetzteAktualisierung = DateTime.Now;
+
+                                Debug.WriteLine($"Aktie {aktie.AktienSymbol} aktualisiert: Preis={aktie.AktuellerPreis:F2}, Änderung={aktie.Änderung:F2}");
+                            }
                         }
                         else
                         {
@@ -312,8 +422,8 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                                 AktienSymbol = aktienInfo.AktienSymbol,
                                 AktienName = aktienInfo.AktienName,
                                 AktuellerPreis = aktienInfo.AktuellerPreis,
-                                Änderung = aktienInfo.Änderung,
-                                ÄnderungProzent = aktienInfo.ÄnderungProzent,
+                                Änderung = istBoerseGeoeffnet ? aktienInfo.Änderung : 0,
+                                ÄnderungProzent = istBoerseGeoeffnet ? aktienInfo.ÄnderungProzent : 0,
                                 LetzteAktualisierung = DateTime.Now
                             });
                         }
@@ -326,10 +436,24 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     if (HatFehler)
                     {
                         StatusText = $"Fehler bei der Aktualisierung um {LetzteAktualisierung.ToString("HH:mm:ss", _germanCulture)}";
+
+                        // Wenn die Börse geschlossen ist, angepasste Statusmeldung
+                        if (!istBoerseGeoeffnet)
+                        {
+                            StatusText = $"Börse geschlossen - Letzte Aktualisierung: {LetzteAktualisierung.ToString("HH:mm:ss", _germanCulture)}";
+                        }
                     }
                     else
                     {
-                        StatusText = $"Daten aktualisiert um {LetzteAktualisierung.ToString("HH:mm:ss", _germanCulture)}";
+                        // Normale Statusmeldung oder Hinweis auf geschlossene Börse
+                        if (istBoerseGeoeffnet)
+                        {
+                            StatusText = $"Daten aktualisiert um {LetzteAktualisierung.ToString("HH:mm:ss", _germanCulture)}";
+                        }
+                        else
+                        {
+                            StatusText = $"Börse geschlossen - Letzte Aktualisierung: {LetzteAktualisierung.ToString("HH:mm:ss", _germanCulture)}";
+                        }
                     }
 
                     // Property-Changed-Event manuell auslösen
@@ -337,7 +461,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 });
 
                 // Nach der Aktualisierung in Datenbank speichern
-                if (!HatFehler && App.DbService != null)
+                if (!HatFehler && App.DbService != null && istBoerseGeoeffnet)
                 {
                     try
                     {

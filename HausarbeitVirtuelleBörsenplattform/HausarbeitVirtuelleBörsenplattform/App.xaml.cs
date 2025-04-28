@@ -9,6 +9,8 @@ using System.Diagnostics;
 using HausarbeitVirtuelleBörsenplattform.Models;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using HausarbeitVirtuelleBörsenplattform.Properties;
+using HausarbeitVirtuelleBörsenplattform.Helpers;
 
 namespace HausarbeitVirtuelleBörsenplattform
 {
@@ -23,22 +25,25 @@ namespace HausarbeitVirtuelleBörsenplattform
         // Diese Collection enthält nur API-geladene Aktien, keine Dummy-Daten mehr
         public static ObservableCollection<Aktie> StandardAktien { get; private set; }
 
-        // In App.xaml.cs, InitializeServices-Methode ändern:
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
 
-            // Konfiguration laden
-            LoadConfiguration();
+            // Einstellungen laden
+            Settings.Load();
 
-            // StandardAktien initialisieren (leer, werden später mit API-Daten gefüllt)
-            StandardAktien = new ObservableCollection<Aktie>();
+            // DarkAndLightMode initialisieren
+            DarkAndLightMode.Initialize();
+
+            // Falls Dark Mode aktiviert ist, entsprechendes Theme setzen
+            if (Settings.Default.IsDarkModeEnabled)
+            {
+                DarkAndLightMode.SetDarkTheme();
+            }
+
 
             // Services initialisieren
             InitializeServices();
-
-            // Marktdaten beim Start NICHT laden - entferne diesen Aufruf
-            // _ = LadeAktuelleMarktdaten();
 
             // Nur das LoginWindow starten!
             var loginWindow = new LoginWindow();
@@ -183,7 +188,7 @@ namespace HausarbeitVirtuelleBörsenplattform
                 mainWindow.Show();
                 Current.MainWindow = mainWindow;
 
-                oldWindow?.Close(); // vollständig schließen statt nur verstecken
+                oldWindow?.Close(); // Komplett schließe n
 
                 Debug.WriteLine("Hauptfenster geöffnet.");
             }

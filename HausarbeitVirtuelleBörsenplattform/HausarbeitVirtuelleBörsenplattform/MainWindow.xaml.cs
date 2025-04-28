@@ -43,12 +43,6 @@ namespace HausarbeitVirtuelleBörsenplattform
                     einstellungenButton.Click += EinstellungenButton_Click;
                 }
 
-                // Event-Handler für Handels-Button
-                var handelsButton = FindName("HandelsButton") as Button;
-                if (handelsButton != null)
-                {
-                    handelsButton.Click += HandelsButton_Click;
-                }
             }
             catch (Exception ex)
             {
@@ -165,7 +159,7 @@ namespace HausarbeitVirtuelleBörsenplattform
             UserButton.ContextMenu.IsOpen = true;
         }
 
-        private void LogoutMenuItem_Click(object sender, RoutedEventArgs e)
+        private async void LogoutMenuItem_Click(object sender, RoutedEventArgs e)
         {
             // Benutzer abmelden
             var result = MessageBox.Show("Möchten Sie sich wirklich abmelden?",
@@ -175,18 +169,40 @@ namespace HausarbeitVirtuelleBörsenplattform
             {
                 Debug.WriteLine("Benutzer wird abgemeldet...");
 
-                // AuthService.Logout() aufrufen
-                if (App.AuthService != null)
+                try
                 {
-                    App.AuthService.Logout();
+                    // Aktuellen Kontostand in der Datenbank speichern
+                    if (DataContext is MainViewModel viewModel &&
+                        viewModel.AktuellerBenutzer != null &&
+                        App.DbService != null)
+                    {
+                        // Sicherstellen, dass der aktuelle Kontostand im Benutzer-Objekt gespeichert ist
+                        viewModel.AktuellerBenutzer.Kontostand = viewModel.Kontostand;
+
+                        // In der Datenbank aktualisieren
+                        await App.DbService.UpdateBenutzerAsync(viewModel.AktuellerBenutzer);
+                        Debug.WriteLine("Kontostand vor dem Ausloggen gespeichert");
+                    }
+
+                    // AuthService.Logout() aufrufen
+                    if (App.AuthService != null)
+                    {
+                        App.AuthService.Logout();
+                    }
+
+                    // Zurück zum Login-Fenster wechseln
+                    var loginWindow = new LoginWindow();
+                    loginWindow.Show();
+
+                    // Aktuelles Fenster schließen
+                    this.Close();
                 }
-
-                // Zurück zum Login-Fenster wechseln
-                var loginWindow = new LoginWindow();
-                loginWindow.Show();
-
-                // Aktuelles Fenster schließen
-                this.Close();
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Fehler beim Ausloggen: {ex.Message}");
+                    MessageBox.Show($"Ein Fehler ist aufgetreten: {ex.Message}", "Fehler beim Ausloggen",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
 

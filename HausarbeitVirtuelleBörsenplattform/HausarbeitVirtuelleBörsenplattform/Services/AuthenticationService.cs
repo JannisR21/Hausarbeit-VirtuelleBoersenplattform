@@ -234,5 +234,31 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                 return password == "admin" || password == "demo";
             }
         }
+
+        // In AuthenticationService eine neue Methode hinzufügen
+        public async Task<bool> VerifyPasswordAsync(string username, string password)
+        {
+            try
+            {
+                Debug.WriteLine($"Überprüfe Passwort für Benutzer: {username}");
+
+                // Benutzer in der Datenbank suchen
+                var benutzer = await _databaseService.GetBenutzerByUsernameAsync(username);
+
+                if (benutzer == null)
+                {
+                    Debug.WriteLine("Benutzer nicht gefunden");
+                    return false;
+                }
+
+                // Passwort überprüfen
+                return VerifyPassword(password, benutzer.PasswortHash);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler bei der Passwortüberprüfung: {ex.Message}");
+                return false;
+            }
+        }
     }
 }

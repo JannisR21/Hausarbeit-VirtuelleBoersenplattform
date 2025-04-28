@@ -29,6 +29,11 @@ namespace HausarbeitVirtuelleBörsenplattform.Data
         public DbSet<PortfolioEintrag> PortfolioEintraege { get; set; }
 
         /// <summary>
+        /// Watchlist-Einträge-Tabelle
+        /// </summary>
+        public DbSet<WatchlistEintrag> WatchlistEintraege { get; set; }
+
+        /// <summary>
         /// Konfigurationen für die Tabellen und Beziehungen
         /// </summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -70,6 +75,28 @@ namespace HausarbeitVirtuelleBörsenplattform.Data
                 entity.Property(e => e.AktienName).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.AktuellerKurs).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.EinstandsPreis).HasColumnType("decimal(18,2)");
+
+                // Beziehungen
+                entity.HasOne<Benutzer>()
+                    .WithMany()
+                    .HasForeignKey(e => e.BenutzerID)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne<Aktie>()
+                    .WithMany()
+                    .HasForeignKey(e => e.AktienID)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+
+            // WatchlistEintrag-Konfiguration
+            modelBuilder.Entity<WatchlistEintrag>(entity =>
+            {
+                entity.HasKey(e => new { e.BenutzerID, e.AktienID }); // Zusammengesetzter Primärschlüssel
+                entity.Property(e => e.AktienSymbol).IsRequired().HasMaxLength(10);
+                entity.Property(e => e.AktienName).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.KursBeimHinzufuegen).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.AktuellerKurs).HasColumnType("decimal(18,2)");
 
                 // Beziehungen
                 entity.HasOne<Benutzer>()

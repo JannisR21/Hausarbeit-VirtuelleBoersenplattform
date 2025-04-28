@@ -31,7 +31,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         private bool _hatFehler;
         private DateTime _letzteAktualisierung;
         private bool _isLoading;
-        private TimeSpan _aktualisierungsIntervall = TimeSpan.FromMinutes(15); // Von 5 auf 15 Minuten erhöht
+        private TimeSpan _aktualisierungsIntervall = TimeSpan.FromMinutes(5); // 5 Minuten für normale API-Abfragen
         private readonly MainViewModel _mainViewModel;
         private int _fehlerCounter = 0; // Zählt API-Fehler, um Intervall anzupassen
         private HashSet<string> _portfolioSymbole = new HashSet<string>();
@@ -149,7 +149,6 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             // Timer für regelmäßige Aktualisierungen starten
             StartUpdateTimer();
 
-            // Nach der Initialisierung sofort aktualisieren
             // Nach der Initialisierung sofort aktualisieren (verzögert, um UI nicht zu blockieren)
             Application.Current.Dispatcher.BeginInvoke(async () =>
             {
@@ -158,7 +157,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 await AktualisiereMarktdaten();
             });
 
-            // Event-Handler registrieren für Portfolio-Änderungen (falls MainViewModel existiert)
+            // Event-Handler registrieren für Portfolio-Änderungen
             if (_mainViewModel?.PortfolioViewModel != null)
             {
                 // Initialen Zustand erfassen
@@ -170,6 +169,8 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     if (e.PropertyName == nameof(_mainViewModel.PortfolioViewModel.PortfolioEintraege))
                     {
                         AktualisierePortfolioSymbole();
+                        // Bei Änderungen im Portfolio sofort die Marktdaten aktualisieren
+                        AktualisierePortfolioAktienInMarktdaten();
                     }
                 };
             }
@@ -180,14 +181,111 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// </summary>
         private void AktualisierePortfolioSymbole()
         {
-            if (_mainViewModel?.PortfolioViewModel?.PortfolioEintraege != null)
+            try
             {
-                _portfolioSymbole.Clear();
-                foreach (var portfolioEintrag in _mainViewModel.PortfolioViewModel.PortfolioEintraege)
+                if (_mainViewModel?.PortfolioViewModel?.PortfolioEintraege != null)
                 {
-                    _portfolioSymbole.Add(portfolioEintrag.AktienSymbol.ToUpper());
+                    // Bisherige Symbole merken
+                    var alteListe = new HashSet<string>(_portfolioSymbole);
+                    _portfolioSymbole.Clear();
+
+                    foreach (var portfolioEintrag in _mainViewModel.PortfolioViewModel.PortfolioEintraege)
+                    {
+                        _portfolioSymbole.Add(portfolioEintrag.AktienSymbol.ToUpper());
+                    }
+
+                    // Logge nur, wenn sich etwas geändert hat
+                    if (!alteListe.SetEquals(_portfolioSymbole))
+                    {
+                        Debug.WriteLine($"Portfolio-Symbole aktualisiert: {string.Join(", ", _portfolioSymbole)}");
+                    }
                 }
-                Debug.WriteLine($"Portfolio-Symbole aktualisiert: {string.Join(", ", _portfolioSymbole)}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Aktualisieren der Portfolio-Symbole: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Stellt sicher, dass alle Aktien aus dem Portfolio in den Marktdaten vorhanden sind
+        /// </summary>
+        private async void AktualisierePortfolioAktienInMarktdaten()
+        {
+            try
+            {
+                if (_portfolioSymbole.Count == 0) return;
+
+                // Finde alle Symbole aus dem Portfolio, die noch nicht in den Marktdaten sind
+                var vorhandeneSymbole = new HashSet<string>(
+                    AktienListe.Select(a => a.AktienSymbol.ToUpper()));
+
+                var fehlendeSymbole = _portfolioSymbole
+                    .Where(symbol => !vorhandeneSymbole.Contains(symbol))
+                    .ToList();
+
+                if (fehlendeSymbole.Count > 0)
+                {
+                    Debug.WriteLine($"Es fehlen {fehlendeSymbole.Count} Portfolio-Aktien in den Marktdaten: {string.Join(", ", fehlendeSymbole)}");
+
+                    // Sofort eine Aktualisierung starten, fokussiert auf die fehlenden Symbole
+                    if (_twelveDatenService != null)
+                    {
+                        // Um API-Limits zu respektieren, nur maximal 2 Symbole auf einmal abfragen
+                        var zuLadendeSymbole = fehlendeSymbole.Take(2).ToList();
+                        Debug.WriteLine($"Lade fehlende Portfolio-Aktien: {string.Join(", ", zuLadendeSymbole)}");
+
+                        // Aktien von der API laden
+                        var aktienDaten = await _twelveDatenService.HoleAktienKurse(zuLadendeSymbole);
+
+                        if (aktienDaten != null && aktienDaten.Count > 0)
+                        {
+                            // Neue Aktien zur Marktdaten-Liste hinzufügen
+                            foreach (var aktie in aktienDaten)
+                            {
+                                var existierendeAktie = AktienListe.FirstOrDefault(a =>
+                                    a.AktienSymbol.Equals(aktie.AktienSymbol, StringComparison.OrdinalIgnoreCase));
+
+                                if (existierendeAktie == null)
+                                {
+                                    // UI-Thread verwenden zum Hinzufügen
+                                    Application.Current.Dispatcher.Invoke(() =>
+                                    {
+                                        aktie.AktienID = AktienListe.Count + 1;
+                                        AktienListe.Add(aktie);
+                                    });
+
+                                    Debug.WriteLine($"Portfolio-Aktie {aktie.AktienSymbol} zu Marktdaten hinzugefügt");
+                                }
+                                else
+                                {
+                                    // Aktie aktualisieren
+                                    existierendeAktie.AktuellerPreis = aktie.AktuellerPreis;
+                                    existierendeAktie.Änderung = aktie.Änderung;
+                                    existierendeAktie.ÄnderungProzent = aktie.ÄnderungProzent;
+                                    existierendeAktie.LetzteAktualisierung = DateTime.Now;
+
+                                    Debug.WriteLine($"Portfolio-Aktie {aktie.AktienSymbol} in Marktdaten aktualisiert");
+                                }
+                            }
+
+                            // Wenn noch mehr Aktien fehlen, verzögert erneut aufrufen
+                            if (fehlendeSymbole.Count > 2)
+                            {
+                                Debug.WriteLine($"Es fehlen noch {fehlendeSymbole.Count - 2} weitere Portfolio-Aktien, warte auf nächsten Update");
+                                // Nichts tun, wird beim nächsten Timer-Intervall aktualisiert
+                            }
+                        }
+                        else
+                        {
+                            Debug.WriteLine("Keine Aktien von der API erhalten");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Aktualisieren der Portfolio-Aktien in Marktdaten: {ex.Message}");
             }
         }
 
@@ -202,13 +300,14 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         {
             _updateTimer = new DispatcherTimer
             {
-                Interval = _aktualisierungsIntervall // Auf 15 Minuten erhöht (siehe oben)
+                Interval = _aktualisierungsIntervall
             };
             _updateTimer.Tick += async (s, e) => await AktualisiereMarktdaten();
             _updateTimer.Start();
 
             Debug.WriteLine($"Update-Timer gestartet mit Intervall: {_aktualisierungsIntervall.TotalMinutes} Minuten");
         }
+
         /// <summary>
         /// Setzt die Marktdaten vollständig zurück und leert die Anzeige
         /// </summary>
@@ -228,9 +327,6 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     {
                         AktienListe.Clear();
                     }
-
-                    // 2. Portfolio-Symbole zurücksetzen (interne Collection)
-                    _portfolioSymbole.Clear();
                 });
 
                 // Status aktualisieren
@@ -240,8 +336,11 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 // Wenn gewünscht, keine Standard-Aktien laden
                 if (!clearStandardAktien)
                 {
-                    // Nur wenn explizit gewünscht, Standard-Aktien laden
-                    Debug.WriteLine("Lade Standard-Aktien nach Reset");
+                    // Nach dem Reset die Portfolio-Aktien neu laden
+                    AktualisierePortfolioSymbole();
+
+                    // Aktualisiere die Marktdaten mit Fokus auf Portfolio-Aktien
+                    Debug.WriteLine("Lade Portfolio-Aktien nach Reset");
                     await AktualisiereMarktdaten();
                 }
                 else
@@ -258,13 +357,8 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         }
 
         /// <summary>
-        /// Aktualisiert die Marktdaten über die Twelve Data API
-        /// </summary>
-        /// <summary>
-        /// Aktualisiert die Marktdaten über die Twelve Data API mit Berücksichtigung leerer Portfolios
-        /// </summary>
-        /// <summary>
         /// Aktualisiert die Marktdaten über die Twelve Data API mit Berücksichtigung der Börsenöffnungszeiten
+        /// und besonderem Fokus auf Portfolio-Aktien
         /// </summary>
         private async Task AktualisiereMarktdaten()
         {
@@ -309,7 +403,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 // Symbole zum Aktualisieren vorbereiten
                 var symboleListe = new List<string>();
 
-                // Priorisieren: Portfolio-Symbole IMMER aktualisieren
+                // WICHTIGE ÄNDERUNG: Portfolio-Symbole immer priorisieren und zuerst laden
                 if (_portfolioSymbole.Count > 0)
                 {
                     symboleListe.AddRange(_portfolioSymbole);
@@ -317,24 +411,9 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 }
                 else
                 {
-                    // Wenn kein Portfolio vorhanden, keine Standardsymbole mehr laden - es wird eine leere Liste angezeigt
-                    Debug.WriteLine("Kein Portfolio vorhanden, keine Aktien werden geladen");
-
-                    // UI-Thread aktualisieren mit leerer Liste
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        if (AktienListe != null)
-                        {
-                            AktienListe.Clear();
-                        }
-                    });
-
-                    _isUpdating = false;
-                    IsLoading = false;
-                    StatusText = "Keine Aktien im Portfolio";
-                    LetzteAktualisierung = DateTime.Now;
-                    NächsteAktualisierung = DateTime.Now.Add(_aktualisierungsIntervall);
-                    return; // Früh zurückkehren, da keine Aktien zu laden sind
+                    // Wenn kein Portfolio vorhanden, Standard-Aktien laden
+                    symboleListe.AddRange(new[] { "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA" });
+                    Debug.WriteLine("Kein Portfolio vorhanden, lade Standard-Aktien");
                 }
 
                 // Beschränkung auf max. 5 Symbole pro Anfrage, um die API-Limits zu respektieren
@@ -383,50 +462,70 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 // UI-Thread-Zugriff sicherstellen
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                // Aktualisiere die bestehenden Aktien mit den neuen Daten
-                foreach (var aktie in AktienListe)
-                {
-                    var aktienInfo = aktienDaten.FirstOrDefault(a => a.AktienSymbol == aktie.AktienSymbol);
+                    // Verarbeitete Aktien aus der Liste der Portfolio-Symbole entfernen
+                    var verarbeiteteSymbole = new HashSet<string>();
 
-                        if (aktienInfo != null)
+                    // Wenn Daten erfolgreich geladen wurden, diese in die Liste übernehmen
+                    if (aktienDaten != null && aktienDaten.Count > 0)
+                    {
+                        foreach (var aktienInfo in aktienDaten)
                         {
-                            // Wenn die Börse geschlossen ist, behalten wir den aktuellen Kurs bei und setzen Änderungen auf 0
-                            if (!istBoerseGeoeffnet)
-                            {
-                                // Änderungen auf 0 setzen, damit keine falschen Bewegungen angezeigt werden
-                                aktie.Änderung = 0;
-                                aktie.ÄnderungProzent = 0;
-                                aktie.LetzteAktualisierung = DateTime.Now;
+                            verarbeiteteSymbole.Add(aktienInfo.AktienSymbol.ToUpper());
 
-                                // WICHTIG: Den Preis NICHT aktualisieren bei geschlossener Börse!
-                                Debug.WriteLine($"Börse geschlossen: Behalte Preis für {aktie.AktienSymbol} bei {aktie.AktuellerPreis:F2}€");
+                            // Prüfen, ob die Aktie bereits in der Liste ist
+                            var existingAktie = AktienListe.FirstOrDefault(a =>
+                                a.AktienSymbol.Equals(aktienInfo.AktienSymbol, StringComparison.OrdinalIgnoreCase));
+
+                            if (existingAktie == null)
+                            {
+                                // Neue Aktie hinzufügen
+                                var neueAktie = new Aktie
+                                {
+                                    AktienID = AktienListe.Count + 1,
+                                    AktienSymbol = aktienInfo.AktienSymbol,
+                                    AktienName = aktienInfo.AktienName,
+                                    AktuellerPreis = aktienInfo.AktuellerPreis,
+                                    Änderung = istBoerseGeoeffnet ? aktienInfo.Änderung : 0,
+                                    ÄnderungProzent = istBoerseGeoeffnet ? aktienInfo.ÄnderungProzent : 0,
+                                    LetzteAktualisierung = DateTime.Now
+                                };
+
+                                AktienListe.Add(neueAktie);
+                                Debug.WriteLine($"Neue Aktie {aktienInfo.AktienSymbol} hinzugefügt");
                             }
                             else
                             {
-                                // Normale Aktualisierung bei geöffnetem Markt
-                                aktie.AktuellerPreis = aktienInfo.AktuellerPreis;
-                                aktie.Änderung = aktienInfo.Änderung;
-                                aktie.ÄnderungProzent = aktienInfo.ÄnderungProzent;
-                                aktie.LetzteAktualisierung = DateTime.Now;
-
-                                Debug.WriteLine($"Aktie {aktie.AktienSymbol} aktualisiert: Preis={aktie.AktuellerPreis:F2}, Änderung={aktie.Änderung:F2}");
+                                // Bestehende Aktie aktualisieren
+                                if (!istBoerseGeoeffnet)
+                                {
+                                    // Bei geschlossener Börse nur Änderungen zurücksetzen
+                                    existingAktie.Änderung = 0;
+                                    existingAktie.ÄnderungProzent = 0;
+                                    existingAktie.LetzteAktualisierung = DateTime.Now;
+                                }
+                                else
+                                {
+                                    // Normale Aktualisierung
+                                    existingAktie.AktuellerPreis = aktienInfo.AktuellerPreis;
+                                    existingAktie.Änderung = aktienInfo.Änderung;
+                                    existingAktie.ÄnderungProzent = aktienInfo.ÄnderungProzent;
+                                    existingAktie.LetzteAktualisierung = DateTime.Now;
+                                }
+                                Debug.WriteLine($"Aktie {aktienInfo.AktienSymbol} aktualisiert");
                             }
                         }
-                        else
-                        {
-                            // Neue Aktie hinzufügen, wenn sie noch nicht existiert
-                            Debug.WriteLine($"Neue Aktie {aktienInfo.AktienSymbol} wird hinzugefügt");
-                            AktienListe.Add(new Aktie
-                            {
-                                AktienID = AktienListe.Count + 1, // Einfache ID-Generierung
-                                AktienSymbol = aktienInfo.AktienSymbol,
-                                AktienName = aktienInfo.AktienName,
-                                AktuellerPreis = aktienInfo.AktuellerPreis,
-                                Änderung = istBoerseGeoeffnet ? aktienInfo.Änderung : 0,
-                                ÄnderungProzent = istBoerseGeoeffnet ? aktienInfo.ÄnderungProzent : 0,
-                                LetzteAktualisierung = DateTime.Now
-                            });
-                        }
+                    }
+
+                    // Sind noch Portfolio-Aktien übrig, die nicht geladen wurden?
+                    var nochFehlendeSymbole = _portfolioSymbole
+                        .Where(s => !verarbeiteteSymbole.Contains(s) &&
+                                   !AktienListe.Any(a => a.AktienSymbol.Equals(s, StringComparison.OrdinalIgnoreCase)))
+                        .ToList();
+
+                    if (nochFehlendeSymbole.Count > 0)
+                    {
+                        Debug.WriteLine($"Nach der API-Anfrage fehlen noch {nochFehlendeSymbole.Count} Portfolio-Aktien: {string.Join(", ", nochFehlendeSymbole)}");
+                        // Diese werden beim nächsten Update priorisiert
                     }
 
                     LetzteAktualisierung = DateTime.Now;

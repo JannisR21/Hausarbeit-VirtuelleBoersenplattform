@@ -97,5 +97,14 @@ namespace HausarbeitVirtuelleBörsenplattform.Models
 
         public decimal GewinnVerlustProzent =>
             EinstandsPreis > 0 ? ((AktuellerKurs / EinstandsPreis) - 1) * 100 : 0;
+
+
+        public void BerechneWertUndGewinnVerlust()
+        {
+            OnPropertyChanged(nameof(Wert));
+            OnPropertyChanged(nameof(GewinnVerlust));
+            OnPropertyChanged(nameof(GewinnVerlustProzent));
+        }
+
     }
 }

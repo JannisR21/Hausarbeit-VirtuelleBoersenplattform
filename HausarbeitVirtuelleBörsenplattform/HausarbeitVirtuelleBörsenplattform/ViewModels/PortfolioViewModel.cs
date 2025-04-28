@@ -234,6 +234,10 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                         eintrag.LetzteAktualisierung = DateTime.Now;
 
                         Debug.WriteLine($"Portfolio-Eintrag {eintrag.AktienSymbol} aktualisiert: {alterKurs:N2}€ -> {aktienInfo.AktuellerPreis:N2}€");
+
+                        // Explizit die Properties triggern
+                        eintrag.BerechneWertUndGewinnVerlust();
+
                         wurdeAktualisiert = true;
                     }
                     else
@@ -350,6 +354,9 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 existingEntry.EinstandsPreis = neuerDurchschnittskurs;
                 existingEntry.AktuellerKurs = aktuellerKurs;
                 existingEntry.LetzteAktualisierung = DateTime.Now;
+
+                // Aktualisiere berechnete Properties
+                existingEntry.BerechneWertUndGewinnVerlust();
             }
             else
             {
@@ -367,6 +374,9 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 };
 
                 PortfolioEintraege.Add(neuerEintrag);
+
+                // Aktualisiere berechnete Properties
+                neuerEintrag.BerechneWertUndGewinnVerlust();
             }
 
             // Zusätzliche Debugging-Informationen
@@ -388,17 +398,32 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// Verkauft eine bestimmte Anzahl einer Aktie aus dem Portfolio
         /// </summary>
         /// <param name="aktienID">ID der zu verkaufenden Aktie</param>
+        /// <param name="aktienSymbol">Symbol der zu verkaufenden Aktie (als Fallback)</param>
         /// <param name="anzahl">Anzahl der zu verkaufenden Aktien</param>
         /// <returns>True, wenn der Verkauf erfolgreich war, sonst False</returns>
-        public bool VerkaufeAktie(int aktienID, int anzahl)
+        public bool VerkaufeAktie(int aktienID, string aktienSymbol, int anzahl)
         {
             try
             {
+                // Erst versuchen, über ID zu finden
                 var portfolioEntry = PortfolioEintraege.FirstOrDefault(pe => pe.AktienID == aktienID);
+
+                // Falls nicht gefunden, über Symbol versuchen
+                if (portfolioEntry == null && !string.IsNullOrEmpty(aktienSymbol))
+                {
+                    Debug.WriteLine($"Aktie mit ID {aktienID} nicht gefunden, versuche über Symbol '{aktienSymbol}'");
+                    portfolioEntry = PortfolioEintraege.FirstOrDefault(pe =>
+                        pe.AktienSymbol.Equals(aktienSymbol, StringComparison.OrdinalIgnoreCase));
+
+                    if (portfolioEntry != null)
+                    {
+                        Debug.WriteLine($"Aktie über Symbol gefunden: ID {portfolioEntry.AktienID}, Symbol {portfolioEntry.AktienSymbol}");
+                    }
+                }
 
                 if (portfolioEntry == null || portfolioEntry.Anzahl < anzahl)
                 {
-                    Debug.WriteLine($"Verkauf nicht möglich: AktienID {aktienID} nicht gefunden oder nicht genug Stück");
+                    Debug.WriteLine($"Verkauf nicht möglich: Aktie (ID: {aktienID}, Symbol: {aktienSymbol}) nicht gefunden oder nicht genug Stück");
                     return false; // Aktie nicht vorhanden oder nicht genug Stück im Portfolio
                 }
 
@@ -417,15 +442,18 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     // Wenn Datenbankzugriff vorhanden, Eintrag aus der Datenbank entfernen
                     if (_databaseService != null && _benutzerId > 0)
                     {
-                        Debug.WriteLine($"Entferne Aktie {aktienID} aus Datenbank für Benutzer {_benutzerId}");
-                        _ = _databaseService.RemovePortfolioEintragAsync(_benutzerId, aktienID);
+                        Debug.WriteLine($"Entferne Aktie {portfolioEntry.AktienID} aus Datenbank für Benutzer {_benutzerId}");
+                        _ = _databaseService.RemovePortfolioEintragAsync(_benutzerId, portfolioEntry.AktienID);
                     }
                 }
                 else
                 {
                     // Sonst Änderungen zur Datenbank synchronisieren
-                    Debug.WriteLine($"Aktualisiere Aktie {aktienID}, neue Anzahl: {portfolioEntry.Anzahl}");
+                    Debug.WriteLine($"Aktualisiere Aktie {portfolioEntry.AktienID}, neue Anzahl: {portfolioEntry.Anzahl}");
                     _ = SynchronisierenAsync();
+
+                    // Aktualisiere berechnete Properties
+                    portfolioEntry.BerechneWertUndGewinnVerlust();
                 }
 
                 // Gesamtwerte neu berechnen
@@ -465,6 +493,10 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     {
                         eintrag.AktuellerKurs = neuerKurs;
                         eintrag.LetzteAktualisierung = System.DateTime.Now;
+
+                        // Aktualisiere berechnete Properties
+                        eintrag.BerechneWertUndGewinnVerlust();
+
                         wurdeAktualisiert = true;
                     }
                 }
@@ -495,6 +527,26 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             {
                 _isUpdating = false;
             }
+        }
+
+        public void AktualisierePortfolioMitMarktdaten(List<Aktie> aktuelleMarktdaten)
+        {
+            if (PortfolioEintraege == null || aktuelleMarktdaten == null)
+                return;
+
+            foreach (var eintrag in PortfolioEintraege)
+            {
+                var aktuelleAktie = aktuelleMarktdaten.FirstOrDefault(a =>
+                    a.AktienSymbol.Equals(eintrag.AktienSymbol, StringComparison.OrdinalIgnoreCase));
+
+                if (aktuelleAktie != null)
+                {
+                    eintrag.AktuellerKurs = aktuelleAktie.AktuellerPreis;
+                    eintrag.BerechneWertUndGewinnVerlust();
+                }
+            }
+
+            BerechneGesamtwerte();
         }
 
         #endregion

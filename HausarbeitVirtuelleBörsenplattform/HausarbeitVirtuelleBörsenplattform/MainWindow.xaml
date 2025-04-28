@@ -132,7 +132,6 @@
             <!-- Navigation -->
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,20,0">
                 <Button Content="Dashboard" Style="{StaticResource NavButtonStyle}" IsEnabled="False"/>
-                <Button Content="Portfolio" Style="{StaticResource NavButtonStyle}"/>
                 <Button x:Name="HandelsButton" Content="Aktienhandel" Style="{StaticResource NavButtonStyle}" Click="HandelsButton_Click"/>
                 <Button x:Name="EinstellungenButton" Content="Einstellungen" Style="{StaticResource NavButtonStyle}"/>
 

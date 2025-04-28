@@ -1,4 +1,5 @@
-﻿using HausarbeitVirtuelleBörsenplattform.ViewModels;
+﻿using HausarbeitVirtuelleBörsenplattform.Models;
+using HausarbeitVirtuelleBörsenplattform.ViewModels;
 using System;
 using System.Diagnostics;
 using System.Windows;
@@ -200,7 +201,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
         /// <summary>
         /// Event-Handler für API-Key speichern Button
         /// </summary>
-       
+
 
         private async void PortfolioZurücksetzenButton_Click(object sender, RoutedEventArgs e)
         {
@@ -292,6 +293,68 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                             // UI aktualisieren
                             mainViewModel.AktualisiereKontostand(START_KONTOSTAND);
 
+                            // HIER DIE ÄNDERUNG: Apple-Aktien nach dem Reset hinzufügen
+                            try
+                            {
+                                // Die neue GetOrCreateAktieBySymbolAsync-Methode verwenden
+                                var appleAktie = await App.DbService.GetOrCreateAktieBySymbolAsync("AAPL", "Apple Inc.", 180.00m);
+
+                                if (appleAktie != null)
+                                {
+                                    // Aktuellen Kurs bestimmen
+                                    decimal aktuellerPreis = appleAktie.AktuellerPreis;
+
+                                    if (App.TwelveDataService != null)
+                                    {
+                                        try
+                                        {
+                                            var aktienDaten = await App.TwelveDataService.HoleAktienKurse(new List<string> { "AAPL" });
+                                            if (aktienDaten != null && aktienDaten.Count > 0 && aktienDaten[0].AktuellerPreis > 0)
+                                            {
+                                                aktuellerPreis = aktienDaten[0].AktuellerPreis;
+                                            }
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Debug.WriteLine($"Fehler beim Abrufen des aktuellen Apple-Kurses: {ex.Message}");
+                                        }
+                                    }
+
+                                    // 2 Apple-Aktien zum Portfolio hinzufügen
+                                    var portfolioEintrag = new PortfolioEintrag
+                                    {
+                                        BenutzerID = benutzerId,
+                                        AktienID = appleAktie.AktienID,
+                                        AktienSymbol = appleAktie.AktienSymbol,
+                                        AktienName = appleAktie.AktienName,
+                                        Anzahl = 2,
+                                        AktuellerKurs = aktuellerPreis,
+                                        EinstandsPreis = aktuellerPreis,
+                                        LetzteAktualisierung = DateTime.Now
+                                    };
+
+                                    // Zum Portfolio hinzufügen
+                                    bool success = await App.DbService.AddOrUpdatePortfolioEintragAsync(portfolioEintrag);
+
+                                    if (success)
+                                    {
+                                        // Kosten vom Startguthaben abziehen
+                                        decimal kosten = 2 * aktuellerPreis;
+                                        benutzer.Kontostand -= kosten;
+                                        mainViewModel.AktualisiereKontostand(benutzer.Kontostand);
+
+                                        // Benutzer in der Datenbank aktualisieren
+                                        await App.DbService.UpdateBenutzerAsync(benutzer);
+
+                                        Debug.WriteLine($"2 Apple-Aktien wurden nach dem Portfolio-Reset hinzugefügt für {kosten:F2}€");
+                                    }
+                                }
+                            }
+                            catch (Exception appleEx)
+                            {
+                                Debug.WriteLine($"Fehler beim Hinzufügen der Apple-Aktien nach dem Reset: {appleEx.Message}");
+                            }
+
                             // Daten neu laden, um sicherzustellen, dass alles synchron ist
                             await mainViewModel.PortfolioViewModel.LoadPortfolioDataAsync();
 
@@ -334,7 +397,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                             {
                                 try
                                 {
-                                    // Die neue ResetMarktdatenAsync-Methode aufrufen, die wir implementiert haben
+                                    // Die ResetMarktdatenAsync-Methode aufrufen
                                     await mainViewModel.MarktdatenViewModel.ResetMarktdatenAsync(true);
                                     Debug.WriteLine("Marktdaten wurden erfolgreich zurückgesetzt");
                                 }
@@ -353,7 +416,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
 
                             MessageBox.Show(
                                 $"Portfolio wurde erfolgreich zurückgesetzt.\n" +
-                                $"Ihr Kontostand beträgt jetzt wieder {START_KONTOSTAND:N2}€.\n" +
+                                $"Ihr Kontostand beträgt jetzt wieder {benutzer.Kontostand:N2}€ (inklusive der 2 geschenkten Apple-Aktien).\n" +
                                 $"Sie können nun komplett von vorne beginnen.",
                                 "Portfolio zurückgesetzt",
                                 MessageBoxButton.OK,

@@ -196,20 +196,20 @@
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
 
-                <!-- Spalte für den Gewinn/Verlust mit farblicher Hervorhebung -->
+                <!-- Gewinn/Verlust-Spalte mit farblicher Hervorhebung -->
                 <DataGridTemplateColumn Header="Gewinn/Verlust" Width="150">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                 <!-- Absoluter Gewinn/Verlust -->
                                 <TextBlock Text="{Binding GewinnVerlust, StringFormat={}{0:N2} €}" 
-                                           Foreground="{Binding GewinnVerlust, Converter={StaticResource GewinnVerlustFarbeConverter}}"
-                                           FontWeight="SemiBold"/>
+                           Foreground="{Binding GewinnVerlust, Converter={StaticResource GewinnVerlustFarbeConverter}}"
+                           FontWeight="SemiBold"/>
 
                                 <!-- Relativer Gewinn/Verlust in Prozent -->
                                 <TextBlock Text="{Binding GewinnVerlustProzent, StringFormat={} ({0:N2}%)}" 
-                                           Foreground="{Binding GewinnVerlust, Converter={StaticResource GewinnVerlustFarbeConverter}}"
-                                           Margin="5,0,0,0"/>
+                           Foreground="{Binding GewinnVerlust, Converter={StaticResource GewinnVerlustFarbeConverter}}"
+                           Margin="5,0,0,0"/>
                             </StackPanel>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>

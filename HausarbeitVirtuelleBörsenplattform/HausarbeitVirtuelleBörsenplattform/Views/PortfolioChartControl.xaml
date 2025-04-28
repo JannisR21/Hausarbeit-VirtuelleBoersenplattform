@@ -12,7 +12,6 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-
         <!-- Header mit Zeitraum-Selektoren -->
         <Grid Grid.Row="0" Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
@@ -20,7 +19,6 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-
             <!-- Zeitraum-Selektoren -->
             <StackPanel Grid.Column="0" Orientation="Horizontal">
                 <RadioButton Content="1T" GroupName="Zeitraum" Margin="0,0,10,0" IsChecked="{Binding IsOneDay}" />
@@ -29,7 +27,6 @@
                 <RadioButton Content="1J" GroupName="Zeitraum" Margin="0,0,10,0" IsChecked="{Binding IsOneYear}" />
                 <RadioButton Content="Max" GroupName="Zeitraum" Margin="0,0,10,0" IsChecked="{Binding IsMax}" />
             </StackPanel>
-
             <!-- Performance-Anzeige -->
             <StackPanel Grid.Column="2" Orientation="Horizontal">
                 <TextBlock Text="Performance: " VerticalAlignment="Center"/>
@@ -39,12 +36,12 @@
                            VerticalAlignment="Center"/>
             </StackPanel>
         </Grid>
-
         <!-- Chart -->
         <lvc:CartesianChart Grid.Row="1" 
                             Series="{Binding SeriesCollection}" 
                             LegendLocation="None"
-                            DisableAnimations="False"
+                            DisableAnimations="True"
+                            Hoverable="False"
                             DataTooltip="{x:Null}">
             <lvc:CartesianChart.AxisX>
                 <lvc:Axis Title="Zeit" 
@@ -56,11 +53,20 @@
                 </lvc:Axis>
             </lvc:CartesianChart.AxisX>
             <lvc:CartesianChart.AxisY>
-                <lvc:Axis Title="Wert (€)" 
+                <lvc:Axis Title="Performance (%)" 
                           LabelFormatter="{Binding YFormatter}" 
                           MinValue="{Binding YMinValue}" 
                           MaxValue="{Binding YMaxValue}"
-                          DisableAnimations="True">
+                          Foreground="Black"
+                          DisableAnimations="True"
+                          Position="RightTop">
+                    <lvc:Axis.Sections>
+                        <!-- Markieren der Nulllinie -->
+                        <lvc:AxisSection Value="0" 
+                                       StrokeThickness="1" 
+                                       Stroke="Black" 
+                                       StrokeDashArray="1"/>
+                    </lvc:Axis.Sections>
                     <lvc:Axis.Separator>
                         <lvc:Separator StrokeThickness="1" StrokeDashArray="2" Stroke="#e6e6e6"/>
                     </lvc:Axis.Separator>

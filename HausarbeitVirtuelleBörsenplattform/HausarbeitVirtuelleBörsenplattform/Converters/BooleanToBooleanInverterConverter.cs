@@ -5,7 +5,7 @@ using System.Windows.Data;
 namespace HausarbeitVirtuelleBörsenplattform.Converters
 {
     /// <summary>
-    /// Konvertiert einen booleschen Wert in sein Gegenteil
+    /// Konvertiert einen booleschen Wert in das Gegenteil
     /// </summary>
     public class BooleanToBooleanInverterConverter : IValueConverter
     {
@@ -18,7 +18,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Converters
             {
                 return !boolValue;
             }
-            return false;
+            return true;
         }
 
         /// <summary>
@@ -30,7 +30,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Converters
             {
                 return !boolValue;
             }
-            return false;
+            return true;
         }
     }
 }

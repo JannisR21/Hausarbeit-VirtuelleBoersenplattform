@@ -9,6 +9,8 @@ using System.Globalization;
 using System.Threading;
 using HausarbeitVirtuelleBörsenplattform.Helpers;
 using HausarbeitVirtuelleBörsenplattform.Models;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 
 namespace HausarbeitVirtuelleBörsenplattform.Services
 {
@@ -199,7 +201,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                                         LastErrorMessage = $"Aktie {symbol} konnte nicht geladen werden. Ungültige oder fehlende Daten.";
                                     }
                                 }
-                                catch (JsonException jsonEx)
+                                catch (Newtonsoft.Json.JsonException jsonEx)
                                 {
                                     Debug.WriteLine($"JSON-Fehler: {jsonEx.Message}");
                                     LastErrorMessage = $"JSON-Fehler: {jsonEx.Message}";
@@ -243,55 +245,150 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
         }
 
         /// <summary>
-        /// Prüft, ob die US-Börse aktuell geöffnet ist (vereinfachte Version)
+        /// Prüft, ob eine relevante Börse geöffnet ist oder simuliert Börsenöffnungszeiten
         /// </summary>
-        /// <returns>True, wenn die Börse geöffnet ist, sonst False</returns>
         public bool IstBoerseGeoeffnet()
         {
+            // Für Simulationszwecke können wir einen Debug-Modus aktivieren
+            bool simulationsModus = false; // Auf "true" setzen für Tests
+
+            if (simulationsModus)
+                return true;
+
+            var jetzt = DateTime.UtcNow; // Verwende UTC als Basis für alle Zeitzonenberechnungen
+
             try
             {
-                // Aktuelle Zeit in der Zeitzone der Anwendung
-                DateTime jetztLokal = DateTime.Now;
+                // US-Börse (NYSE/NASDAQ): 9:30 - 16:00 ET
+                TimeZoneInfo usZeitzone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+                DateTime usZeit = TimeZoneInfo.ConvertTimeFromUtc(jetzt, usZeitzone);
 
-                // Zeitzone für US Eastern Time (ET) - New York
-                TimeZoneInfo usEasternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+                // Prüfe, ob Wochenende (Samstag = 6, Sonntag = 0)
+                bool istWochenende = usZeit.DayOfWeek == DayOfWeek.Saturday || usZeit.DayOfWeek == DayOfWeek.Sunday;
 
-                // Aktuelle Zeit in US Eastern Time
-                DateTime jetztET = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, usEasternZone);
+                // US-Börsenzeiten (9:30 - 16:00 ET)
+                bool usBoerseGeoeffnet = !istWochenende &&
+                                        (usZeit.Hour > 9 || (usZeit.Hour == 9 && usZeit.Minute >= 30)) &&
+                                        usZeit.Hour < 16;
 
-                // Wochentag prüfen (1 = Montag, ..., 7 = Sonntag)
-                int wochentag = (int)jetztET.DayOfWeek;
+                // Deutsche Börse (XETRA): 9:00 - 17:30 MEZ/MESZ
+                TimeZoneInfo deZeitzone = TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time");
+                DateTime deZeit = TimeZoneInfo.ConvertTimeFromUtc(jetzt, deZeitzone);
 
-                // Prüfen, ob es ein Wochenende ist (Samstag = 6, Sonntag = 0)
-                if (wochentag == 6 || wochentag == 0)
-                {
-                    Debug.WriteLine($"Börse geschlossen: Wochenende (Wochentag: {jetztET.DayOfWeek})");
-                    return false;
-                }
+                // Deutsche Börsenzeiten (9:00 - 17:30 MEZ/MESZ)
+                bool deBoerseGeoeffnet = deZeit.DayOfWeek != DayOfWeek.Saturday &&
+                                        deZeit.DayOfWeek != DayOfWeek.Sunday &&
+                                        deZeit.Hour >= 9 &&
+                                        (deZeit.Hour < 17 || (deZeit.Hour == 17 && deZeit.Minute <= 30));
 
-                // Uhrzeit prüfen (9:30 - 16:00 ET sind die regulären Handelszeiten)
-                TimeSpan startzeit = new TimeSpan(9, 30, 0); // 9:30 ET
-                TimeSpan endzeit = new TimeSpan(16, 0, 0);   // 16:00 ET
-                TimeSpan aktuelleZeit = jetztET.TimeOfDay;
+                // Feiertage werden hier zur Vereinfachung nicht berücksichtigt
 
-                bool istGeoeffnet = aktuelleZeit >= startzeit && aktuelleZeit <= endzeit;
+                // Protokolliere den Status für Debug-Zwecke
+                Console.WriteLine($"US-Börse Status: {(usBoerseGeoeffnet ? "Geöffnet" : "Geschlossen")} (Zeit: {usZeit.Hour:D2}:{usZeit.Minute:D2})");
+                Console.WriteLine($"Deutsche Börse Status: {(deBoerseGeoeffnet ? "Geöffnet" : "Geschlossen")} (Zeit: {deZeit.Hour:D2}:{deZeit.Minute:D2})");
 
-                if (!istGeoeffnet)
-                {
-                    Debug.WriteLine($"Börse geschlossen: Außerhalb der Handelszeiten (Aktuelle Zeit ET: {jetztET.ToString("HH:mm")})");
-                }
-                else
-                {
-                    Debug.WriteLine($"Börse geöffnet (Aktuelle Zeit ET: {jetztET.ToString("HH:mm")})");
-                }
-
-                return istGeoeffnet;
+                // Ist entweder die US oder die deutsche Börse geöffnet?
+                return usBoerseGeoeffnet || deBoerseGeoeffnet;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Fehler bei der Überprüfung der Börsenöffnungszeiten: {ex.Message}");
+                // Bei Fehlern in der Zeitzonen-Berechnung loggen wir den Fehler und geben true zurück,
+                // damit die Anwendung trotzdem Daten abrufen kann
+                Console.WriteLine($"Fehler bei der Börsenzeit-Berechnung: {ex.Message}");
+                return true;
+            }
+        }
 
-                // Im Fehlerfall nehmen wir sicherheitshalber an, dass die Börse geschlossen ist
+        private bool IstUSBoerseGeoeffnet(DateTime jetztUS)
+        {
+            // Wochentag prüfen (1 = Montag, ..., 7 = Sonntag)
+            int wochentagUS = (int)jetztUS.DayOfWeek;
+
+            // Prüfen, ob es ein Wochenende ist (Samstag = 6, Sonntag = 0)
+            if (wochentagUS == 6 || wochentagUS == 0)
+            {
+                return false;
+            }
+
+            // US-Börsenhandelszeiten: 9:30 - 16:00 ET
+            TimeSpan startzeitUS = new TimeSpan(9, 30, 0);   // 9:30 ET
+            TimeSpan endzeitUS = new TimeSpan(16, 0, 0);     // 16:00 ET
+            TimeSpan aktuelleZeitUS = jetztUS.TimeOfDay;
+
+            return aktuelleZeitUS >= startzeitUS && aktuelleZeitUS <= endzeitUS;
+        }
+
+        private bool IstDeutscheBoerseGeoeffnet(DateTime jetztDeutschland)
+        {
+            // Wochentag prüfen (1 = Montag, ..., 7 = Sonntag)
+            int wochentagDeutschland = (int)jetztDeutschland.DayOfWeek;
+
+            // Prüfen, ob es ein Wochenende ist (Samstag = 6, Sonntag = 0)
+            if (wochentagDeutschland == 6 || wochentagDeutschland == 0)
+            {
+                return false;
+            }
+
+            // Deutsche Börsenhandelszeiten: 9:00 - 17:30 Uhr
+            TimeSpan startzeitDeutschland = new TimeSpan(9, 0, 0);   // 9:00 Uhr
+            TimeSpan endzeitDeutschland = new TimeSpan(17, 30, 0);   // 17:30 Uhr
+            TimeSpan aktuelleZeitDeutschland = jetztDeutschland.TimeOfDay;
+
+            return aktuelleZeitDeutschland >= startzeitDeutschland && aktuelleZeitDeutschland <= endzeitDeutschland;
+        }
+
+        /// <summary>
+        /// Überprüft, ob die Twelve Data API Daten für ein bestimmtes Aktien-Symbol bereitstellt
+        /// </summary>
+        /// <param name="symbol">Das zu überprüfende Aktien-Symbol</param>
+        /// <returns>True, wenn Daten verfügbar sind, sonst False</returns>
+        public async Task<bool> IstAktieVerfügbar(string symbol)
+        {
+            if (string.IsNullOrWhiteSpace(symbol))
+            {
+                Debug.WriteLine("Kein Symbol zum Überprüfen angegeben");
+                return false;
+            }
+
+            try
+            {
+                string url = $"https://api.twelvedata.com/time_series?symbol={symbol}&interval=1min&apikey={_apiKey}";
+                Debug.WriteLine($"API-Anfrage für Symbol {symbol}: {url}");
+
+                // Rate-Limiter vor API-Anfrage verwenden
+                await _rateLimiter.ThrottleAsync();
+
+                var response = await _httpClient.GetStringAsync(url);
+
+                if (string.IsNullOrWhiteSpace(response))
+                {
+                    Debug.WriteLine($"Keine Antwort von der API für Symbol {symbol}");
+                    return false;
+                }
+
+                // JSON-Antwort auswerten
+                var responseObj = JsonConvert.DeserializeObject<JObject>(response);
+
+                // Prüfen, ob Daten oder ein Fehler zurückgegeben wurde
+                if (responseObj.ContainsKey("status") && responseObj["status"].ToString() == "error")
+                {
+                    Debug.WriteLine($"API-Fehler für Symbol {symbol}: {responseObj["message"]}");
+                    return false;
+                }
+
+                // Prüfen, ob Daten in der Antwort enthalten sind
+                if (responseObj.ContainsKey("values") && responseObj["values"].HasValues)
+                {
+                    Debug.WriteLine($"Daten für Symbol {symbol} sind verfügbar");
+                    return true;
+                }
+
+                Debug.WriteLine($"Keine Daten für Symbol {symbol} gefunden");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler bei der Überprüfung von Symbol {symbol}: {ex.Message}");
                 return false;
             }
         }

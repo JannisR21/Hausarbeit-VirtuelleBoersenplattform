@@ -21,6 +21,7 @@ namespace HausarbeitVirtuelleBörsenplattform
         public static EmailService EmailService { get; private set; }
         public static string TwelveDataApiKey { get; private set; }
         public static TwelveDataService TwelveDataService { get; private set; }
+        public static AktienFilterService AktienFilterService { get; private set; }
 
         // Diese Collection enthält nur API-geladene Aktien, keine Dummy-Daten mehr
         public static ObservableCollection<Aktie> StandardAktien { get; private set; }
@@ -40,7 +41,6 @@ namespace HausarbeitVirtuelleBörsenplattform
             {
                 DarkAndLightMode.SetDarkTheme();
             }
-
 
             // Services initialisieren
             InitializeServices();
@@ -121,14 +121,30 @@ namespace HausarbeitVirtuelleBörsenplattform
         {
             try
             {
-                TwelveDataApiKey = ConfigurationManager.AppSettings["TwelveDataApiKey"];
+                // Explizites Laden der Konfiguration
+                var configFileMap = new ExeConfigurationFileMap();
+                configFileMap.ExeConfigFilename = "App.config";
+                var config = ConfigurationManager.OpenMappedExeConfiguration(configFileMap, ConfigurationUserLevel.None);
+
+                TwelveDataApiKey = config.AppSettings.Settings["TwelveDataApiKey"]?.Value;
+
+                Debug.WriteLine($"Konfigurationspfad: {config.FilePath}");
+                Debug.WriteLine($"Geladener API-Key: {TwelveDataApiKey}");
+
                 if (string.IsNullOrEmpty(TwelveDataApiKey))
-                    TwelveDataApiKey = "cb617aba18ea46b3a974d878d3c7310b"; // Fallback-API-Key
+                {
+                    TwelveDataApiKey = "cb617aba18ea46b3a974d878d3c7310b";
+                    Debug.WriteLine("Fallback-API-Key wurde gesetzt");
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Fehler beim Laden der Konfiguration: {ex.Message}", "Konfigurationsfehler",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                Debug.WriteLine($"Fehler beim Laden der Konfiguration: {ex.Message}");
+                MessageBox.Show($"Fehler beim Laden der Konfiguration: {ex.Message}",
+                    "Konfigurationsfehler", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+                // Fallback-Key setzen
+                TwelveDataApiKey = "cb617aba18ea46b3a974d878d3c7310b";
             }
         }
 
@@ -136,6 +152,11 @@ namespace HausarbeitVirtuelleBörsenplattform
         {
             try
             {
+                // Explizites Laden der Konfiguration
+                LoadConfiguration();
+
+                Debug.WriteLine($"Geladener API-Key: {TwelveDataApiKey}");
+
                 var options = new DbContextOptionsBuilder<BörsenplattformDbContext>()
                     .UseSqlServer(ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString)
                     .EnableSensitiveDataLogging()
@@ -150,15 +171,25 @@ namespace HausarbeitVirtuelleBörsenplattform
                     DbService = new DatabaseService(dbContext, options);
                     AuthService = new AuthenticationService(DbService);
 
-                    // Konfiguriere EmailService mit den korrekten SMTP-Einstellungen
-                    EmailService = new EmailService(
-                        "smtp.web.de", 587,
-                        "Jannisr32@web.de", "KSIYD2GR4AIKOMIH7ZCK",
-                        "Jannisr32@web.de", "Virtuelle Börsenplattform",
-                        false); // isTestMode auf false setzen, um echte E-Mails zu senden
+                    // Sicherstellen, dass der API-Key nicht null ist
+                    if (string.IsNullOrEmpty(TwelveDataApiKey))
+                    {
+                        TwelveDataApiKey = "cb617aba18ea46b3a974d878d3c7310b";
+                        Debug.WriteLine("Fallback-API-Key wurde gesetzt");
+                    }
 
-                    // TwelveDataService initialisieren
                     TwelveDataService = new TwelveDataService(TwelveDataApiKey);
+                    Debug.WriteLine($"TwelveDataService initialisiert mit API-Key: {TwelveDataApiKey}");
+
+                    // Initialisiere den AktienFilterService mit dem bestehenden TwelveDataService
+                    AktienFilterService = new AktienFilterService(TwelveDataApiKey, TwelveDataService);
+                    Debug.WriteLine($"AktienFilterService initialisiert");
+
+                    // StandardAktien Collection initialisieren
+                    if (StandardAktien == null)
+                    {
+                        StandardAktien = new ObservableCollection<Aktie>();
+                    }
                 }
                 else
                 {
@@ -167,12 +198,9 @@ namespace HausarbeitVirtuelleBörsenplattform
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Fehler bei der Initialisierung der Services: {ex.Message}",
+                Debug.WriteLine($"Fehler bei der Initialisierung: {ex.Message}");
+                MessageBox.Show($"Fehler bei der Initialisierung: {ex.Message}",
                     "Initialisierungsfehler", MessageBoxButton.OK, MessageBoxImage.Error);
-
-                // Fallback-Initialisierung
-                AuthService = new AuthenticationService(null);
-                EmailService = new EmailService("localhost", 25, "", "", "", "", true);
             }
         }
 
@@ -188,7 +216,7 @@ namespace HausarbeitVirtuelleBörsenplattform
                 mainWindow.Show();
                 Current.MainWindow = mainWindow;
 
-                oldWindow?.Close(); // Komplett schließe n
+                oldWindow?.Close(); // Komplett schließen
 
                 Debug.WriteLine("Hauptfenster geöffnet.");
             }

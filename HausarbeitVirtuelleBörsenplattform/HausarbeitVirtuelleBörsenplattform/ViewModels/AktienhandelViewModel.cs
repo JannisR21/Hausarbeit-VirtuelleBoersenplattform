@@ -51,7 +51,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 
             // Commands initialisieren - Namen ohne "Async"-Suffix
             AktienSuchenCommand = new AsyncRelayCommand(AktienSuchen);
-            TransaktionAusführenCommand = new RelayCommand(TransaktionAusführen, KannTransaktionAusführen);
+            TransaktionAusführenCommand = new AsyncRelayCommand(TransaktionAusführenAsync, KannTransaktionAusführen);
             IncrementMengeCommand = new RelayCommand(IncrementMenge);
             DecrementMengeCommand = new RelayCommand(DecrementMenge);
 
@@ -485,7 +485,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// <summary>
         /// Command zum Ausführen der Transaktion
         /// </summary>
-        public IRelayCommand TransaktionAusführenCommand { get; }
+        public IAsyncRelayCommand TransaktionAusführenCommand { get; }
 
         /// <summary>
         /// Command zum Erhöhen der Menge
@@ -785,9 +785,9 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         }
 
         /// <summary>
-        /// Führt die Transaktion (Kauf oder Verkauf) durch mit verbesserten Preis-Checks
+        /// Führt die Transaktion (Kauf oder Verkauf) durch - Asynchrone Version
         /// </summary>
-        private void TransaktionAusführen()
+        private async Task TransaktionAusführenAsync()
         {
             Debug.WriteLine($"TransaktionAusführenCommand aufgerufen: {(IsKauf ? "Kauf" : "Verkauf")} von {Menge} {AktienSymbol}");
 
@@ -796,6 +796,29 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 Debug.WriteLine("Ungültige Transaktionsparameter");
                 MessageBox.Show("Bitte wählen Sie eine Aktie aus und geben Sie eine Menge an.", "Eingabefehler", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
+            }
+
+            // Zuerst prüfen, ob die API Daten für diese Aktie bereitstellt
+            IsLoading = true;
+            try
+            {
+                bool istAktieVerfügbar = await App.TwelveDataService.IstAktieVerfügbar(AktienSymbol);
+                if (!istAktieVerfügbar)
+                {
+                    Debug.WriteLine($"Keine Daten für Aktie {AktienSymbol} verfügbar");
+                    MessageBox.Show($"Für die Aktie {AktienSymbol} stehen momentan keine Daten zur Verfügung. Bitte wählen Sie eine andere Aktie oder versuchen Sie es später erneut.",
+                        "Keine Daten verfügbar", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler bei der Verfügbarkeitsprüfung: {ex.Message}");
+                // Fahren wir trotzdem fort, da dies nur eine zusätzliche Sicherheit ist
+            }
+            finally
+            {
+                IsLoading = false;
             }
 
             // Zusätzliche Prüfung auf gültigen Kurs
@@ -919,6 +942,14 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                         }
                     }
 
+                    // WICHTIG: PortfolioChartViewModel informieren, dass eine Transaktion stattfand
+                    if (_mainViewModel.PortfolioChartViewModel != null)
+                    {
+                        // Die Änderung wird automatisch durch die PropertyChanged-Events
+                        // des PortfolioViewModels erkannt und verarbeitet
+                        Debug.WriteLine("Kauf durchgeführt - PortfolioChartViewModel wird aktualisiert");
+                    }
+
                     // Erfolgsmeldung anzeigen
                     MessageBox.Show($"{Menge} Aktien von {name} wurden erfolgreich gekauft für {gesamtWert:N2}€.",
                         "Kauf erfolgreich", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -947,11 +978,26 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                         return;
                     }
 
-                    // Verkaufen und prüfen, ob erfolgreich
-                    if (portfolio.VerkaufeAktie(id, Menge))
+                    // Debug-Ausgabe aller Portfolio-Einträge
+                    Debug.WriteLine("Alle Aktien im Portfolio vor dem Verkauf:");
+                    foreach (var pe in portfolio.PortfolioEintraege)
+                    {
+                        Debug.WriteLine($"ID: {pe.AktienID}, Symbol: {pe.AktienSymbol}, Name: {pe.AktienName}, Anzahl: {pe.Anzahl}");
+                    }
+
+                    // Verkaufen und prüfen, ob erfolgreich - ANGEPASSTE METHODE VERWENDEN
+                    if (portfolio.VerkaufeAktie(id, AktienSymbol.Trim().ToUpper(), Menge))
                     {
                         // Kontostand direkt im MainViewModel aktualisieren
                         _mainViewModel.ErhöheKontostand(gesamtWert);
+
+                        // WICHTIG: PortfolioChartViewModel informieren, dass eine Transaktion stattfand
+                        if (_mainViewModel.PortfolioChartViewModel != null)
+                        {
+                            // Die Änderung wird automatisch durch die PropertyChanged-Events
+                            // des PortfolioViewModels erkannt und verarbeitet
+                            Debug.WriteLine("Verkauf durchgeführt - PortfolioChartViewModel wird aktualisiert");
+                        }
 
                         // Erfolgsmeldung anzeigen
                         MessageBox.Show($"{Menge} Aktien von {name} wurden erfolgreich verkauft für {gesamtWert:N2}€.",

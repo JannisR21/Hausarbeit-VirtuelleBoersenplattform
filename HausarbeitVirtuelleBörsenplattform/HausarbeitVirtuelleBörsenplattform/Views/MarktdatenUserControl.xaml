@@ -238,6 +238,22 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
+                <DataGridTemplateColumn Width="120">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="Zur Watchlist" 
+                    Command="{Binding DataContext.WatchlistViewModel.AktieHinzufügenCommand, 
+                             RelativeSource={RelativeSource AncestorType=Window}}" 
+                    CommandParameter="{Binding}"
+                    Background="#3498db"
+                    Foreground="White"
+                    BorderThickness="0"
+                    Padding="8,3"
+                    Margin="0,2"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
                 <DataGridTextColumn Header="Letzte Aktualisierung" 
                         Binding="{Binding LetzteAktualisierung, StringFormat={}{0:HH:mm:ss}}" 
                         Width="120"/>

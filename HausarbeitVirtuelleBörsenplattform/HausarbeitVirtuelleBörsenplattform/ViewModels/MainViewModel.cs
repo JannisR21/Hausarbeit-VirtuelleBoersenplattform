@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
+using HausarbeitVirtuelleBörsenplattform.Services;
 
 namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 {
@@ -19,6 +20,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         private MarktStatus _marktStatus;
         private DispatcherTimer _portfolioUpdateTimer;
         private decimal _kontostand; // Neues Feld für den Kontostand
+        private AktienFilterService _aktienFilterService;
 
         #endregion
 
@@ -94,8 +96,27 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// </summary>
         public PortfolioChartViewModel PortfolioChartViewModel { get; private set; }
 
+        /// <summary>
+        /// ViewModel für den Aktienfilter
+        /// </summary>
+        public AktienFilterViewModel AktienFilterViewModel { get; private set; }
+
+        /// <summary>
+        /// Service für die Aktienfilterung
+        /// </summary>
+        public AktienFilterService AktienFilterService
+        {
+            get => _aktienFilterService;
+            private set => SetProperty(ref _aktienFilterService, value);
+        }
+
         // Alternativ-Property für HandelsViewModel
         public AktienhandelViewModel HandelsViewModel => AktienhandelViewModel;
+
+        /// <summary>
+        /// ViewModel für die Watchlist
+        /// </summary>
+        public WatchlistViewModel WatchlistViewModel { get; private set; }
 
         #endregion
 
@@ -149,6 +170,9 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 // API-Key abrufen
                 string apiKey = App.TwelveDataApiKey;
 
+                // AktienFilterService aus App übernehmen
+                AktienFilterService = App.AktienFilterService;
+
                 // Explizite Initialisierung der ViewModels in der richtigen Reihenfolge
                 // WICHTIG: AktienhandelViewModel sollte erst nach MarktdatenViewModel erstellt werden
                 Debug.WriteLine("Initialisiere MarktdatenViewModel...");
@@ -157,6 +181,15 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 Debug.WriteLine("Initialisiere PortfolioViewModel...");
                 PortfolioViewModel = new PortfolioViewModel(App.DbService, AktuellerBenutzer.BenutzerID);
                 await PortfolioViewModel.LoadPortfolioDataAsync();
+
+                Debug.WriteLine("Initialisiere AktienFilterViewModel...");
+                AktienFilterViewModel = new AktienFilterViewModel();
+                if (MarktdatenViewModel?.AktienListe != null)
+                {
+                    // Aktien-Liste an den Filter übergeben
+                    AktienFilterViewModel.SetzeAktienListe(MarktdatenViewModel.AktienListe);
+                }
+                OnPropertyChanged(nameof(AktienFilterViewModel));
 
                 Debug.WriteLine("Initialisiere AktienhandelViewModel...");
                 AktienhandelViewModel = new AktienhandelViewModel(this);
@@ -183,6 +216,10 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 OnPropertyChanged(nameof(AktienhandelViewModel));
                 // Und für das neue PortfolioChartViewModel
                 OnPropertyChanged(nameof(PortfolioChartViewModel));
+
+                Debug.WriteLine("Initialisiere WatchlistViewModel...");
+                WatchlistViewModel = new WatchlistViewModel(App.DbService, AktuellerBenutzer.BenutzerID, this);
+                OnPropertyChanged(nameof(WatchlistViewModel));
             }
             catch (Exception ex)
             {
@@ -250,6 +287,12 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 
                 Debug.WriteLine("Aktualisiere Portfolio mit Marktdaten...");
                 PortfolioViewModel.AktualisiereKurseMitMarktdaten(MarktdatenViewModel.AktienListe);
+
+                // Auch Aktienfilterliste aktualisieren
+                if (AktienFilterViewModel != null)
+                {
+                    AktienFilterViewModel.AktualisierePreise(MarktdatenViewModel.AktienListe);
+                }
             }
         }
 

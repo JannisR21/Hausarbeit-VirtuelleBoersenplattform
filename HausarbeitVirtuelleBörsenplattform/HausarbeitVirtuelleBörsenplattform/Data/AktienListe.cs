@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using HausarbeitVirtuelleBörsenplattform.Models;
-
 namespace HausarbeitVirtuelleBörsenplattform.Data
 {
     /// <summary>
@@ -45,84 +44,102 @@ namespace HausarbeitVirtuelleBörsenplattform.Data
                 new Aktie { AktienID = 24, AktienSymbol = "CRM", AktienName = "Salesforce Inc." },
                 new Aktie { AktienID = 25, AktienSymbol = "AMD", AktienName = "Advanced Micro Devices, Inc." },
                 
-                // Europäische Aktien – Deutschland (über ADRs)
-                new Aktie { AktienID = 26, AktienSymbol = "SAP", AktienName = "SAP SE" }, // NYSE
-                new Aktie { AktienID = 27, AktienSymbol = "SIEGY", AktienName = "Siemens AG" }, // OTC
-                new Aktie { AktienID = 28, AktienSymbol = "ALIZY", AktienName = "Allianz SE" }, // OTC
-                new Aktie { AktienID = 29, AktienSymbol = "BAYRY", AktienName = "Bayer AG" }, // OTC
-                new Aktie { AktienID = 30, AktienSymbol = "BASFY", AktienName = "BASF SE" }, // OTC
-                new Aktie { AktienID = 31, AktienSymbol = "DTEGY", AktienName = "Deutsche Telekom AG" }, // OTC
-                new Aktie { AktienID = 32, AktienSymbol = "BMWYY", AktienName = "Bayerische Motoren Werke AG" }, // OTC
-                new Aktie { AktienID = 33, AktienSymbol = "MBGYY", AktienName = "Mercedes-Benz Group AG" }, // OTC
-                new Aktie { AktienID = 34, AktienSymbol = "VWAGY", AktienName = "Volkswagen AG" }, // OTC
-                new Aktie { AktienID = 35, AktienSymbol = "ADDYY", AktienName = "Adidas AG" }, // OTC
-
+                // Weitere US-Aktien
+                new Aktie { AktienID = 26, AktienSymbol = "ORCL", AktienName = "Oracle Corporation" },
+                new Aktie { AktienID = 27, AktienSymbol = "PYPL", AktienName = "PayPal Holdings, Inc." },
+                new Aktie { AktienID = 28, AktienSymbol = "CMCSA", AktienName = "Comcast Corporation" },
+                new Aktie { AktienID = 29, AktienSymbol = "NKE", AktienName = "Nike, Inc." },
+                new Aktie { AktienID = 30, AktienSymbol = "UNH", AktienName = "UnitedHealth Group Incorporated" },
+                new Aktie { AktienID = 31, AktienSymbol = "ABT", AktienName = "Abbott Laboratories" },
+                new Aktie { AktienID = 32, AktienSymbol = "PEP", AktienName = "PepsiCo, Inc." },
+                new Aktie { AktienID = 33, AktienSymbol = "XOM", AktienName = "Exxon Mobil Corporation" },
+                new Aktie { AktienID = 34, AktienSymbol = "CVX", AktienName = "Chevron Corporation" },
+                new Aktie { AktienID = 35, AktienSymbol = "MRK", AktienName = "Merck & Co., Inc." },
+                new Aktie { AktienID = 36, AktienSymbol = "COST", AktienName = "Costco Wholesale Corporation" },
+                new Aktie { AktienID = 37, AktienSymbol = "AVGO", AktienName = "Broadcom Inc." },
+                new Aktie { AktienID = 38, AktienSymbol = "ABBV", AktienName = "AbbVie Inc." },
+                new Aktie { AktienID = 39, AktienSymbol = "TMO", AktienName = "Thermo Fisher Scientific Inc." },
+                new Aktie { AktienID = 40, AktienSymbol = "ACN", AktienName = "Accenture plc" },
+                new Aktie { AktienID = 41, AktienSymbol = "DHR", AktienName = "Danaher Corporation" },
+                new Aktie { AktienID = 42, AktienSymbol = "MCD", AktienName = "McDonald's Corporation" },
+                new Aktie { AktienID = 43, AktienSymbol = "QCOM", AktienName = "QUALCOMM Incorporated" },
+                new Aktie { AktienID = 44, AktienSymbol = "LLY", AktienName = "Eli Lilly and Company" },
+                new Aktie { AktienID = 45, AktienSymbol = "TXN", AktienName = "Texas Instruments Incorporated" },
+                new Aktie { AktienID = 46, AktienSymbol = "PM", AktienName = "Philip Morris International Inc." },
+                new Aktie { AktienID = 47, AktienSymbol = "UPS", AktienName = "United Parcel Service, Inc." },
+                new Aktie { AktienID = 48, AktienSymbol = "SBUX", AktienName = "Starbucks Corporation" },
+                new Aktie { AktienID = 49, AktienSymbol = "BMY", AktienName = "Bristol-Myers Squibb Company" },
+                new Aktie { AktienID = 50, AktienSymbol = "AMGN", AktienName = "Amgen Inc." },
                 
-                // Europäische Aktien - Frankreich
-                new Aktie { AktienID = 36, AktienSymbol = "MC.PA", AktienName = "LVMH Moët Hennessy Louis Vuitton SE" },
-                new Aktie { AktienID = 37, AktienSymbol = "OR.PA", AktienName = "L'Oréal S.A." },
-                new Aktie { AktienID = 38, AktienSymbol = "SAN.PA", AktienName = "Sanofi S.A." },
-                new Aktie { AktienID = 39, AktienSymbol = "BNP.PA", AktienName = "BNP Paribas S.A." },
-                new Aktie { AktienID = 40, AktienSymbol = "AI.PA", AktienName = "Air Liquide S.A." },
+                // Technologie- und Wachstumsaktien
+                new Aktie { AktienID = 51, AktienSymbol = "ZM", AktienName = "Zoom Video Communications, Inc." },
+                new Aktie { AktienID = 52, AktienSymbol = "UBER", AktienName = "Uber Technologies, Inc." },
+                new Aktie { AktienID = 53, AktienSymbol = "LYFT", AktienName = "Lyft, Inc." },
+                new Aktie { AktienID = 54, AktienSymbol = "SNOW", AktienName = "Snowflake Inc." },
+                new Aktie { AktienID = 55, AktienSymbol = "PLTR", AktienName = "Palantir Technologies Inc." },
+                new Aktie { AktienID = 56, AktienSymbol = "PINS", AktienName = "Pinterest, Inc." },
+                new Aktie { AktienID = 57, AktienSymbol = "SNAP", AktienName = "Snap Inc." },
+                new Aktie { AktienID = 58, AktienSymbol = "TWTR", AktienName = "Twitter, Inc." },
+                new Aktie { AktienID = 59, AktienSymbol = "SPOT", AktienName = "Spotify Technology S.A." },
+                new Aktie { AktienID = 60, AktienSymbol = "SQ", AktienName = "Block, Inc." },
                 
-                // Europäische Aktien - Schweiz
-                new Aktie { AktienID = 41, AktienSymbol = "NESN.SW", AktienName = "Nestlé S.A." },
-                new Aktie { AktienID = 42, AktienSymbol = "ROG.SW", AktienName = "Roche Holding AG" },
-                new Aktie { AktienID = 43, AktienSymbol = "NOVN.SW", AktienName = "Novartis AG" },
+                // Finanz- und Bankaktien
+                new Aktie { AktienID = 61, AktienSymbol = "GS", AktienName = "The Goldman Sachs Group, Inc." },
+                new Aktie { AktienID = 62, AktienSymbol = "MS", AktienName = "Morgan Stanley" },
+                new Aktie { AktienID = 63, AktienSymbol = "C", AktienName = "Citigroup Inc." },
+                new Aktie { AktienID = 64, AktienSymbol = "WFC", AktienName = "Wells Fargo & Company" },
+                new Aktie { AktienID = 65, AktienSymbol = "AXP", AktienName = "American Express Company" },
                 
-                // Europäische Aktien - Großbritannien
-                new Aktie { AktienID = 44, AktienSymbol = "HSBA.L", AktienName = "HSBC Holdings plc" },
-                new Aktie { AktienID = 45, AktienSymbol = "BP.L", AktienName = "BP plc" },
-                new Aktie { AktienID = 46, AktienSymbol = "GSK.L", AktienName = "GSK plc" },
-                new Aktie { AktienID = 47, AktienSymbol = "AZN.L", AktienName = "AstraZeneca plc" },
+                // Deutsche Aktien für heimisches Flair
+                new Aktie { AktienID = 66, AktienSymbol = "ALV", AktienName = "Allianz SE" },
+                new Aktie { AktienID = 67, AktienSymbol = "SAP", AktienName = "SAP SE" },
+                new Aktie { AktienID = 68, AktienSymbol = "SIE", AktienName = "Siemens AG" },
+                new Aktie { AktienID = 69, AktienSymbol = "DAI", AktienName = "Mercedes-Benz Group AG" },
+                new Aktie { AktienID = 70, AktienSymbol = "BMW", AktienName = "Bayerische Motoren Werke AG" },
                 
-                // Europäische Aktien - Niederlande
-                new Aktie { AktienID = 48, AktienSymbol = "ASML.AS", AktienName = "ASML Holding N.V." },
-                new Aktie { AktienID = 49, AktienSymbol = "UNA.AS", AktienName = "Unilever plc" },
+                // ETFs - US-Index ETFs
+                new Aktie { AktienID = 71, AktienSymbol = "SPY", AktienName = "SPDR S&P 500 ETF Trust" },
+                new Aktie { AktienID = 72, AktienSymbol = "VOO", AktienName = "Vanguard S&P 500 ETF" },
+                new Aktie { AktienID = 73, AktienSymbol = "QQQ", AktienName = "Invesco QQQ Trust" },
+                new Aktie { AktienID = 74, AktienSymbol = "IWM", AktienName = "iShares Russell 2000 ETF" },
+                new Aktie { AktienID = 75, AktienSymbol = "DIA", AktienName = "SPDR Dow Jones Industrial Average ETF" },
                 
-                // Europäische Aktien - Spanien
-                new Aktie { AktienID = 50, AktienSymbol = "SAN.MC", AktienName = "Banco Santander, S.A." },
-                new Aktie { AktienID = 51, AktienSymbol = "IBE.MC", AktienName = "Iberdrola, S.A." },
+                // ETFs - International
+                new Aktie { AktienID = 76, AktienSymbol = "VEA", AktienName = "Vanguard FTSE Developed Markets ETF" },
+                new Aktie { AktienID = 77, AktienSymbol = "VWO", AktienName = "Vanguard FTSE Emerging Markets ETF" },
+                new Aktie { AktienID = 78, AktienSymbol = "EFA", AktienName = "iShares MSCI EAFE ETF" },
+                new Aktie { AktienID = 79, AktienSymbol = "IEMG", AktienName = "iShares Core MSCI Emerging Markets ETF" },
                 
-                // Europäische Aktien - Italien
-                new Aktie { AktienID = 52, AktienSymbol = "ENI.MI", AktienName = "Eni S.p.A." },
-                new Aktie { AktienID = 53, AktienSymbol = "ISP.MI", AktienName = "Intesa Sanpaolo S.p.A." },
+                // ETFs - Sektoren
+                new Aktie { AktienID = 80, AktienSymbol = "XLF", AktienName = "Financial Select Sector SPDR Fund" },
+                new Aktie { AktienID = 81, AktienSymbol = "XLK", AktienName = "Technology Select Sector SPDR Fund" },
+                new Aktie { AktienID = 82, AktienSymbol = "XLE", AktienName = "Energy Select Sector SPDR Fund" },
+                new Aktie { AktienID = 83, AktienSymbol = "XLV", AktienName = "Health Care Select Sector SPDR Fund" },
+                new Aktie { AktienID = 84, AktienSymbol = "XLC", AktienName = "Communication Services Select Sector SPDR Fund" },
                 
-                // Europäische Aktien - Schweden
-                new Aktie { AktienID = 54, AktienSymbol = "ATCO-A.ST", AktienName = "Atlas Copco AB" },
+                // ETFs - Anleihen
+                new Aktie { AktienID = 85, AktienSymbol = "AGG", AktienName = "iShares Core U.S. Aggregate Bond ETF" },
+                new Aktie { AktienID = 86, AktienSymbol = "BND", AktienName = "Vanguard Total Bond Market ETF" },
+                new Aktie { AktienID = 87, AktienSymbol = "LQD", AktienName = "iShares iBoxx $ Investment Grade Corporate Bond ETF" },
+                new Aktie { AktienID = 88, AktienSymbol = "TLT", AktienName = "iShares 20+ Year Treasury Bond ETF" },
                 
-                // US-Aktien - Weitere wichtige
-                new Aktie { AktienID = 55, AktienSymbol = "ORCL", AktienName = "Oracle Corporation" },
-                new Aktie { AktienID = 56, AktienSymbol = "PYPL", AktienName = "PayPal Holdings, Inc." },
-                new Aktie { AktienID = 57, AktienSymbol = "CMCSA", AktienName = "Comcast Corporation" },
-                new Aktie { AktienID = 58, AktienSymbol = "PEP", AktienName = "PepsiCo, Inc." },
-                new Aktie { AktienID = 59, AktienSymbol = "NKE", AktienName = "Nike, Inc." },
-                new Aktie { AktienID = 60, AktienSymbol = "TMO", AktienName = "Thermo Fisher Scientific Inc." },
+                // ETFs - Dividenden
+                new Aktie { AktienID = 89, AktienSymbol = "VYM", AktienName = "Vanguard High Dividend Yield ETF" },
+                new Aktie { AktienID = 90, AktienSymbol = "SCHD", AktienName = "Schwab U.S. Dividend Equity ETF" },
+                new Aktie { AktienID = 91, AktienSymbol = "HDV", AktienName = "iShares Core High Dividend ETF" },
                 
-                // Rohstoffe und Energie
-                new Aktie { AktienID = 61, AktienSymbol = "XOM", AktienName = "Exxon Mobil Corporation" },
-                new Aktie { AktienID = 62, AktienSymbol = "CVX", AktienName = "Chevron Corporation" },
-                new Aktie { AktienID = 63, AktienSymbol = "RIO", AktienName = "Rio Tinto Group" },
-                new Aktie { AktienID = 64, AktienSymbol = "BHP", AktienName = "BHP Group Limited" },
+                // ETFs - Spezielle Anlagethemen
+                new Aktie { AktienID = 92, AktienSymbol = "ARKK", AktienName = "ARK Innovation ETF" },
+                new Aktie { AktienID = 93, AktienSymbol = "ICLN", AktienName = "iShares Global Clean Energy ETF" },
+                new Aktie { AktienID = 94, AktienSymbol = "ESGU", AktienName = "iShares ESG Aware MSCI USA ETF" },
+                new Aktie { AktienID = 95, AktienSymbol = "ROBO", AktienName = "ROBO Global Robotics and Automation Index ETF" },
                 
-                // Finanzen und Banken
-                new Aktie { AktienID = 65, AktienSymbol = "GS", AktienName = "Goldman Sachs Group Inc." },
-                new Aktie { AktienID = 66, AktienSymbol = "MS", AktienName = "Morgan Stanley" },
-                new Aktie { AktienID = 67, AktienSymbol = "C", AktienName = "Citigroup Inc." },
-                new Aktie { AktienID = 68, AktienSymbol = "WFC", AktienName = "Wells Fargo & Company" },
-                
-                // Pharma und Gesundheitswesen
-                new Aktie { AktienID = 69, AktienSymbol = "MRK", AktienName = "Merck & Co., Inc." },
-                new Aktie { AktienID = 70, AktienSymbol = "ABBV", AktienName = "AbbVie Inc." },
-                
-                // Automobil
-                new Aktie { AktienID = 71, AktienSymbol = "F", AktienName = "Ford Motor Company" },
-                new Aktie { AktienID = 72, AktienSymbol = "GM", AktienName = "General Motors Company" },
-                
-                // Telekommunikation
-                new Aktie { AktienID = 73, AktienSymbol = "T", AktienName = "AT&T Inc." },
-                new Aktie { AktienID = 74, AktienSymbol = "VZ", AktienName = "Verizon Communications Inc." },
-                new Aktie { AktienID = 75, AktienSymbol = "TMUS", AktienName = "T-Mobile US, Inc." }
+                // Europäische ETFs (auch auf US-Börsen handelbar)
+                new Aktie { AktienID = 96, AktienSymbol = "VGK", AktienName = "Vanguard FTSE Europe ETF" },
+                new Aktie { AktienID = 97, AktienSymbol = "EWG", AktienName = "iShares MSCI Germany ETF" },
+                new Aktie { AktienID = 98, AktienSymbol = "EWU", AktienName = "iShares MSCI United Kingdom ETF" },
+                new Aktie { AktienID = 99, AktienSymbol = "EWQ", AktienName = "iShares MSCI France ETF" },
+                new Aktie { AktienID = 100, AktienSymbol = "EWI", AktienName = "iShares MSCI Italy ETF" }
             };
         }
     }

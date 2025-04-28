@@ -342,5 +342,55 @@ namespace HausarbeitVirtuelleBörsenplattform
                 FindAndCheckHandelsUserControl(child);
             }
         }
+
+        private void PortfolioButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Debug.WriteLine("Portfolio-Button wurde geklickt");
+
+                // Haupt-Grid für Inhalte finden
+                var mainGrid = FindMainContentGrid();
+                if (mainGrid == null)
+                {
+                    Debug.WriteLine("Konnte das Haupt-Grid nicht finden");
+                    MessageBox.Show("Fehler beim Öffnen des Portfolios.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // Portfolio-Ansicht anzeigen
+                mainGrid.Children.Clear();
+
+                // Neues Grid für die Portfolio-Ansicht erstellen
+                var grid = new Grid();
+                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+                // Border für die Portfolio-Ansicht erstellen
+                var border = new Border
+                {
+                    Style = (Style)FindResource("CardBorderStyle"),
+                    Child = new Views.PortfolioView
+                    {
+                        DataContext = this.DataContext
+                    }
+                };
+
+                Grid.SetRow(border, 0);
+                Grid.SetColumn(border, 0);
+                grid.Children.Add(border);
+
+                // Grid zum Haupt-Grid hinzufügen
+                mainGrid.Children.Add(grid);
+
+                Debug.WriteLine("Portfolio-Ansicht wurde angezeigt");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Öffnen des Portfolios: {ex.Message}");
+                MessageBox.Show($"Fehler beim Öffnen des Portfolios: {ex.Message}",
+                               "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 }

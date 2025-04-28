@@ -6,6 +6,8 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using HausarbeitVirtuelleBörsenplattform.Models;
 using HausarbeitVirtuelleBörsenplattform.ViewModels;
+using System.Collections.ObjectModel;
+using HausarbeitVirtuelleBörsenplattform.Helpers;
 
 namespace HausarbeitVirtuelleBörsenplattform.Views
 {
@@ -14,6 +16,9 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
     /// </summary>
     public partial class HandelsUserControl : UserControl
     {
+        // Flag, um doppelte Initialisierung zu verhindern
+        private bool _isInitialized = false;
+
         /// <summary>
         /// Initialisiert eine neue Instanz von HandelsUserControl
         /// </summary>
@@ -29,6 +34,34 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
         private void HandelsUserControl_Loaded(object sender, RoutedEventArgs e)
         {
             Debug.WriteLine("HandelsUserControl_Loaded ausgelöst");
+
+            // Zuerst alle bestehenden Handler entfernen, um doppelte Registrierung zu vermeiden
+            this.Unloaded -= HandelsUserControl_Unloaded;
+            this.Unloaded += HandelsUserControl_Unloaded;
+
+            if (aktienFilter != null)
+            {
+                aktienFilter.FilterChanged -= AktienFilter_FilterChanged;
+                aktienFilter.FilterChanged += AktienFilter_FilterChanged;
+            }
+
+            if (aktienComboBox != null)
+            {
+                aktienComboBox.SelectionChanged -= ComboBox_SelectionChanged;
+                aktienComboBox.SelectionChanged -= AktienComboBox_SelectionChanged;
+
+                // TextChanged-Handler entfernen falls vorhanden
+                try
+                {
+                    ((ComboBox)aktienComboBox).RemoveHandler(
+                        System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent,
+                        new TextChangedEventHandler(ComboBox_TextChanged));
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Fehler beim Entfernen des TextChanged-Handlers: {ex.Message}");
+                }
+            }
 
             if (DataContext is AktienhandelViewModel aktienViewModel)
             {
@@ -79,60 +112,49 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                     }));
                 }
 
-                // Nach einer kurzen Verzögerung die ComboBox-Bindung überprüfen
+                // Verzögerung für die Initialisierung hinzugefügt
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    CheckAndUpdateComboBox();
-
-                    // Wenn ein Symbol in der ComboBox ausgewählt ist, manuell AktienSuchenCommand auslösen
-                    if (!string.IsNullOrWhiteSpace(aktienComboBox.Text))
+                    // Initialisierung nur einmal durchführen
+                    if (!_isInitialized)
                     {
-                        Debug.WriteLine($"Aktie in ComboBox ausgewählt: {aktienComboBox.Text}");
-                        aktienViewModel.AktienSymbol = aktienComboBox.Text;
+                        _isInitialized = true;
 
-                        // Manuelle Aktualisierung der Aktien-Daten
-                        Dispatcher.BeginInvoke(new Action(async () =>
-                        {
-                            // Suchen-Button manuell "drücken"
-                            if (aktienViewModel.AktienSuchenCommand.CanExecute(null))
-                            {
-                                await aktienViewModel.AktienSuchenCommand.ExecuteAsync(null);
-                            }
-                        }), System.Windows.Threading.DispatcherPriority.Background);
-                    }
-                }), System.Windows.Threading.DispatcherPriority.Background);
+                        // AktienFilterControl initialisieren
+                        InitializeFilterControl();
 
-                // Event-Handler für Änderungen in der ComboBox hinzufügen
-                aktienComboBox.SelectionChanged += (s, args) =>
-                {
-                    Debug.WriteLine("ComboBox SelectionChanged ausgelöst");
+                        // ComboBox aktualisieren
+                        CheckAndUpdateComboBox();
 
-                    if (aktienComboBox.SelectedItem is Aktie ausgewählteAktie)
-                    {
-                        Debug.WriteLine($"Aktie ausgewählt: {ausgewählteAktie.AktienSymbol}");
-                        aktienViewModel.SelectedAktie = ausgewählteAktie;
-
-                        // Explizit Daten aktualisieren
-                        aktienViewModel.AktienSymbol = ausgewählteAktie.AktienSymbol;
-                    }
-                    else if (!string.IsNullOrWhiteSpace(aktienComboBox.Text))
-                    {
-                        // Bei manueller Texteingabe
-                        Debug.WriteLine($"Text in ComboBox geändert: {aktienComboBox.Text}");
-                        aktienViewModel.AktienSymbol = aktienComboBox.Text;
-                    }
-                };
-
-                // TextChanged-Event für die ComboBox hinzufügen (falls IsEditable=true)
-                ((ComboBox)aktienComboBox).AddHandler(System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent,
-                    new TextChangedEventHandler((s, args) =>
-                    {
+                        // Wenn ein Symbol in der ComboBox ausgewählt ist, manuell AktienSuchenCommand auslösen
                         if (!string.IsNullOrWhiteSpace(aktienComboBox.Text))
                         {
-                            Debug.WriteLine($"Text in ComboBox geändert (TextChanged): {aktienComboBox.Text}");
+                            Debug.WriteLine($"Aktie in ComboBox ausgewählt: {aktienComboBox.Text}");
                             aktienViewModel.AktienSymbol = aktienComboBox.Text;
+
+                            // Manuelle Aktualisierung der Aktien-Daten
+                            Dispatcher.BeginInvoke(new Action(async () =>
+                            {
+                                // Suchen-Button manuell "drücken"
+                                if (aktienViewModel.AktienSuchenCommand.CanExecute(null))
+                                {
+                                    await aktienViewModel.AktienSuchenCommand.ExecuteAsync(null);
+                                }
+                            }), System.Windows.Threading.DispatcherPriority.Background);
                         }
-                    }));
+
+                        // Event-Handler für Änderungen in der ComboBox hinzufügen
+                        aktienComboBox.SelectionChanged += ComboBox_SelectionChanged;
+
+                        // TextChanged-Event für die ComboBox hinzufügen (falls IsEditable=true)
+                        ((ComboBox)aktienComboBox).AddHandler(System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent,
+                            new TextChangedEventHandler(ComboBox_TextChanged));
+                    }
+                    else
+                    {
+                        Debug.WriteLine("HandelsUserControl wurde bereits initialisiert, überspringe doppelte Initialisierung");
+                    }
+                }), System.Windows.Threading.DispatcherPriority.Background);
             }
             else
             {
@@ -140,6 +162,254 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
             }
         }
 
+        /// <summary>
+        /// Event-Handler für das Entladen des Controls
+        /// </summary>
+        private void HandelsUserControl_Unloaded(object sender, RoutedEventArgs e)
+        {
+            Debug.WriteLine("HandelsUserControl_Unloaded ausgelöst");
+
+            // Alle Event-Handler entfernen
+            if (aktienFilter != null)
+            {
+                aktienFilter.FilterChanged -= AktienFilter_FilterChanged;
+
+                // Wichtig: Auch das DataContext zurücksetzen oder zumindest Flags bereinigen
+                if (aktienFilter.DataContext is AktienFilterViewModel filterVM)
+                {
+                    var field = filterVM.GetType().GetField("_isFilteringInProgress",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                    if (field != null)
+                    {
+                        field.SetValue(filterVM, false);
+                        Debug.WriteLine("_isFilteringInProgress bei Unload auf false zurückgesetzt");
+                    }
+                }
+
+                // Optional: DataContext entfernen
+                aktienFilter.DataContext = null;
+            }
+
+            // ComboBox-Event-Handler entfernen
+            if (aktienComboBox != null)
+            {
+                aktienComboBox.SelectionChanged -= ComboBox_SelectionChanged;
+                aktienComboBox.SelectionChanged -= AktienComboBox_SelectionChanged;
+
+                // TextChanged-Handler entfernen
+                try
+                {
+                    ((ComboBox)aktienComboBox).RemoveHandler(
+                        System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent,
+                        new TextChangedEventHandler(ComboBox_TextChanged));
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Fehler beim Entfernen des TextChanged-Handlers: {ex.Message}");
+                }
+            }
+
+            // Unload-Handler entfernen
+            this.Unloaded -= HandelsUserControl_Unloaded;
+
+            // Flag zurücksetzen, damit beim nächsten Laden eine vollständige Initialisierung stattfindet
+            _isInitialized = false;
+
+            Debug.WriteLine("HandelsUserControl wurde vollständig entladen");
+
+            // DataContext entfernen, um Speicherlecks zu vermeiden
+            this.DataContext = null;
+
+            Debug.WriteLine("AktienFilterUserControl entladen");
+        }
+
+        /// <summary>
+        /// Event-Handler für ComboBox SelectionChanged
+        /// </summary>
+        private void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var comboBox = sender as ComboBox;
+            Debug.WriteLine($"ComboBox SelectionChanged");
+            Debug.WriteLine($"Items Count: {comboBox.Items.Count}");
+            Debug.WriteLine($"SelectedItem: {comboBox.SelectedItem}");
+
+            if (DataContext is AktienhandelViewModel vm)
+            {
+                Debug.WriteLine($"ViewModel AktienListe Count: {vm.AktienListe?.Count ?? 0}");
+                Debug.WriteLine($"ViewModel GefilterteAktienListe Count: {vm.GefilterteAktienListe?.Count() ?? 0}");
+
+                if (comboBox.SelectedItem is Aktie ausgewählteAktie)
+                {
+                    Debug.WriteLine($"Aktie ausgewählt: {ausgewählteAktie.AktienSymbol}");
+                    vm.SelectedAktie = ausgewählteAktie;
+
+                    // Explizit Daten aktualisieren
+                    vm.AktienSymbol = ausgewählteAktie.AktienSymbol;
+                }
+                else if (!string.IsNullOrWhiteSpace(comboBox.Text))
+                {
+                    // Bei manueller Texteingabe
+                    Debug.WriteLine($"Text in ComboBox geändert: {comboBox.Text}");
+                    vm.AktienSymbol = comboBox.Text;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Event-Handler für ComboBox TextChanged
+        /// </summary>
+        private void ComboBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(aktienComboBox.Text) && DataContext is AktienhandelViewModel vm)
+            {
+                Debug.WriteLine($"Text in ComboBox geändert (TextChanged): {aktienComboBox.Text}");
+                vm.AktienSymbol = aktienComboBox.Text;
+            }
+        }
+
+        /// <summary>
+        /// Initialisiert das AktienFilterControl
+        /// </summary>
+        private void InitializeFilterControl()
+        {
+            try
+            {
+                Debug.WriteLine("Initialisiere AktienFilterControl");
+
+                // Wichtig: Event-Handler explizit entfernen
+                if (aktienFilter != null)
+                {
+                    aktienFilter.FilterChanged -= AktienFilter_FilterChanged;
+                }
+
+                // MainViewModel auf konventionellem Weg holen
+                var mainWindow = Application.Current.MainWindow as MainWindow;
+                var mainViewModel = mainWindow?.DataContext as MainViewModel;
+
+                if (mainViewModel != null && mainViewModel.AktienFilterViewModel != null)
+                {
+                    Debug.WriteLine("MainViewModel und AktienFilterViewModel gefunden");
+
+                    // Stellen sicher, dass das Flag zurückgesetzt ist
+                    var field = mainViewModel.AktienFilterViewModel.GetType().GetField("_isFilteringInProgress",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                    if (field != null)
+                    {
+                        field.SetValue(mainViewModel.AktienFilterViewModel, false);
+                        Debug.WriteLine("_isFilteringInProgress wurde auf false zurückgesetzt");
+                    }
+
+                    // Dann erst DataContext setzen
+                    aktienFilter.DataContext = mainViewModel.AktienFilterViewModel;
+
+                    // Jetzt den Event-Handler neu hinzufügen
+                    aktienFilter.FilterChanged += AktienFilter_FilterChanged;
+
+                    // Aktienlistendaten übertragen
+                    if (DataContext is AktienhandelViewModel handelsVM && handelsVM.AktienListe != null)
+                    {
+                        mainViewModel.AktienFilterViewModel.SetzeAktienListe(handelsVM.AktienListe);
+                        Debug.WriteLine("AktienListe an AktienFilterViewModel übergeben");
+                    }
+
+                    // Filter explizit aktualisieren
+                    mainViewModel.AktienFilterViewModel.FilterAnwendenCommand.Execute(null);
+                }
+                else
+                {
+                    Debug.WriteLine("MainViewModel oder AktienFilterViewModel ist null");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Initialisieren des AktienFilterControls: {ex.Message}");
+                Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
+            }
+        }
+
+        /// <summary>
+        /// Behandelt Änderungen der Filteroptionen
+        /// </summary>
+        private void AktienFilter_FilterChanged(object sender, FilterChangedEventArgs e)
+        {
+            Debug.WriteLine("AktienFilter_FilterChanged aufgerufen");
+
+            if (DataContext is AktienhandelViewModel aktienViewModel)
+            {
+                try
+                {
+                    // Gefilterte Aktien in die ComboBox übernehmen
+                    if (e.GefilterteAktien != null)
+                    {
+                        // Temporäre Liste mit gefilterten Aktien erstellen
+                        var tempList = new ObservableCollection<Aktie>();
+                        foreach (var aktie in e.GefilterteAktien)
+                        {
+                            tempList.Add(aktie);
+                        }
+
+                        // ComboBox aktualisieren
+                        aktienComboBox.ItemsSource = tempList;
+
+                        Debug.WriteLine($"Gefilterte Aktien-Liste mit {tempList.Count} Elementen in ComboBox übernommen");
+
+                        // Auch den SuchText im AktienhandelViewModel aktualisieren
+                        if (!string.IsNullOrEmpty(e.SuchText))
+                        {
+                            aktienViewModel.SuchText = e.SuchText;
+                            aktienComboBox.Text = e.SuchText;
+                            Debug.WriteLine($"SuchText im ViewModel aktualisiert: {e.SuchText}");
+                        }
+
+                        // Wenn nur ein Element, dieses automatisch auswählen
+                        if (tempList.Count == 1)
+                        {
+                            aktienComboBox.SelectedItem = tempList[0];
+                            aktienViewModel.SelectedAktie = tempList[0];
+                            aktienViewModel.AktienSymbol = tempList[0].AktienSymbol;
+
+                            // Optional: Automatisch Suchen auslösen
+                            Dispatcher.BeginInvoke(new Action(async () => {
+                                if (aktienViewModel.AktienSuchenCommand.CanExecute(null))
+                                {
+                                    Debug.WriteLine($"Auto-Suche für gefilterte Aktie: {tempList[0].AktienSymbol}");
+                                    await aktienViewModel.AktienSuchenCommand.ExecuteAsync(null);
+                                }
+                            }));
+                        }
+                        else if (tempList.Count > 0 && !string.IsNullOrEmpty(e.SuchText))
+                        {
+                            // Wenn mehrere Elemente und ein Suchtext vorhanden, versuche exakte Übereinstimmung zu finden
+                            var exactMatch = tempList.FirstOrDefault(a =>
+                                a.AktienSymbol.Equals(e.SuchText, StringComparison.OrdinalIgnoreCase) ||
+                                a.AktienName.Equals(e.SuchText, StringComparison.OrdinalIgnoreCase));
+
+                            if (exactMatch != null)
+                            {
+                                aktienComboBox.SelectedItem = exactMatch;
+                                aktienViewModel.SelectedAktie = exactMatch;
+                                aktienViewModel.AktienSymbol = exactMatch.AktienSymbol;
+
+                                // Automatisch Suchen auslösen
+                                Dispatcher.BeginInvoke(new Action(async () => {
+                                    if (aktienViewModel.AktienSuchenCommand.CanExecute(null))
+                                    {
+                                        Debug.WriteLine($"Auto-Suche für exakt passende Aktie: {exactMatch.AktienSymbol}");
+                                        await aktienViewModel.AktienSuchenCommand.ExecuteAsync(null);
+                                    }
+                                }));
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Fehler bei Filteränderung: {ex.Message}");
+                }
+            }
+        }
 
         private void AktienComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {

@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Threading.Tasks;
 using HausarbeitVirtuelleBörsenplattform.Models;
+using System.Collections.Generic;
 
 namespace HausarbeitVirtuelleBörsenplattform.Services
 {
@@ -152,14 +153,110 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                     VollName = fullName
                 };
 
+                // Benutzer in Datenbank speichern
                 var result = await _databaseService.AddBenutzerAsync(newUser);
-                Debug.WriteLine($"Neuer Benutzer {email} registriert: {result}");
-                return result;
+
+                if (result)
+                {
+                    Debug.WriteLine($"Benutzer {username} wurde erfolgreich angelegt mit ID: {newUser.BenutzerID}");
+
+                    // Wichtig: Das await nicht vergessen, um zu gewährleisten, dass die Apple-Aktien hinzugefügt werden
+                    await AddInitialAppleShares(newUser);
+
+                    Debug.WriteLine($"Neuer Benutzer {email} registriert: {result}");
+                    return true;
+                }
+                else
+                {
+                    Debug.WriteLine("Benutzer konnte nicht in Datenbank gespeichert werden");
+                    return false;
+                }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Fehler bei der Registrierung: {ex.Message}");
+                Debug.WriteLine($"StackTrace: {ex.StackTrace}");
                 return false;
+            }
+        }
+
+        // Überarbeitete Methode zum Hinzufügen von Apple-Aktien
+        private async Task AddInitialAppleShares(Benutzer newUser)
+        {
+            try
+            {
+                // Die BenutzerID aus dem neu erstellten Benutzer holen
+                int benutzerId = newUser.BenutzerID;
+
+                Debug.WriteLine($"Füge 2 Apple-Aktien für neuen Benutzer hinzu (ID: {benutzerId})");
+
+                // Die neue GetOrCreateAktieBySymbolAsync-Methode verwenden
+                var appleAktie = await _databaseService.GetOrCreateAktieBySymbolAsync("AAPL", "Apple Inc.", 180.00m);
+
+                if (appleAktie == null)
+                {
+                    Debug.WriteLine("Fehler: Konnte Apple-Aktie nicht in der Datenbank finden oder erstellen");
+                    return;
+                }
+
+                // Aktuellen Kurs über API abrufen, wenn möglich
+                decimal aktuellerPreis = appleAktie.AktuellerPreis;
+
+                if (App.TwelveDataService != null)
+                {
+                    try
+                    {
+                        var aktienDaten = await App.TwelveDataService.HoleAktienKurse(new List<string> { "AAPL" });
+                        if (aktienDaten != null && aktienDaten.Count > 0 && aktienDaten[0].AktuellerPreis > 0)
+                        {
+                            aktuellerPreis = aktienDaten[0].AktuellerPreis;
+                            Debug.WriteLine($"Aktueller Apple-Kurs von API: {aktuellerPreis:F2}€");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Fehler beim Abrufen des aktuellen Apple-Kurses: {ex.Message}");
+                        // Bei Fehler behalten wir den Standardpreis oder DB-Preis bei
+                    }
+                }
+
+                // Portfolio-Eintrag erstellen (2 Apple-Aktien)
+                var portfolioEintrag = new PortfolioEintrag
+                {
+                    BenutzerID = benutzerId,
+                    AktienID = appleAktie.AktienID,
+                    AktienSymbol = appleAktie.AktienSymbol,
+                    AktienName = appleAktie.AktienName,
+                    Anzahl = 2, // 2 Aktien zum Start
+                    AktuellerKurs = aktuellerPreis,
+                    EinstandsPreis = aktuellerPreis,
+                    LetzteAktualisierung = DateTime.Now
+                };
+
+                // Zum Portfolio hinzufügen
+                bool success = await _databaseService.AddOrUpdatePortfolioEintragAsync(portfolioEintrag);
+
+                if (success)
+                {
+                    // Apple-Aktien kosten vom Startguthaben abziehen
+                    decimal kosten = 2 * aktuellerPreis;
+                    newUser.Kontostand -= kosten;
+
+                    // Aktualisieren des Benutzers in der Datenbank
+                    await _databaseService.UpdateBenutzerAsync(newUser);
+
+                    Debug.WriteLine($"2 Apple-Aktien wurden dem neuen Benutzer (ID: {benutzerId}) für {kosten:F2}€ hinzugefügt");
+                    Debug.WriteLine($"Verbleibendes Guthaben: {newUser.Kontostand:F2}€");
+                }
+                else
+                {
+                    Debug.WriteLine($"Fehler: Konnte Portfolio-Eintrag nicht hinzufügen oder aktualisieren");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Hinzufügen der Start-Aktien: {ex.Message}");
+                Debug.WriteLine($"StackTrace: {ex.StackTrace}");
             }
         }
 

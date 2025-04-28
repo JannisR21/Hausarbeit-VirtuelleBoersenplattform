@@ -216,14 +216,18 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         {
             _portfolioUpdateTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromSeconds(10) // Alle 10 Sekunden aktualisieren
+                Interval = TimeSpan.FromSeconds(30) // Von 10 auf 30 Sekunden erhöht
             };
 
             _portfolioUpdateTimer.Tick += (s, e) => UpdatePortfolioWithMarketData();
             _portfolioUpdateTimer.Start();
 
-            // Sofort einmal aktualisieren
-            UpdatePortfolioWithMarketData();
+            // Sofort einmal aktualisieren, aber nur wenn die Börse geöffnet ist
+            bool istBoerseGeoeffnet = App.TwelveDataService?.IstBoerseGeoeffnet() ?? false;
+            if (istBoerseGeoeffnet)
+            {
+                UpdatePortfolioWithMarketData();
+            }
 
             Debug.WriteLine("Portfolio-Update-Timer gestartet");
         }
@@ -235,6 +239,15 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         {
             if (MarktdatenViewModel?.AktienListe != null && PortfolioViewModel != null)
             {
+                // Prüfen, ob die Börse geöffnet ist, bevor das Portfolio aktualisiert wird
+                bool istBoerseGeoeffnet = App.TwelveDataService?.IstBoerseGeoeffnet() ?? false;
+
+                if (!istBoerseGeoeffnet)
+                {
+                    Debug.WriteLine("Börse geschlossen: Portfolio wird nicht mit Marktdaten aktualisiert");
+                    return; // Keine Aktualisierung bei geschlossener Börse
+                }
+
                 Debug.WriteLine("Aktualisiere Portfolio mit Marktdaten...");
                 PortfolioViewModel.AktualisiereKurseMitMarktdaten(MarktdatenViewModel.AktienListe);
             }
@@ -274,20 +287,48 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// Erhöht den Kontostand um den angegebenen Betrag
         /// </summary>
         /// <param name="betrag">Der zu addierende Betrag</param>
-        public void ErhöheKontostand(decimal betrag)
+        public async void ErhöheKontostand(decimal betrag)
         {
             Debug.WriteLine($"ErhöheKontostand aufgerufen: +{betrag:N2}€");
             Kontostand += betrag;
+
+            // Aktualisiere den Benutzer in der Datenbank
+            if (AktuellerBenutzer != null && App.DbService != null)
+            {
+                // Kontostand im Benutzer-Objekt aktualisieren
+                AktuellerBenutzer.Kontostand = Kontostand;
+
+                // In der Datenbank speichern
+                bool erfolg = await App.DbService.UpdateBenutzerAsync(AktuellerBenutzer);
+                if (!erfolg)
+                {
+                    Debug.WriteLine("FEHLER: Kontostand konnte nicht in der Datenbank aktualisiert werden!");
+                }
+            }
         }
 
         /// <summary>
         /// Verringert den Kontostand um den angegebenen Betrag
         /// </summary>
         /// <param name="betrag">Der abzuziehende Betrag</param>
-        public void VerringereKontostand(decimal betrag)
+        public async void VerringereKontostand(decimal betrag)
         {
             Debug.WriteLine($"VerringereKontostand aufgerufen: -{betrag:N2}€");
             Kontostand -= betrag;
+
+            // Aktualisiere den Benutzer in der Datenbank
+            if (AktuellerBenutzer != null && App.DbService != null)
+            {
+                // Kontostand im Benutzer-Objekt aktualisieren
+                AktuellerBenutzer.Kontostand = Kontostand;
+
+                // In der Datenbank speichern
+                bool erfolg = await App.DbService.UpdateBenutzerAsync(AktuellerBenutzer);
+                if (!erfolg)
+                {
+                    Debug.WriteLine("FEHLER: Kontostand konnte nicht in der Datenbank aktualisiert werden!");
+                }
+            }
         }
 
         #endregion

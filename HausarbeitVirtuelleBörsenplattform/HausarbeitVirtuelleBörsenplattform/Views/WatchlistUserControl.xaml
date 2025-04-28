@@ -1,0 +1,281 @@
+﻿<UserControl x:Class="HausarbeitVirtuelleBörsenplattform.Views.WatchlistUserControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:HausarbeitVirtuelleBörsenplattform.Views"
+             xmlns:converters="clr-namespace:HausarbeitVirtuelleBörsenplattform.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+
+    <UserControl.Resources>
+        <converters:GewinnVerlustFarbeConverter x:Key="GewinnVerlustFarbeConverter"/>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Steuerungsleiste -->
+        <Grid Grid.Row="0" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Aktualisieren-Button -->
+            <Button Grid.Column="0"
+                    Content="Aktualisieren" 
+                    Command="{Binding AktualisierenCommand}"
+                    Height="35" 
+                    Width="120"
+                    Margin="0,0,10,0"
+                    Background="#2c3e50"
+                    Foreground="White"
+                    BorderThickness="0"/>
+
+            <!-- Status und letzte Aktualisierung -->
+            <TextBlock Grid.Column="1" 
+                       Text="{Binding LetzteAktualisierung, StringFormat=Letzte Aktualisierung: {0:dd.MM.yyyy HH:mm:ss}}"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Right"
+                       Foreground="#555"/>
+        </Grid>
+
+        <!-- Fehlerbereich -->
+        <Border Grid.Row="1" 
+                Background="#fff8e1" 
+                BorderBrush="#ffecb3" 
+                BorderThickness="1" 
+                CornerRadius="4" 
+                Padding="10" 
+                Margin="0,0,0,10">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HatFehler}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Warnsymbol -->
+                <Path Grid.Column="0"
+                      Data="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"
+                      Fill="#ffa000"
+                      Width="24"
+                      Height="24"
+                      Stretch="Uniform"
+                      Margin="0,0,10,0"/>
+
+                <!-- Fehlermeldung -->
+                <TextBlock Grid.Column="1"
+                           Text="{Binding FehlerText}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- Watchlist-Tabelle -->
+        <DataGrid Grid.Row="2"
+                  ItemsSource="{Binding WatchlistEintraege}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  BorderThickness="0"
+                  Background="Transparent"
+                  RowBackground="White"
+                  AlternatingRowBackground="#f5f9ff"
+                  CanUserSortColumns="True"
+                  RowHeight="40"
+                  HorizontalGridLinesBrush="#e0e0e0"
+                  VerticalGridLinesBrush="Transparent">
+
+            <!-- Verbesserte Stile für die DataGrid-Elemente -->
+            <DataGrid.Resources>
+                <!-- Style für die Spaltenköpfe -->
+                <Style TargetType="DataGridColumnHeader">
+                    <Setter Property="Background" Value="#f0f4f8"/>
+                    <Setter Property="Foreground" Value="#2c3e50"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="Padding" Value="10,8"/>
+                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                    <Setter Property="BorderBrush" Value="#cccccc"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                </Style>
+
+                <!-- Style für die Zellen -->
+                <Style TargetType="DataGridCell">
+                    <Setter Property="Padding" Value="10,5"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="VerticalAlignment" Value="Center"/>
+                    <Style.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="#e3f2fd"/>
+                            <Setter Property="BorderBrush" Value="#64b5f6"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.Resources>
+
+            <DataGrid.Columns>
+                <!-- Spalte für das Aktiensymbol -->
+                <DataGridTextColumn Header="Symbol" 
+                                    Binding="{Binding AktienSymbol}" 
+                                    Width="90">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- Spalte für den vollständigen Aktiennamen -->
+                <DataGridTextColumn Header="Name" 
+                                    Binding="{Binding AktienName}" 
+                                    Width="*">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- Spalte für den Kurs beim Hinzufügen -->
+                <DataGridTextColumn Header="Kurs beim Hinzufügen" 
+                                    Binding="{Binding KursBeimHinzufuegen, StringFormat={}{0:N2} €}" 
+                                    Width="140">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- Spalte für den aktuellen Kurs -->
+                <DataGridTextColumn Header="Aktueller Kurs" 
+                                    Binding="{Binding AktuellerKurs, StringFormat={}{0:N2} €}" 
+                                    Width="120">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                            <Setter Property="FontWeight" Value="Medium"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- Spalte für die Kursänderung mit farblicher Hervorhebung -->
+                <DataGridTemplateColumn Header="Änderung seit Hinzufügen" Width="180">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <!-- Absolute Änderung -->
+                                <TextBlock Text="{Binding KursÄnderung, StringFormat={}{0:+#,##0.00;-#,##0.00;0.00} €}" 
+                                           Foreground="{Binding KursÄnderung, Converter={StaticResource GewinnVerlustFarbeConverter}}"
+                                           FontWeight="SemiBold"/>
+
+                                <!-- Relative Änderung in Prozent -->
+                                <TextBlock Text="{Binding KursÄnderungProzent, StringFormat={} ({0:+#,##0.00;-#,##0.00;0.00}%)}" 
+                                           Foreground="{Binding KursÄnderung, Converter={StaticResource GewinnVerlustFarbeConverter}}"
+                                           Margin="5,0,0,0"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Spalte für das Datum des Hinzufügens -->
+                <DataGridTextColumn Header="Hinzugefügt am" 
+                                    Binding="{Binding HinzugefuegtAm, StringFormat={}{0:dd.MM.yyyy HH:mm}}" 
+                                    Width="140">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                            <Setter Property="Foreground" Value="#666666"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- Entfernen-Button-Spalte -->
+                <DataGridTemplateColumn Width="90">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="Entfernen" 
+                                    Command="{Binding DataContext.AktieEntfernenCommand, 
+                                             RelativeSource={RelativeSource AncestorType=DataGrid}}" 
+                                    CommandParameter="{Binding}"
+                                    Background="#e74c3c"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    Padding="8,3"
+                                    Margin="0,2"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+
+            <!-- Meldung bei leerer Watchlist -->
+            <DataGrid.Style>
+                <Style TargetType="DataGrid">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding WatchlistEintraege.Count}" Value="0">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate>
+                                        <Grid Background="#f8f9fa" Margin="0,30,0,30">
+                                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Path Data="M18.031 16.617l4.283 4.282-1.415 1.415-4.282-4.283A8.96 8.96 0 0 1 11 20c-4.968 0-9-4.032-9-9s4.032-9 9-9 9 4.032 9 9a8.96 8.96 0 0 1-1.969 5.617zm-2.006-.742A6.977 6.977 0 0 0 18 11c0-3.868-3.133-7-7-7-3.868 0-7 3.132-7 7 0 3.867 3.132 7 7 7a6.977 6.977 0 0 0 4.875-1.975l.15-.15z" 
+                                                      Fill="#999999"
+                                                      Width="80"
+                                                      Height="80"
+                                                      Stretch="Uniform"
+                                                      Margin="0,0,0,15"/>
+                                                <TextBlock Text="Ihre Watchlist ist leer" 
+                                                           HorizontalAlignment="Center"
+                                                           FontSize="18"
+                                                           FontWeight="Medium"
+                                                           Foreground="#333333"
+                                                           Margin="0,0,0,5"/>
+                                                <TextBlock Text="Fügen Sie Aktien aus dem Marktdaten-Bereich zu Ihrer Watchlist hinzu, um deren Entwicklung zu verfolgen" 
+                                                           HorizontalAlignment="Center"
+                                                           TextWrapping="Wrap"
+                                                           Width="400"
+                                                           TextAlignment="Center"
+                                                           Foreground="#666666"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.Style>
+        </DataGrid>
+
+        <!-- Hinweistext -->
+        <TextBlock Grid.Row="3" 
+                   Text="Aktien in der Watchlist werden nicht automatisch gekauft oder verkauft. Nutzen Sie den 'Aktienhandel'-Button, um Transaktionen durchzuführen."
+                   Foreground="#666"
+                   FontStyle="Italic"
+                   HorizontalAlignment="Center"
+                   Margin="0,10,0,0"/>
+    </Grid>
+</UserControl>

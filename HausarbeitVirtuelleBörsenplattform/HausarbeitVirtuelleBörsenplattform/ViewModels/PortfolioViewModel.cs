@@ -202,17 +202,19 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 HatFehler = false;
                 FehlerText = string.Empty;
 
+                // Prüfen, ob die Börse geöffnet ist
+                bool istBoerseGeoeffnet = App.TwelveDataService?.IstBoerseGeoeffnet() ?? false;
+                if (!istBoerseGeoeffnet)
+                {
+                    Debug.WriteLine("Börse ist geschlossen, Portfolio-Kurse werden nicht aktualisiert");
+                    return; // Keine Aktualisierung bei geschlossener Börse
+                }
+
                 if (aktienListe == null || !aktienListe.Any())
                 {
                     Debug.WriteLine("Keine Marktdaten zum Aktualisieren des Portfolios vorhanden");
                     HatFehler = true;
                     FehlerText = "Keine Marktdaten verfügbar. Das Portfolio kann nicht aktualisiert werden.";
-                    return;
-                }
-
-                if (PortfolioEintraege == null || !PortfolioEintraege.Any())
-                {
-                    Debug.WriteLine("Portfolio ist leer, keine Aktualisierung nötig");
                     return;
                 }
 

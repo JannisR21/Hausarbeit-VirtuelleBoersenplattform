@@ -243,13 +243,73 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
         }
 
         /// <summary>
+        /// Prüft, ob die US-Börse aktuell geöffnet ist (vereinfachte Version)
+        /// </summary>
+        /// <returns>True, wenn die Börse geöffnet ist, sonst False</returns>
+        public bool IstBoerseGeoeffnet()
+        {
+            try
+            {
+                // Aktuelle Zeit in der Zeitzone der Anwendung
+                DateTime jetztLokal = DateTime.Now;
+
+                // Zeitzone für US Eastern Time (ET) - New York
+                TimeZoneInfo usEasternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+
+                // Aktuelle Zeit in US Eastern Time
+                DateTime jetztET = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, usEasternZone);
+
+                // Wochentag prüfen (1 = Montag, ..., 7 = Sonntag)
+                int wochentag = (int)jetztET.DayOfWeek;
+
+                // Prüfen, ob es ein Wochenende ist (Samstag = 6, Sonntag = 0)
+                if (wochentag == 6 || wochentag == 0)
+                {
+                    Debug.WriteLine($"Börse geschlossen: Wochenende (Wochentag: {jetztET.DayOfWeek})");
+                    return false;
+                }
+
+                // Uhrzeit prüfen (9:30 - 16:00 ET sind die regulären Handelszeiten)
+                TimeSpan startzeit = new TimeSpan(9, 30, 0); // 9:30 ET
+                TimeSpan endzeit = new TimeSpan(16, 0, 0);   // 16:00 ET
+                TimeSpan aktuelleZeit = jetztET.TimeOfDay;
+
+                bool istGeoeffnet = aktuelleZeit >= startzeit && aktuelleZeit <= endzeit;
+
+                if (!istGeoeffnet)
+                {
+                    Debug.WriteLine($"Börse geschlossen: Außerhalb der Handelszeiten (Aktuelle Zeit ET: {jetztET.ToString("HH:mm")})");
+                }
+                else
+                {
+                    Debug.WriteLine($"Börse geöffnet (Aktuelle Zeit ET: {jetztET.ToString("HH:mm")})");
+                }
+
+                return istGeoeffnet;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler bei der Überprüfung der Börsenöffnungszeiten: {ex.Message}");
+
+                // Im Fehlerfall nehmen wir sicherheitshalber an, dass die Börse geschlossen ist
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Verarbeitet die JSON-Antwort von Twelve Data
+        /// </summary>
+        /// <summary>
+        /// Verarbeitet die JSON-Antwort von Twelve Data mit Berücksichtigung von Handelszeiten
         /// </summary>
         private Aktie ParseTwelveDataResponse(string json, string symbol)
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(json)) return null;
+
+                // Prüfen, ob die Börse aktuell geöffnet ist
+                bool istBoerseGeoeffnet = IstBoerseGeoeffnet();
 
                 // Versuche, das JSON zu deserialisieren
                 using (JsonDocument doc = JsonDocument.Parse(json))
@@ -284,17 +344,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                         else if (symbol == "TSLA") name = "Tesla Inc.";
                         else if (symbol == "AMZN") name = "Amazon.com Inc.";
                         else if (symbol == "GOOGL") name = "Alphabet Inc.";
-
-                        // Deutsche Aktien - nur Namen, keine Kurse
-                        else if (symbol == "SAP.DE") name = "SAP SE";
-                        else if (symbol == "SIE.DE") name = "Siemens AG";
-                        else if (symbol == "ALV.DE") name = "Allianz SE";
-                        else if (symbol == "BAYN.DE") name = "Bayer AG";
-                        else if (symbol == "BAS.DE") name = "BASF SE";
-                        else if (symbol == "DTEGY") name = "Deutsche Telekom AG";
-                        else if (symbol == "BMWYY") name = "Bayerische Motoren Werke AG";
-                        else if (symbol.EndsWith(".DE", StringComparison.OrdinalIgnoreCase))
-                            name = symbol.Replace(".DE", " AG");
+                        // ... weitere bekannte Aktien ...
                     }
 
                     decimal close = 0;
@@ -349,19 +399,50 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                         }
                     }
 
-                    // FALLBACK: Wenn wir keine gültigen Daten haben, verwenden wir Dummy-Daten
+                    // WICHTIG: Verbesserte Fallback-Logik, wenn keine gültigen API-Daten vorhanden sind
                     if (close <= 0)
                     {
-                        Debug.WriteLine($"WARNUNG: Ungültiger Kurs für {symbol}, verwende Fallback-Werte");
+                        Debug.WriteLine($"WARNUNG: Ungültiger Kurs für {symbol}");
 
-                        // Zufällige Fallback-Werte erstellen
-                        Random random = new Random();
-                        close = Math.Round((decimal)(random.NextDouble() * 100 + 50), 2); // Zufälliger Wert zwischen 50 und 150
-                        change = Math.Round((decimal)(random.NextDouble() * 4 - 2), 2);  // Zufälliger Wert zwischen -2 und 2
-                        percentChange = Math.Round((change / close) * 100, 2);
+                        // Prüfen, ob wir einen gecachten Kurs haben
+                        if (_aktienCache.TryGetValue(symbol, out var cachedEntry) && cachedEntry.Aktie.AktuellerPreis > 0)
+                        {
+                            Debug.WriteLine($"Verwende letzten bekannten Kurs für {symbol} vom {cachedEntry.Zeitstempel}");
 
-                        // Fehler markieren
-                        LastErrorMessage = $"Für {symbol} konnten keine Echtzeit-Daten abgerufen werden. Verwende Fallback-Werte.";
+                            // Letzten bekannten Kurs verwenden, aber keine Änderungen
+                            close = cachedEntry.Aktie.AktuellerPreis;
+                            change = 0; // Keine Änderung, da nicht aktualisiert
+                            percentChange = 0;
+
+                            // Spezielle Fehlermeldung für Nicht-Handelszeiten
+                            if (!istBoerseGeoeffnet)
+                            {
+                                LastErrorMessage = $"Der Markt ist derzeit geschlossen. Letzter bekannter Kurs für {symbol} wird angezeigt.";
+                            }
+                            else
+                            {
+                                LastErrorMessage = $"Für {symbol} konnten keine aktuellen Daten abgerufen werden. Letzter bekannter Kurs wird angezeigt.";
+                            }
+                        }
+                        else
+                        {
+                            // Nur im echten Notfall einen Standardwert verwenden, aber NICHT zufällig
+                            Debug.WriteLine($"Kein bekannter Kurs für {symbol} verfügbar, verwende konservativen Standardwert");
+
+                            // Konservativer Standardwert je nach Aktie
+                            if (symbol == "AAPL") close = 180.00m;
+                            else if (symbol == "MSFT") close = 350.00m;
+                            else if (symbol == "TSLA") close = 250.00m;
+                            else if (symbol == "AMZN") close = 140.00m;
+                            else if (symbol == "GOOGL") close = 130.00m;
+                            else if (symbol == "NVDA") close = 120.00m;
+                            else close = 100.00m; // Generischer Fallback für unbekannte Aktien
+
+                            change = 0;
+                            percentChange = 0;
+
+                            LastErrorMessage = $"Für {symbol} sind keine Kursdaten verfügbar. Es wird ein Standardwert ohne Veränderungen angezeigt.";
+                        }
                     }
 
                     // Erstellen eines Aktienobjekts

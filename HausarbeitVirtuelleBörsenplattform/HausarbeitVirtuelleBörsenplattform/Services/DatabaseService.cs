@@ -132,6 +132,36 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
             }
         }
 
+        // In DatabaseService eine neue Methode hinzufügen
+        public async Task<bool> DeleteBenutzerAsync(int benutzerId)
+        {
+            try
+            {
+                using var context = CreateContext();
+
+                // Benutzer suchen
+                var benutzer = await context.Benutzer.FindAsync(benutzerId);
+
+                if (benutzer == null)
+                {
+                    Debug.WriteLine($"Benutzer mit ID {benutzerId} nicht gefunden");
+                    return false;
+                }
+
+                // Benutzer löschen
+                context.Benutzer.Remove(benutzer);
+                await context.SaveChangesAsync();
+
+                Debug.WriteLine($"Benutzer mit ID {benutzerId} wurde gelöscht");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Löschen des Benutzers: {ex.Message}");
+                return false;
+            }
+        }
+
         #endregion
 
         #region Aktien

@@ -5,6 +5,8 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:HausarbeitVirtuelleBörsenplattform.Views"
              xmlns:viewmodels="clr-namespace:HausarbeitVirtuelleBörsenplattform.ViewModels"
+             xmlns:helpers="clr-namespace:HausarbeitVirtuelleBörsenplattform.Helpers"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="900">
 
@@ -13,11 +15,34 @@
     </UserControl.DataContext>
 
     <UserControl.Resources>
-        <!-- Stil für die animierten Linien -->
+        <!-- Hauptfarben -->
+        <Color x:Key="PrimaryColor">#1E3A8A</Color>
+        <Color x:Key="PrimaryLightColor">#3B82F6</Color>
+        <Color x:Key="SecondaryColor">#16A34A</Color>
+        <Color x:Key="BackgroundColor">#F1F5F9</Color>
+        <Color x:Key="TextDarkColor">#1E293B</Color>
+        <Color x:Key="TextLightColor">#F8FAFC</Color>
+        <Color x:Key="DangerColor">#DC2626</Color>
+
+        <!-- Brushes -->
+        <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}"/>
+        <SolidColorBrush x:Key="PrimaryLightBrush" Color="{StaticResource PrimaryLightColor}"/>
+        <SolidColorBrush x:Key="SecondaryBrush" Color="{StaticResource SecondaryColor}"/>
+        <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}"/>
+        <SolidColorBrush x:Key="TextDarkBrush" Color="{StaticResource TextDarkColor}"/>
+        <SolidColorBrush x:Key="TextLightBrush" Color="{StaticResource TextLightColor}"/>
+        <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}"/>
+
+        <!-- Responsive Werte -->
+        <sys:Double x:Key="MinButtonWidth">150</sys:Double>
+        <sys:Double x:Key="StandardHeaderFontSize">28</sys:Double>
+        <sys:Double x:Key="SmallHeaderFontSize">22</sys:Double>
+
+        <!-- Stil für animierte Marktlinien -->
         <Style x:Key="ChartLineStyle" TargetType="Path">
             <Setter Property="Stroke" Value="White"/>
-            <Setter Property="StrokeThickness" Value="1"/>
-            <Setter Property="Opacity" Value="0.2"/>
+            <Setter Property="StrokeThickness" Value="1.5"/>
+            <Setter Property="Opacity" Value="0.25"/>
             <Setter Property="Stretch" Value="Fill"/>
             <Setter Property="Data">
                 <Setter.Value>
@@ -26,19 +51,23 @@
             </Setter>
         </Style>
 
-        <!-- Stil für die Funktion-Features der Plattform -->
+        <!-- Stil für die Plattform-Features -->
         <Style x:Key="FeatureItemStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="Margin" Value="0,8,0,8"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="Medium"/>
         </Style>
 
         <!-- Stil für den Login-Button -->
         <Style x:Key="LoginButtonStyle" TargetType="Button">
-            <Setter Property="Height" Value="40"/>
-            <Setter Property="Background" Value="#2c3e50"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Height" Value="46"/>
+            <Setter Property="MinWidth" Value="{StaticResource MinButtonWidth}"/>
+            <Setter Property="MaxWidth" Value="350"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextLightBrush}"/>
+            <Setter Property="FontSize" Value="15"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -48,16 +77,20 @@
                         <Border Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8">
+                                CornerRadius="10">
                             <ContentPresenter HorizontalAlignment="Center" 
                                               VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#34495e"/>
+                                <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#1a2530"/>
+                                <Setter Property="Background">
+                                    <Setter.Value>
+                                        <SolidColorBrush Color="#152C6D"/>
+                                    </Setter.Value>
+                                </Setter>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.7"/>
@@ -68,10 +101,47 @@
             </Setter>
         </Style>
 
-        <!-- Stil für Hyperlink-Button -->
+        <!-- Stil für TextBox -->
+        <Style x:Key="ModernTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Height" Value="46"/>
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Style.Triggers>
+                <Trigger Property="IsFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+                    <Setter Property="BorderThickness" Value="2"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Stil für PasswordBox -->
+        <Style x:Key="ModernPasswordBoxStyle" TargetType="PasswordBox">
+            <Setter Property="Height" Value="46"/>
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Style.Triggers>
+                <Trigger Property="IsFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+                    <Setter Property="BorderThickness" Value="2"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Stil für Hyperlink-Buttons -->
         <Style x:Key="HyperlinkButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#3498db"/>
+            <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="FontWeight" Value="Medium"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
@@ -81,7 +151,7 @@
                                           VerticalAlignment="Center"/>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Foreground" Value="#2980b9"/>
+                                <Setter Property="Foreground" Value="{StaticResource PrimaryLightBrush}"/>
                                 <Setter Property="TextBlock.TextDecorations" Value="Underline"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -89,308 +159,388 @@
                 </Setter.Value>
             </Setter>
         </Style>
-    </UserControl.Resources>
 
-    <Grid>
-        <Grid.Effect>
-            <DropShadowEffect BlurRadius="20" ShadowDepth="5" Opacity="0.2"/>
-        </Grid.Effect>
-
-        <Border CornerRadius="8" 
-                Background="White" 
-                ClipToBounds="True">
-
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1*"/>
-                    <!-- Linke Seite: Visualisierung -->
-                    <ColumnDefinition Width="1*"/>
-                    <!-- Rechte Seite: Login-Formular -->
-                </Grid.ColumnDefinitions>
-
-                <!-- Linke Seite - Visualisierung und Features -->
-                <Grid Grid.Column="0" Background="#2c3e50">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <!-- Logo und Titel -->
-                    <TextBlock Grid.Row="0" 
-                           Text="Virtuelle Börsenplattform" 
-                           Foreground="White" 
-                           FontSize="24" 
-                           FontWeight="Bold" 
-                           Margin="30,40,30,20"
-                           HorizontalAlignment="Center"/>
-
-                    <!-- Slogan -->
-                    <TextBlock Grid.Row="1" 
-                           Text="Ihr Portal zur simulierten Finanzwelt.&#10;Handeln Sie ohne Risiko, lernen Sie mit Freude." 
-                           Foreground="White" 
-                           FontSize="14" 
-                           Margin="30,0,30,30" 
-                           TextAlignment="Center" 
-                           LineHeight="24"/>
-
-                    <!-- Features Liste -->
-                    <StackPanel Grid.Row="2" Margin="40,20,40,20">
-                        <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
-                            <TextBlock Text="✓" Foreground="#2ecc71" FontWeight="Bold" Margin="0,0,10,0"/>
-                            <TextBlock Text="Virtuelle Portfolioverwaltung" Style="{StaticResource FeatureItemStyle}"/>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
-                            <TextBlock Text="✓" Foreground="#2ecc71" FontWeight="Bold" Margin="0,0,10,0"/>
-                            <TextBlock Text="Live-Kursdaten von realen Märkten" Style="{StaticResource FeatureItemStyle}"/>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
-                            <TextBlock Text="✓" Foreground="#2ecc71" FontWeight="Bold" Margin="0,0,10,0"/>
-                            <TextBlock Text="Risikofrei traden und lernen" Style="{StaticResource FeatureItemStyle}"/>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
-                            <TextBlock Text="✓" Foreground="#2ecc71" FontWeight="Bold" Margin="0,0,10,0"/>
-                            <TextBlock Text="Detaillierte Performanceanalyse" Style="{StaticResource FeatureItemStyle}"/>
-                        </StackPanel>
-                    </StackPanel>
-
-                    <!-- Animierte Hintergrund-Elemente -->
-                    <Canvas Grid.Row="3" Height="150" ClipToBounds="True">
-                        <Path Style="{StaticResource ChartLineStyle}" Canvas.Bottom="30" Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}">
-                            <Path.RenderTransform>
-                                <TransformGroup>
-                                    <ScaleTransform ScaleY="1"/>
-                                    <TranslateTransform Y="0"/>
-                                </TransformGroup>
-                            </Path.RenderTransform>
-                            <Path.Triggers>
-                                <EventTrigger RoutedEvent="Path.Loaded">
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation 
-                                                Storyboard.TargetProperty="RenderTransform.Children[1].Y"
-                                                From="0" To="10" Duration="0:0:3"
-                                                AutoReverse="True" RepeatBehavior="Forever"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </EventTrigger>
-                            </Path.Triggers>
-                        </Path>
-
-                        <Path Style="{StaticResource ChartLineStyle}" Canvas.Bottom="60" Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}">
-                            <Path.RenderTransform>
-                                <TransformGroup>
-                                    <ScaleTransform ScaleY="1"/>
-                                    <TranslateTransform Y="0"/>
-                                </TransformGroup>
-                            </Path.RenderTransform>
-                            <Path.Triggers>
-                                <EventTrigger RoutedEvent="Path.Loaded">
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation 
-                                                Storyboard.TargetProperty="RenderTransform.Children[1].Y"
-                                                From="0" To="8" Duration="0:0:4"
-                                                AutoReverse="True" RepeatBehavior="Forever"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </EventTrigger>
-                            </Path.Triggers>
-                        </Path>
-
-                        <Path Style="{StaticResource ChartLineStyle}" Canvas.Bottom="90" Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}">
-                            <Path.RenderTransform>
-                                <TransformGroup>
-                                    <ScaleTransform ScaleY="1"/>
-                                    <TranslateTransform Y="0"/>
-                                </TransformGroup>
-                            </Path.RenderTransform>
-                            <Path.Triggers>
-                                <EventTrigger RoutedEvent="Path.Loaded">
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation 
-                                                Storyboard.TargetProperty="RenderTransform.Children[1].Y"
-                                                From="0" To="12" Duration="0:0:5"
-                                                AutoReverse="True" RepeatBehavior="Forever"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </EventTrigger>
-                            </Path.Triggers>
-                        </Path>
-                    </Canvas>
-                </Grid>
-
-                <!-- Rechte Seite - Login-Formular -->
-                <Grid Grid.Column="1" Margin="40,0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <!-- Login-Header -->
-                    <StackPanel Grid.Row="0" Margin="0,60,0,20">
-                        <TextBlock Text="Willkommen zurück" 
-                               FontSize="24" 
-                               FontWeight="SemiBold" 
-                               Foreground="#2c3e50" 
-                               HorizontalAlignment="Center"/>
-                        <TextBlock Text="Bitte melden Sie sich an, um fortzufahren" 
-                               FontSize="14" 
-                               Foreground="#777777" 
-                               HorizontalAlignment="Center" 
-                               Margin="0,8,0,0"/>
-                    </StackPanel>
-
-                    <!-- Login-Formular -->
-                    <StackPanel Grid.Row="1" VerticalAlignment="Center">
-                        <!-- Fehlermeldung -->
-                        <Border Background="#ffebee" 
-                            BorderBrush="#e57373" 
-                            BorderThickness="1" 
-                            CornerRadius="8" 
-                            Padding="15" 
-                            Margin="0,0,0,20">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding HasError}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <TextBlock Text="{Binding ErrorMessage}" 
-                                   Foreground="#d32f2f" 
-                                   TextWrapping="Wrap"/>
-                        </Border>
-
-                        <!-- Benutzername/E-Mail -->
-                        <StackPanel Margin="0,0,0,20">
-                            <TextBlock Text="E-Mail oder Benutzername" 
-                               Foreground="#333333" 
-                               FontWeight="Medium" 
-                               Margin="0,0,0,8"/>
-                            <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
-                             Height="40"
-                             Padding="12,0"
-                             VerticalContentAlignment="Center"
-                             BorderThickness="1"
-                             BorderBrush="#DDDDDD"/>
-                        </StackPanel>
-
-                        <!-- Passwort -->
-                        <StackPanel Margin="0,0,0,20">
-                            <TextBlock Text="Passwort" 
-                               Foreground="#333333" 
-                               FontWeight="Medium" 
-                               Margin="0,0,0,8"/>
-                            <Grid>
-                                <!-- Standard-PasswordBox (wird angezeigt, wenn IsPasswordVisible false ist) -->
-                                <PasswordBox x:Name="PasswordBox"
-                                     Height="40"
-                                     Padding="12,0"
-                                     VerticalContentAlignment="Center"
-                                     BorderThickness="1"
-                                     BorderBrush="#DDDDDD"
-                                     PasswordChanged="PasswordBox_PasswordChanged">
-                                    <PasswordBox.Style>
-                                        <Style TargetType="PasswordBox">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsPasswordVisible}" Value="True">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </PasswordBox.Style>
-                                </PasswordBox>
-
-                                <!-- TextBox für sichtbares Passwort (wird angezeigt, wenn IsPasswordVisible true ist) -->
-                                <TextBox x:Name="PasswordTextBox"
-                                 Height="40"
-                                 Padding="12,0"
-                                 VerticalContentAlignment="Center"
-                                 BorderThickness="1"
-                                 BorderBrush="#DDDDDD"
-                                 Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}">
-                                    <TextBox.Style>
-                                        <Style TargetType="TextBox">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsPasswordVisible}" Value="True">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBox.Style>
-                                </TextBox>
-
-                                <!-- Auge-Symbol zum Umschalten der Passwort-Sichtbarkeit -->
-                                <Button HorizontalAlignment="Right" 
-                                        VerticalAlignment="Center" 
-                                        Margin="0,0,5,0"
-                                        Background="Transparent" 
-                                        BorderThickness="0"
-                                        Command="{Binding TogglePasswordVisibilityCommand}">
-                                    <TextBlock Text="👁️" FontSize="14"/>
-                                </Button>
-                            </Grid>
-                        </StackPanel>
-
-                        <!-- Optionen -->
-                        <Grid Margin="0,0,0,30">
+        <!-- Stil für Checkbox -->
+        <Style x:Key="ModernCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid x:Name="templateRoot" Background="Transparent" SnapsToDevicePixels="True">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-
-                            <!-- Angemeldet bleiben -->
-                            <CheckBox Grid.Column="0" 
-                                  Content="Angemeldet bleiben" 
-                                  IsChecked="{Binding RememberMe}" 
-                                  VerticalAlignment="Center"/>
-
-                            <!-- Passwort vergessen -->
-                            <Button Grid.Column="1" 
-                                Content="Passwort vergessen?" 
-                                HorizontalAlignment="Right"
-                                Style="{StaticResource HyperlinkButtonStyle}"
-                                Command="{Binding ForgotPasswordCommand}"/>
+                            <Border x:Name="checkBoxBorder" 
+                                    BorderBrush="#D1D5DB" 
+                                    BorderThickness="1.5" 
+                                    Background="White" 
+                                    HorizontalAlignment="Center" 
+                                    VerticalAlignment="Center" 
+                                    CornerRadius="5"
+                                    Width="18" 
+                                    Height="18">
+                                <Grid x:Name="markGrid">
+                                    <Path x:Name="optionMark" 
+                                          Stroke="{StaticResource SecondaryBrush}"
+                                          StrokeThickness="2.5"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Opacity="0"
+                                          Data="M3,9 L7,13 L15,4"/>
+                                </Grid>
+                            </Border>
+                            <ContentPresenter x:Name="contentPresenter" 
+                                              Grid.Column="1" 
+                                              Focusable="False" 
+                                              HorizontalAlignment="Left" 
+                                              Margin="10,0,0,0" 
+                                              VerticalAlignment="Center"/>
                         </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="true">
+                                <Setter Property="Opacity" TargetName="optionMark" Value="1"/>
+                                <Setter Property="BorderBrush" TargetName="checkBoxBorder" Value="{StaticResource SecondaryBrush}"/>
+                                <Setter Property="Background" TargetName="checkBoxBorder">
+                                    <Setter.Value>
+                                        <SolidColorBrush Color="#ECFDF5"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="true">
+                                <Setter Property="BorderBrush" TargetName="checkBoxBorder" Value="{StaticResource PrimaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                        <!-- Login-Button -->
-                        <Button Content="Anmelden" 
-                            Style="{StaticResource LoginButtonStyle}"
-                            Command="{Binding LoginCommand}"/>
+        <!-- Stil für die Fehlermeldungsbox -->
+        <Style x:Key="ErrorBoxStyle" TargetType="Border">
+            <Setter Property="Background" Value="#FEE2E2"/>
+            <Setter Property="BorderBrush" Value="#F87171"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,20"/>
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasError}" Value="True">
+                    <Setter Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
 
-                        <!-- Registrierung -->
-                        <StackPanel Orientation="Horizontal" 
-                                HorizontalAlignment="Center" 
-                                Margin="0,20,0,0">
-                            <TextBlock Text="Noch kein Konto? " 
-                                   Foreground="#777777" 
-                                   VerticalAlignment="Center"/>
-                            <Button Content="Jetzt registrieren" 
-                                Style="{StaticResource HyperlinkButtonStyle}"
-                                Command="{Binding RegisterCommand}"/>
+    <Grid>
+        <!-- Hintergrund mit Schatten -->
+        <Border CornerRadius="16" 
+                Background="White" 
+                ClipToBounds="True">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="24" ShadowDepth="6" Opacity="0.15" Color="#000000"/>
+            </Border.Effect>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" MinWidth="300"/>
+                    <!-- Linke Seite mit dem Hintergrund -->
+                    <ColumnDefinition Width="3*" MinWidth="350"/>
+                    <!-- Rechte Seite mit dem Login-Formular -->
+                </Grid.ColumnDefinitions>
+
+                <!-- Linke Seite - Visualisierung und Features -->
+                <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                    <Grid Background="{StaticResource PrimaryBrush}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Logo und Titel -->
+                        <StackPanel Grid.Row="0" Margin="0,40,0,0">
+                            <TextBlock Text="Virtuelle Börsenplattform" 
+                                   Foreground="White" 
+                                   FontSize="{StaticResource StandardHeaderFontSize}" 
+                                   FontWeight="Bold" 
+                                   Margin="30,0,30,10"
+                                   TextWrapping="Wrap"
+                                   HorizontalAlignment="Center"/>
+
+                            <Border Background="#264CA8" Height="4" Width="60" CornerRadius="2" Margin="0,8,0,0"/>
                         </StackPanel>
-                    </StackPanel>
 
-                    <!-- Version und Copyright am unteren Rand -->
-                    <TextBlock Grid.Row="2" 
-                           Text="© 2025 Virtuelle Börsenplattform | Version 1.0" 
-                           Foreground="#999999" 
-                           FontSize="11" 
-                           HorizontalAlignment="Center"
-                           Margin="0,0,0,20"/>
-                </Grid>
+                        <!-- Slogan -->
+                        <TextBlock Grid.Row="1" 
+                               Text="Ihr Portal zur simulierten Finanzwelt.&#10;Handeln Sie ohne Risiko, lernen Sie mit Freude." 
+                               Foreground="White" 
+                               FontSize="16" 
+                               Margin="40,30,40,30" 
+                               TextAlignment="Center" 
+                               LineHeight="28"
+                               FontWeight="Light"/>
+
+                        <!-- Features Liste mit verbesserten Icons -->
+                        <StackPanel Grid.Row="2" Margin="50,10,50,20">
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,12">
+                                <Border Width="28" Height="28" Background="#264CA8" CornerRadius="8" Margin="0,0,14,0">
+                                    <TextBlock Text="✓" Foreground="White" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Virtuelle Portfolioverwaltung" Style="{StaticResource FeatureItemStyle}"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,12">
+                                <Border Width="28" Height="28" Background="#264CA8" CornerRadius="8" Margin="0,0,14,0">
+                                    <TextBlock Text="✓" Foreground="White" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Live-Kursdaten von realen Märkten" Style="{StaticResource FeatureItemStyle}"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,12">
+                                <Border Width="28" Height="28" Background="#264CA8" CornerRadius="8" Margin="0,0,14,0">
+                                    <TextBlock Text="✓" Foreground="White" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Risikofrei traden und lernen" Style="{StaticResource FeatureItemStyle}"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,12">
+                                <Border Width="28" Height="28" Background="#264CA8" CornerRadius="8" Margin="0,0,14,0">
+                                    <TextBlock Text="✓" Foreground="White" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Detaillierte Performanceanalyse" Style="{StaticResource FeatureItemStyle}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Animierte Hintergrund-Elemente -->
+                        <Canvas Grid.Row="3" Height="180" ClipToBounds="True">
+                            <Path Style="{StaticResource ChartLineStyle}" Canvas.Bottom="30" Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}">
+                                <Path.RenderTransform>
+                                    <TransformGroup>
+                                        <ScaleTransform ScaleY="1"/>
+                                        <TranslateTransform Y="0"/>
+                                    </TransformGroup>
+                                </Path.RenderTransform>
+                                <Path.Triggers>
+                                    <EventTrigger RoutedEvent="Path.Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation 
+                                                    Storyboard.TargetProperty="RenderTransform.Children[1].Y"
+                                                    From="0" To="10" Duration="0:0:3"
+                                                    AutoReverse="True" RepeatBehavior="Forever"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Path.Triggers>
+                            </Path>
+
+                            <Path Style="{StaticResource ChartLineStyle}" Canvas.Bottom="60" Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}">
+                                <Path.RenderTransform>
+                                    <TransformGroup>
+                                        <ScaleTransform ScaleY="1"/>
+                                        <TranslateTransform Y="0"/>
+                                    </TransformGroup>
+                                </Path.RenderTransform>
+                                <Path.Triggers>
+                                    <EventTrigger RoutedEvent="Path.Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation 
+                                                    Storyboard.TargetProperty="RenderTransform.Children[1].Y"
+                                                    From="0" To="8" Duration="0:0:4"
+                                                    AutoReverse="True" RepeatBehavior="Forever"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Path.Triggers>
+                            </Path>
+
+                            <Path Style="{StaticResource ChartLineStyle}" Canvas.Bottom="90" Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}">
+                                <Path.RenderTransform>
+                                    <TransformGroup>
+                                        <ScaleTransform ScaleY="1"/>
+                                        <TranslateTransform Y="0"/>
+                                    </TransformGroup>
+                                </Path.RenderTransform>
+                                <Path.Triggers>
+                                    <EventTrigger RoutedEvent="Path.Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation 
+                                                    Storyboard.TargetProperty="RenderTransform.Children[1].Y"
+                                                    From="0" To="12" Duration="0:0:5"
+                                                    AutoReverse="True" RepeatBehavior="Forever"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Path.Triggers>
+                            </Path>
+
+                            <!-- Zusätzliche Marktdaten-Elemente -->
+                            <Border Canvas.Bottom="140" Canvas.Right="40" Width="120" Height="35" Background="#264CA8" CornerRadius="8" Opacity="0.7">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="DAX" Foreground="White" FontWeight="SemiBold" FontSize="12" Margin="0,0,8,0"/>
+                                    <TextBlock Text="+0.8%" Foreground="#4ADE80" FontWeight="SemiBold" FontSize="12"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Canvas.Bottom="95" Canvas.Right="65" Width="120" Height="35" Background="#264CA8" CornerRadius="8" Opacity="0.7">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="EUR/USD" Foreground="White" FontWeight="SemiBold" FontSize="12" Margin="0,0,8,0"/>
+                                    <TextBlock Text="-0.2%" Foreground="#F87171" FontWeight="SemiBold" FontSize="12"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Canvas.Bottom="50" Canvas.Right="25" Width="120" Height="35" Background="#264CA8" CornerRadius="8" Opacity="0.7">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="S&amp;P 500" Foreground="White" FontWeight="SemiBold" FontSize="12" Margin="0,0,8,0"/>
+                                    <TextBlock Text="+1.2%" Foreground="#4ADE80" FontWeight="SemiBold" FontSize="12"/>
+                                </StackPanel>
+                            </Border>
+                        </Canvas>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- Rechte Seite - Login-Formular -->
+                <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Login-Header -->
+                        <StackPanel Grid.Row="0" Margin="0,10,0,20">
+                            <TextBlock Text="Willkommen zurück" 
+                                   FontSize="{StaticResource StandardHeaderFontSize}" 
+                                   FontWeight="Bold" 
+                                   Foreground="{StaticResource TextDarkBrush}" 
+                                   HorizontalAlignment="Left"
+                                   TextWrapping="Wrap"/>
+                            <TextBlock Text="Bitte melden Sie sich an, um fortzufahren" 
+                                   FontSize="15" 
+                                   Foreground="#64748B" 
+                                   HorizontalAlignment="Left" 
+                                   Margin="0,8,0,0"/>
+                        </StackPanel>
+
+                        <!-- Login-Formular -->
+                        <StackPanel Grid.Row="1" VerticalAlignment="Top" Margin="30,10,30,0">
+                            <!-- Fehlermeldung -->
+                            <Border Style="{StaticResource ErrorBoxStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Path Grid.Column="0" 
+                                          Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" 
+                                          Fill="#EF4444" 
+                                          Width="20" 
+                                          Height="20" 
+                                          Stretch="Uniform" 
+                                          Margin="0,0,10,0" 
+                                          VerticalAlignment="Top"/>
+
+                                    <TextBlock Grid.Column="1" 
+                                               Text="{Binding ErrorMessage}" 
+                                               Foreground="#B91C1C" 
+                                               TextWrapping="Wrap"
+                                               FontWeight="Medium"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Benutzername/E-Mail -->
+                            <StackPanel Margin="0,0,0,24">
+                                <TextBlock Text="E-Mail oder Benutzername" 
+                                       Foreground="{StaticResource TextDarkBrush}" 
+                                       FontWeight="Medium" 
+                                       Margin="0,0,0,8"/>
+                                <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource ModernTextBoxStyle}"
+                                     helpers:WatermarkHelper.WatermarkText="Geben Sie Ihre E-Mail oder Ihren Benutzernamen ein"/>
+                            </StackPanel>
+
+                            <!-- Passwort -->
+                            <StackPanel Margin="0,0,0,24">
+                                <TextBlock Text="Passwort" 
+                                       Foreground="{StaticResource TextDarkBrush}" 
+                                       FontWeight="Medium" 
+                                       Margin="0,0,0,8"/>
+
+                                <!-- Einfache PasswordBox ohne Überlagerungen, angelehnt an die funktionale Version -->
+                                <PasswordBox x:Name="StdPasswordBox" 
+                                         Height="46"
+                                         Padding="14,0"
+                                         VerticalContentAlignment="Center"
+                                         Background="White"
+                                         Foreground="{StaticResource TextDarkBrush}"
+                                         FontSize="14"
+                                         BorderThickness="1"
+                                         BorderBrush="#D1D5DB"
+                                         PasswordChanged="StdPasswordBox_PasswordChanged"/>
+                            </StackPanel>
+
+                            <!-- Optionen -->
+                            <Grid Margin="0,0,0,30">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Angemeldet bleiben -->
+                                <CheckBox Grid.Column="0" 
+                                          Content="Angemeldet bleiben" 
+                                          IsChecked="{Binding RememberMe}" 
+                                          VerticalAlignment="Center"
+                                          Style="{StaticResource ModernCheckBoxStyle}"/>
+
+                                <!-- Passwort vergessen -->
+                                <Button Grid.Column="1" 
+                                        Content="Passwort vergessen?" 
+                                        HorizontalAlignment="Right"
+                                        Style="{StaticResource HyperlinkButtonStyle}"
+                                        Name="ForgotPasswordButton"
+                                        Command="{Binding ForgotPasswordCommand}"/>
+                            </Grid>
+
+                            <!-- Login-Button -->
+                            <Button Content="Anmelden" 
+                                Command="{Binding LoginCommand}"
+                                Name="LoginButton" 
+                                Click="LoginButton_Click"
+                                Style="{StaticResource LoginButtonStyle}"/>
+
+                            <!-- Registrierung -->
+                            <StackPanel Orientation="Horizontal" 
+                                    HorizontalAlignment="Center" 
+                                    Margin="0,24,0,0">
+                                <TextBlock Text="Noch kein Konto? " 
+                                           Foreground="#64748B" 
+                                           VerticalAlignment="Center"/>
+                                <Button Content="Jetzt registrieren" 
+                                        Command="{Binding RegisterCommand}"
+                                        Style="{StaticResource HyperlinkButtonStyle}"
+                                        Name="RegisterButton"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Version und Copyright am unteren Rand -->
+                        <TextBlock Grid.Row="2" 
+                                   Text="© 2025 Virtuelle Börsenplattform | Version 1.0" 
+                                   Foreground="#94A3B8" 
+                                   FontSize="11" 
+                                   HorizontalAlignment="Center"
+                                   Margin="0,20,0,20"/>
+                    </Grid>
+                </ScrollViewer>
             </Grid>
         </Border>
     </Grid>

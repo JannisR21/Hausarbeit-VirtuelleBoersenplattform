@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Globalization;
 
 namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 {
@@ -25,9 +26,15 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         private decimal _yMinValue = -5; // Standardwerte für die Y-Achse
         private decimal _yMaxValue = 5;
         private string _performanceText = "+0,00 %";
+        private string _performanceAmount = "+0,00 €";
+        private string _portfolioWertFormatted = "0,00 €";
+        private string _tagessaldoText = "+0,00 €";
         private SolidColorBrush _performanceColor = new SolidColorBrush(Colors.Green);
+        private SolidColorBrush _tagessaldoColor = new SolidColorBrush(Colors.Green);
         private readonly MainViewModel _mainViewModel;
         private bool _isInitialized = false;
+        private decimal _lastPortfolioWertMidnight = 0;
+        private bool _lastPortfolioWertMidnightInitialized = false;
 
         // Speichert die tatsächlichen Portfolio-Werte und Investitionen
         private readonly Dictionary<DateTime, (decimal Value, decimal Investment, decimal Performance)> _portfolioData =
@@ -40,6 +47,9 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         // Einstandspreise und Anzahl der Aktien im Portfolio
         private Dictionary<string, (decimal EinstandsPreis, int Anzahl)> _portfolioAktien =
             new Dictionary<string, (decimal EinstandsPreis, int Anzahl)>();
+
+        // Formatierung für Währungsbeträge
+        private readonly CultureInfo _germanCulture = new CultureInfo("de-DE");
         #endregion
 
         #region Public Properties
@@ -135,11 +145,36 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             set => SetProperty(ref _performanceText, value);
         }
 
+        public string PerformanceAmount
+        {
+            get => _performanceAmount;
+            set => SetProperty(ref _performanceAmount, value);
+        }
+
+        public string PortfolioWertFormatted
+        {
+            get => _portfolioWertFormatted;
+            set => SetProperty(ref _portfolioWertFormatted, value);
+        }
+
         public SolidColorBrush PerformanceColor
         {
             get => _performanceColor;
             set => SetProperty(ref _performanceColor, value);
         }
+
+        public string TagessaldoText
+        {
+            get => _tagessaldoText;
+            set => SetProperty(ref _tagessaldoText, value);
+        }
+
+        public SolidColorBrush TagessaldoColor
+        {
+            get => _tagessaldoColor;
+            set => SetProperty(ref _tagessaldoColor, value);
+        }
+
         #endregion
 
         #region Konstruktor
@@ -180,6 +215,10 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             // Daten mit extremen negativen Werten erstellen für bessere Darstellung
             ResetAndCreateExtremeNegativeHistory();
 
+            // Initialer Tagessaldo
+            decimal portfolioGesamtwert = _mainViewModel?.PortfolioViewModel?.Gesamtwert ?? 0m;
+            BerechneTagessaldo(portfolioGesamtwert);
+
             // Initialen Chart erstellen mit Standard-Zeitraum (1 Woche)
             UpdateChartData(TimeSpan.FromDays(7));
 
@@ -214,7 +253,146 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         }
 
         /// <summary>
-        /// Setzt alle Daten zurück und erstellt eine Kurve mit deutlich sichtbaren negativen Werten
+        /// Berechnet den Tagessaldo als Differenz zum Portfoliowert von Mitternacht
+        /// </summary>
+        private void BerechneTagessaldo(decimal aktuellerWert)
+        {
+            try
+            {
+                // Aktuelles Datum/Uhrzeit
+                DateTime now = DateTime.Now;
+
+                // Mitternacht des aktuellen Tages
+                DateTime mitternacht = now.Date;
+
+                // Wenn die Referenz noch nicht initialisiert wurde oder es ein neuer Tag ist
+                if (!_lastPortfolioWertMidnightInitialized ||
+                    (DateTime.Now.Hour == 0 && DateTime.Now.Minute == 0 && DateTime.Now.Second < 5))
+                {
+                    // Suche den nächsten Datenpunkt nach Mitternacht des aktuellen Tages
+                    var mitternachtsPunkt = _portfolioData
+                        .Where(kv => kv.Key.Date == mitternacht.Date)
+                        .OrderBy(kv => kv.Key)
+                        .FirstOrDefault();
+
+                    // Wenn Datenpunkt gefunden, diesen als Referenz verwenden
+                    if (mitternachtsPunkt.Key != default)
+                    {
+                        _lastPortfolioWertMidnight = mitternachtsPunkt.Value.Value;
+                        _lastPortfolioWertMidnightInitialized = true;
+                    }
+                    // Andernfalls verwende den frühesten Datenpunkt des aktuellen Tages
+                    else
+                    {
+                        var fruhesterPunkt = _portfolioData
+                            .Where(kv => kv.Key.Date == mitternacht.Date)
+                            .OrderBy(kv => kv.Key)
+                            .FirstOrDefault();
+
+                        if (fruhesterPunkt.Key != default)
+                        {
+                            _lastPortfolioWertMidnight = fruhesterPunkt.Value.Value;
+                            _lastPortfolioWertMidnightInitialized = true;
+                        }
+                        else
+                        {
+                            // Wenn keine Daten für heute vorhanden sind, aktuellen Wert als Referenz nehmen
+                            _lastPortfolioWertMidnight = aktuellerWert;
+                            _lastPortfolioWertMidnightInitialized = true;
+                        }
+                    }
+                }
+
+                // Differenz berechnen
+                decimal tagesdifferenz = aktuellerWert - _lastPortfolioWertMidnight;
+
+                // Text und Farbe aktualisieren
+                TagessaldoText = tagesdifferenz >= 0
+                    ? $"+{tagesdifferenz.ToString("N2", _germanCulture)} €"
+                    : $"{tagesdifferenz.ToString("N2", _germanCulture)} €";
+
+                TagessaldoColor = new SolidColorBrush(tagesdifferenz >= 0 ? Colors.Green : Colors.Red);
+
+                Debug.WriteLine($"Tagessaldo berechnet: {TagessaldoText}, Referenzwert: {_lastPortfolioWertMidnight:F2}€");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler bei der Berechnung des Tagessaldos: {ex.Message}");
+                TagessaldoText = "+0,00 €";
+                TagessaldoColor = new SolidColorBrush(Colors.Gray);
+            }
+        }
+
+        /// <summary>
+        /// Generiert historische Datenpunkte, falls für den angegebenen Zeitraum nicht genügend Daten vorhanden sind
+        /// </summary>
+        private void GenerateHistoricalDataIfNeeded(DateTime startDate)
+        {
+            try
+            {
+                // Überprüfen, ob wir bereits Datenpunkte für diesen Zeitraum haben
+                bool needsHistoricalData = !_portfolioData.Keys.Any(k => k <= startDate);
+
+                if (needsHistoricalData)
+                {
+                    Debug.WriteLine($"Erzeuge historische Daten ab {startDate}");
+
+                    // Aktueller Gesamtwert und Performance berechnen
+                    decimal aktuellerWert = _mainViewModel?.PortfolioViewModel?.Gesamtwert ?? 15000m;
+                    decimal verlust = _mainViewModel?.PortfolioViewModel?.GesamtGewinnVerlust ?? 0m;
+
+                    // Anfangsinvestment berechnen oder bestehenden Wert verwenden
+                    decimal anfangsInvestment = _initialInvestment;
+                    if (anfangsInvestment <= 0)
+                    {
+                        anfangsInvestment = aktuellerWert - verlust;
+                        if (anfangsInvestment <= 0)
+                        {
+                            anfangsInvestment = aktuellerWert > 0 ? aktuellerWert : 15000m;
+                        }
+                        _initialInvestment = anfangsInvestment;
+                    }
+
+                    // Aktuelle Performance
+                    decimal endPerformance = ((aktuellerWert / anfangsInvestment) - 1) * 100;
+
+                    // Erzeuge Datenpunkte vom Startdatum bis jetzt
+                    DateTime endDate = DateTime.Now;
+                    int anzahlPunkte = (int)(endDate - startDate).TotalDays;
+                    anzahlPunkte = Math.Max(20, anzahlPunkte); // Mindestens 20 Punkte für einen glatten Verlauf
+
+                    // Bei negativer Performance starten wir mit 0 und gehen auf den negativen Wert
+                    decimal startPerformance = 0;
+
+                    // Generiere einen realistischen Kursverlauf
+                    List<decimal> performances = GenerateRealisticPerformanceCurve(startPerformance, endPerformance, anzahlPunkte);
+                    List<DateTime> datePunkte = GenerateDatePoints(startDate, endDate, anzahlPunkte);
+
+                    // Füge die generierten Punkte zum Datenbestand hinzu
+                    for (int i = 0; i < anzahlPunkte; i++)
+                    {
+                        DateTime datumPunkt = datePunkte[i];
+
+                        // Nur wenn der Punkt nicht bereits existiert
+                        if (!_portfolioData.ContainsKey(datumPunkt))
+                        {
+                            decimal currentPerf = performances[i];
+                            decimal currentValue = anfangsInvestment * (1 + currentPerf / 100);
+                            _portfolioData[datumPunkt] = (currentValue, anfangsInvestment, currentPerf);
+                        }
+                    }
+
+                    Debug.WriteLine($"Historische Daten erzeugt: {anzahlPunkte} Datenpunkte");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Generieren historischer Daten: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Setzt alle Daten zurück und erstellt eine Kurve mit realistische Werten für ein besseres Erscheinungsbild
         /// </summary>
         private void ResetAndCreateExtremeNegativeHistory()
         {
@@ -241,32 +419,101 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 // Aktuelle Performance berechnen
                 decimal performance = ((aktuellerWert / _initialInvestment) - 1) * 100;
 
-                // Nur diese drei wichtigen Punkte setzen:
-                // 1. Startdatum (vor 7 Tagen): 0% Performance
+                // Mehr Datenpunkte für einen glatteren Chart hinzufügen
                 DateTime startDate = DateTime.Now.AddDays(-7);
-                _portfolioData[startDate] = (_initialInvestment, _initialInvestment, 0m);
+                DateTime endDate = DateTime.Now;
 
-                // 2. Mittendrin (vor 3 Tagen): Hälfte der aktuellen Performance
-                DateTime midDate = DateTime.Now.AddDays(-3);
-                decimal midPerformance = performance / 2;
-                decimal midValue = _initialInvestment * (1 + midPerformance / 100);
-                _portfolioData[midDate] = (midValue, _initialInvestment, midPerformance);
+                // Erzeuge einen realistischeren Kursverlauf mit 20 Datenpunkten
+                int anzahlPunkte = 20;
+                List<decimal> performances = GenerateRealisticPerformanceCurve(0, performance, anzahlPunkte);
+                List<DateTime> datePunkte = GenerateDatePoints(startDate, endDate, anzahlPunkte);
 
-                // 3. Jetzt: Aktuelle Performance
-                _portfolioData[DateTime.Now] = (aktuellerWert, _initialInvestment, performance);
+                // Füge die generierten Punkte zum Datenbestand hinzu
+                for (int i = 0; i < anzahlPunkte; i++)
+                {
+                    decimal currentPerf = performances[i];
+                    decimal currentValue = _initialInvestment * (1 + currentPerf / 100);
+                    _portfolioData[datePunkte[i]] = (currentValue, _initialInvestment, currentPerf);
+                }
 
                 _currentInvestment = aktuellerWert;
                 _isInitialized = true;
 
-                Debug.WriteLine($"Portfolio-Historie zurückgesetzt mit spezifischen Werten:");
+                Debug.WriteLine($"Portfolio-Historie neu erstellt mit {anzahlPunkte} Datenpunkten:");
                 Debug.WriteLine($"Anfangsinvestment: {_initialInvestment:F2}€");
                 Debug.WriteLine($"Aktueller Wert: {aktuellerWert:F2}€");
                 Debug.WriteLine($"Performance: {performance:F2}%");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Fehler beim Setzen der extremen Performance: {ex.Message}");
+                Debug.WriteLine($"Fehler beim Setzen der Performance-Historie: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Generiert eine realistische Performance-Kurve von Start- bis Endwert
+        /// </summary>
+        private List<decimal> GenerateRealisticPerformanceCurve(decimal startPerformance, decimal endPerformance, int pointCount)
+        {
+            List<decimal> curve = new List<decimal>();
+            Random random = new Random();
+
+            // Berechne die Basis-Schrittgröße zwischen Start und Ende
+            decimal baseDelta = (endPerformance - startPerformance) / (pointCount - 1);
+
+            decimal previousValue = startPerformance;
+            curve.Add(previousValue);  // Erster Punkt ist immer der Startwert
+
+            // Generiere die mittleren Punkte mit Zufallsschwankungen
+            for (int i = 1; i < pointCount - 1; i++)
+            {
+                // Erwarteter Wert bei linearem Verlauf
+                decimal expectedValue = startPerformance + (baseDelta * i);
+
+                // Zufällige Abweichung - stärker in der Mitte, schwächer an den Enden
+                decimal maxDeviation = Math.Abs(baseDelta) * 1.5m;
+                decimal deviation = (decimal)((random.NextDouble() * 2 - 1) * (double)maxDeviation);
+
+                // Reduziere die Abweichung nahe an Start- und Endpunkten
+                decimal distanceFromEnds = Math.Min(i, pointCount - 1 - i) / (decimal)(pointCount / 2);
+                deviation *= distanceFromEnds;
+
+                // Neuer Wert mit Abweichung
+                decimal newValue = expectedValue + deviation;
+
+                // Begrenzte Änderung zum vorherigen Punkt für mehr Realismus
+                decimal maxChange = Math.Abs(baseDelta) * 2.0m;
+                if (Math.Abs(newValue - previousValue) > maxChange)
+                {
+                    newValue = previousValue + (Math.Sign(newValue - previousValue) * maxChange);
+                }
+
+                curve.Add(newValue);
+                previousValue = newValue;
+            }
+
+            // Letzter Punkt ist immer der Endwert
+            curve.Add(endPerformance);
+
+            return curve;
+        }
+
+        /// <summary>
+        /// Generiert Zeitpunkte mit realistischen Abständen zwischen Start- und Enddatum
+        /// </summary>
+        private List<DateTime> GenerateDatePoints(DateTime startDate, DateTime endDate, int pointCount)
+        {
+            List<DateTime> dates = new List<DateTime>();
+
+            TimeSpan totalSpan = endDate - startDate;
+            double intervalSeconds = totalSpan.TotalSeconds / (pointCount - 1);
+
+            for (int i = 0; i < pointCount; i++)
+            {
+                dates.Add(startDate.AddSeconds(intervalSeconds * i));
+            }
+
+            return dates;
         }
 
         /// <summary>
@@ -285,11 +532,33 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 }
 
                 // Alle relevanten Datenpunkte für den Zeitraum auswählen
-                DateTime startDate = DateTime.Now.Subtract(timeSpan);
+                DateTime startDate;
                 if (timeSpan == TimeSpan.MaxValue)
                 {
-                    // Bei "Max" alle Datenpunkte verwenden
-                    startDate = _portfolioData.Keys.Min();
+                    // Bei "Max" alle Datenpunkte verwenden, aber mindestens 30 Tage, wenn nicht genügend Daten vorhanden sind
+                    if (_portfolioData.Count > 0)
+                    {
+                        startDate = _portfolioData.Keys.Min();
+
+                        // Stellen wir sicher, dass es mindestens 30 Tage sind
+                        DateTime minDate = DateTime.Now.AddDays(-30);
+                        if (startDate > minDate)
+                        {
+                            startDate = minDate;
+
+                            // Füge historische Datenpunkte hinzu, falls nötig
+                            GenerateHistoricalDataIfNeeded(startDate);
+                        }
+                    }
+                    else
+                    {
+                        // Keine Daten vorhanden, setze auf 30 Tage
+                        startDate = DateTime.Now.AddDays(-30);
+                    }
+                }
+                else
+                {
+                    startDate = DateTime.Now.Subtract(timeSpan);
                 }
 
                 // Punkte für den gewählten Zeitraum auswählen
@@ -312,9 +581,10 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                             Title = "Portfolio-Performance",
                             Values = new ChartValues<decimal> { 0, 0 },
                             PointGeometry = null,
-                            LineSmoothness = 0,
+                            LineSmoothness = 0.7, // Glatte Linie
+                            StrokeThickness = 2,
                             Stroke = new SolidColorBrush(Colors.Green),
-                            Fill = new SolidColorBrush(Color.FromArgb(32, 0, 204, 0))
+                            Fill = new SolidColorBrush(Color.FromArgb(64, 0, 204, 0))
                         }
                     };
 
@@ -322,6 +592,8 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                     YMinValue = -1;
                     YMaxValue = 1;
                     PerformanceText = "0,00 %";
+                    PerformanceAmount = "0,00 €";
+                    PortfolioWertFormatted = "0,00 €";
                     PerformanceColor = new SolidColorBrush(Colors.Gray);
                     return;
                 }
@@ -346,33 +618,73 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 decimal lowestValue = Math.Min(-1, minPerformance);
                 decimal highestValue = Math.Max(1, maxPerformance);
 
+                // Wenn Max-Ansicht und alle Werte negativ sind, angepasste Skalierung verwenden
+                if (IsMax && maxPerformance < 0)
+                {
+                    // Zeigt die Nulllinie an und bietet ausreichend Raum für negative Werte
+                    highestValue = 1; // Nulllinie sichtbar machen
+
+                    // Mehr Platz für stark negative Werte
+                    if (lowestValue < -10)
+                    {
+                        lowestValue *= 1.1m; // Leicht zusätzlichen Platz für sehr negative Werte
+                    }
+                }
+
                 // Explizites Padding für bessere Lesbarkeit
-                YMinValue = lowestValue * 1.5m; // Mehr Platz nach unten
-                YMaxValue = Math.Max(0.5m, highestValue * 1.1m); // Etwas Platz nach oben
+                // Bei stark negativen Werten weniger Padding, um unnötigen leeren Raum zu vermeiden
+                YMinValue = lowestValue < -10 ? lowestValue * 1.05m : lowestValue * 1.2m;
+                YMaxValue = Math.Max(0.5m, highestValue * 1.2m); // Etwas Platz nach oben
 
                 // Aktuelle Performance für die Anzeige
                 decimal currentPerformance = performances.Count > 0 ? performances.Last() : 0;
+                decimal investmentValue = relevantPoints.Last().Value.Value;
+                decimal absoluteChange = relevantPoints.Last().Value.Value - relevantPoints.Last().Value.Investment;
 
                 // Performance-Anzeige aktualisieren
                 PerformanceText = $"{(currentPerformance >= 0 ? "+" : "")}{currentPerformance:F2} %";
+                PerformanceAmount = $"{(absoluteChange >= 0 ? "+" : "")}{absoluteChange.ToString("C", _germanCulture)}";
+                PortfolioWertFormatted = investmentValue.ToString("C", _germanCulture);
                 PerformanceColor = new SolidColorBrush(currentPerformance >= 0 ? Colors.Green : Colors.Red);
 
-                // Chart-Serie erstellen
+                // Chart-Serie erstellen mit verbessertem Erscheinungsbild
+                SolidColorBrush lineFarbe;
+                SolidColorBrush flaechenFarbe;
+
+                // Wähle geeignete Farben basierend auf Performance und ausgewähltem Zeitraum
+                if (currentPerformance >= 0)
+                {
+                    // Positiver Trend - Grüne Farben
+                    lineFarbe = new SolidColorBrush(Color.FromRgb(0, 180, 0)); // Sattes Grün
+                    flaechenFarbe = new SolidColorBrush(Color.FromArgb(70, 0, 180, 0)); // Transparentes Grün
+                }
+                else
+                {
+                    // Negativer Trend - Rote Farben, wie im Beispielbild
+                    // Für Max-Modus genau die Farbe aus dem Screenshot verwenden
+                    if (IsMax)
+                    {
+                        lineFarbe = new SolidColorBrush(Color.FromRgb(220, 0, 0)); // Kräftiges Rot
+                        flaechenFarbe = new SolidColorBrush(Color.FromArgb(80, 255, 150, 150)); // Helleres, transparentes Rot
+                    }
+                    else
+                    {
+                        lineFarbe = new SolidColorBrush(Color.FromRgb(204, 0, 0)); // Sattes Rot
+                        flaechenFarbe = new SolidColorBrush(Color.FromArgb(70, 204, 0, 0)); // Transparentes Rot
+                    }
+                }
+
                 SeriesCollection = new SeriesCollection
                 {
                     new LineSeries
                     {
                         Title = "Portfolio-Performance",
                         Values = new ChartValues<decimal>(performances),
-                        PointGeometry = null,
-                        LineSmoothness = 0, // Kein Smoothing für präzisere Darstellung
-                        StrokeThickness = 2,
-                        Stroke = currentPerformance >= 0 ?
-                            new SolidColorBrush(Colors.Green) :
-                            new SolidColorBrush(Colors.Red),
-                        Fill = currentPerformance >= 0 ?
-                            new SolidColorBrush(Color.FromArgb(32, 0, 204, 0)) :
-                            new SolidColorBrush(Color.FromArgb(32, 204, 0, 0))
+                        PointGeometry = null, // Keine Punkte anzeigen
+                        LineSmoothness = 0.7, // Smoothing für weichere Kurve
+                        StrokeThickness = 2.5,
+                        Stroke = lineFarbe,
+                        Fill = flaechenFarbe
                     }
                 };
 
@@ -394,9 +706,10 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                         Title = "Portfolio-Performance",
                         Values = new ChartValues<decimal> { 0, -0.5m, -1 }, // Negative Werte für Test
                         PointGeometry = null,
-                        LineSmoothness = 0,
+                        LineSmoothness = 0.7,
+                        StrokeThickness = 2.5,
                         Stroke = new SolidColorBrush(Colors.Red),
-                        Fill = new SolidColorBrush(Color.FromArgb(32, 204, 0, 0))
+                        Fill = new SolidColorBrush(Color.FromArgb(64, 204, 0, 0))
                     }
                 };
 
@@ -404,6 +717,8 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 YMinValue = -2; // Negativer Bereich größer als die Werte
                 YMaxValue = 0.5m;
                 PerformanceText = "Fehler";
+                PerformanceAmount = "0,00 €";
+                PortfolioWertFormatted = "0,00 €";
                 PerformanceColor = new SolidColorBrush(Colors.Gray);
             }
         }
@@ -474,6 +789,14 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 // Neuen eindeutigen Eintrag erstellen
                 _portfolioData[uniqueNow] = (portfolioGesamtwert, _initialInvestment, performancePercent);
 
+                // Aktualisiere die formatierten Anzeige-Werte
+                PortfolioWertFormatted = portfolioGesamtwert.ToString("C", _germanCulture);
+                decimal absoluteChange = portfolioGesamtwert - _initialInvestment;
+                PerformanceAmount = $"{(absoluteChange >= 0 ? "+" : "")}{absoluteChange.ToString("C", _germanCulture)}";
+
+                // Tagessaldo berechnen
+                BerechneTagessaldo(portfolioGesamtwert);
+
                 Debug.WriteLine($"Neuer Portfolio-Eintrag für {uniqueNow}: " +
                     $"Gesamtwert={portfolioGesamtwert:F2}€, " +
                     $"Performance={performancePercent:F2}%");
@@ -500,4 +823,4 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         }
         #endregion
     }
-} 
+}

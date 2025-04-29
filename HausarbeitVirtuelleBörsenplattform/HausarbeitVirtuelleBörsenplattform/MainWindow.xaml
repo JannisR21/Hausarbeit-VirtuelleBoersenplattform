@@ -131,8 +131,9 @@
 
             <!-- Navigation -->
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,20,0">
-                <Button Content="Dashboard" Style="{StaticResource NavButtonStyle}" IsEnabled="False"/>
+                <Button x:Name="DashboardButton" Content="Dashboard" Style="{StaticResource NavButtonStyle}" Click="DashboardButton_Click"/>
                 <Button x:Name="HandelsButton" Content="Aktienhandel" Style="{StaticResource NavButtonStyle}" Click="HandelsButton_Click"/>
+                <Button x:Name="WatchlistButton" Content="Watchlist" Style="{StaticResource NavButtonStyle}" Click="WatchlistButton_Click"/>
                 <Button x:Name="EinstellungenButton" Content="Einstellungen" Style="{StaticResource NavButtonStyle}"/>
 
                 <!-- Benutzer-Icon mit Dropdown -->

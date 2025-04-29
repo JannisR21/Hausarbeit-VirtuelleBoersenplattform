@@ -6,44 +6,83 @@ using System.Windows.Media;
 namespace HausarbeitVirtuelleBörsenplattform.Converters
 {
     /// <summary>
-    /// Konvertiert einen Gewinn/Verlust-Wert in eine entsprechende Farbe:
-    /// - Positiv (Gewinn) = Grün
-    /// - Negativ (Verlust) = Rot
-    /// - Null = Schwarz
+    /// Konvertiert einen Wert (Gewinn/Verlust) in eine entsprechende Farbe (Grün/Rot)
     /// </summary>
     public class GewinnVerlustFarbeConverter : IValueConverter
     {
         /// <summary>
-        /// Konvertiert einen decimal-Wert in eine Farbe basierend auf dem Vorzeichen
+        /// Konvertiert einen numerischen Wert in eine Farbe: Positiv = Grün, Negativ = Rot, Null = Grau
         /// </summary>
-        /// <param name="value">Der Gewinn/Verlust als decimal</param>
-        /// <param name="targetType">Der Zieltyp (wird ignoriert)</param>
-        /// <param name="parameter">Ein optionaler Parameter (wird ignoriert)</param>
-        /// <param name="culture">Die Kultur-Info (wird ignoriert)</param>
-        /// <returns>Eine Brush mit der entsprechenden Farbe</returns>
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (value is decimal gewinnVerlust)
+            if (value == null)
+                return new SolidColorBrush(Colors.Gray);
+
+            if (value is decimal decimalValue)
             {
-                if (gewinnVerlust > 0)
-                {
+                if (decimalValue > 0)
                     return new SolidColorBrush(Colors.Green);
-                }
-                else if (gewinnVerlust < 0)
-                {
+                else if (decimalValue < 0)
                     return new SolidColorBrush(Colors.Red);
+                else
+                    return new SolidColorBrush(Colors.Gray);
+            }
+            else if (value is double doubleValue)
+            {
+                if (doubleValue > 0)
+                    return new SolidColorBrush(Colors.Green);
+                else if (doubleValue < 0)
+                    return new SolidColorBrush(Colors.Red);
+                else
+                    return new SolidColorBrush(Colors.Gray);
+            }
+            else if (value is int intValue)
+            {
+                if (intValue > 0)
+                    return new SolidColorBrush(Colors.Green);
+                else if (intValue < 0)
+                    return new SolidColorBrush(Colors.Red);
+                else
+                    return new SolidColorBrush(Colors.Gray);
+            }
+            else if (value is float floatValue)
+            {
+                if (floatValue > 0)
+                    return new SolidColorBrush(Colors.Green);
+                else if (floatValue < 0)
+                    return new SolidColorBrush(Colors.Red);
+                else
+                    return new SolidColorBrush(Colors.Gray);
+            }
+            else if (value is string stringValue)
+            {
+                // Versuche, den String als Dezimalzahl zu parsen
+                if (decimal.TryParse(stringValue.Replace("%", "").Replace("+", "").Trim(),
+                    NumberStyles.Any, CultureInfo.InvariantCulture, out decimal parsedValue))
+                {
+                    if (parsedValue > 0)
+                        return new SolidColorBrush(Colors.Green);
+                    else if (parsedValue < 0)
+                        return new SolidColorBrush(Colors.Red);
                 }
+
+                // Prüfe auf "+" oder "-" am Anfang
+                if (stringValue.StartsWith("+"))
+                    return new SolidColorBrush(Colors.Green);
+                else if (stringValue.StartsWith("-"))
+                    return new SolidColorBrush(Colors.Red);
             }
 
-            return new SolidColorBrush(Colors.Black);
+            // Standardwert, wenn nichts passt
+            return new SolidColorBrush(Colors.Gray);
         }
 
         /// <summary>
-        /// Konvertiert von Brush zurück zu decimal (nicht implementiert)
+        /// Die Rückkonvertierung wird nicht unterstützt
         /// </summary>
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            throw new NotImplementedException();
+            throw new NotImplementedException("Die Rückkonvertierung von Farbe zu Gewinn/Verlust wird nicht unterstützt.");
         }
     }
 }

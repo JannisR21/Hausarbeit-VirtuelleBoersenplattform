@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows.Data;
 
 namespace HausarbeitVirtuelleBörsenplattform
 {
@@ -16,6 +17,9 @@ namespace HausarbeitVirtuelleBörsenplattform
     {
         // Hinzufügen des Feldes für das Einstellungen-UserControl
         private Views.EinstellungenUserControl _einstellungenControl;
+
+        // Hinzufügen des Feldes für das Watchlist-UserControl
+        private Views.WatchlistUserControl _watchlistControl;
 
         public MainWindow()
         {
@@ -43,6 +47,19 @@ namespace HausarbeitVirtuelleBörsenplattform
                     einstellungenButton.Click += EinstellungenButton_Click;
                 }
 
+                // Event-Handler für Watchlist-Navigation hinzufügen
+                var watchlistButton = FindName("WatchlistButton") as Button;
+                if (watchlistButton != null)
+                {
+                    watchlistButton.Click += WatchlistButton_Click;
+                }
+
+                // Event-Handler für Dashboard-Navigation hinzufügen
+                var dashboardButton = FindName("DashboardButton") as Button;
+                if (dashboardButton != null)
+                {
+                    dashboardButton.Click += DashboardButton_Click;
+                }
             }
             catch (Exception ex)
             {
@@ -80,6 +97,97 @@ namespace HausarbeitVirtuelleBörsenplattform
             {
                 Debug.WriteLine($"Fehler beim Öffnen des HandelsPopupWindow: {ex.Message}");
                 MessageBox.Show($"Fehler beim Öffnen des Aktienhandels: {ex.Message}",
+                               "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// Handler für den Klick auf den Dashboard-Button
+        /// </summary>
+        private void DashboardButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Debug.WriteLine("Dashboard-Button wurde geklickt");
+
+                // Einfach die Hauptansicht wiederherstellen
+                RestoreMainView();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Öffnen des Dashboards: {ex.Message}");
+                MessageBox.Show($"Fehler beim Öffnen des Dashboards: {ex.Message}",
+                              "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// Handler für den Klick auf den Watchlist-Button
+        /// </summary>
+        private void WatchlistButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Debug.WriteLine("Watchlist-Button wurde geklickt");
+
+                // Haupt-Grid für Inhalte finden
+                var mainGrid = FindMainContentGrid();
+                if (mainGrid == null)
+                {
+                    Debug.WriteLine("Konnte das Haupt-Grid nicht finden");
+                    MessageBox.Show("Fehler beim Öffnen der Watchlist.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // Watchlist-Ansicht anzeigen
+                mainGrid.Children.Clear();
+
+                // Immer eine neue Instanz des WatchlistUserControl erstellen, um Probleme mit der visuellen Hierarchie zu vermeiden
+                _watchlistControl = new Views.WatchlistUserControl();
+
+                // DataContext setzen
+                if (DataContext is MainViewModel vm1)
+                {
+                    _watchlistControl.DataContext = vm1.WatchlistViewModel;
+                }
+
+                // Neues Grid für die Watchlist-Ansicht erstellen
+                var grid = new Grid();
+                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                grid.VerticalAlignment = VerticalAlignment.Stretch;
+                grid.HorizontalAlignment = HorizontalAlignment.Stretch;
+                grid.MinHeight = 600; // Mindesthöhe setzen
+
+                // Border für die Watchlist-Ansicht erstellen
+                var border = new Border
+                {
+                    Style = (Style)FindResource("CardBorderStyle"),
+                    Child = _watchlistControl,
+                    VerticalAlignment = VerticalAlignment.Stretch,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    MinHeight = 580
+                };
+
+                Grid.SetRow(border, 0);
+                Grid.SetColumn(border, 0);
+                grid.Children.Add(border);
+
+                // Grid zum Haupt-Grid hinzufügen
+                mainGrid.Children.Add(grid);
+
+                Debug.WriteLine("Watchlist-Ansicht wurde angezeigt");
+
+                // Aktualisiere die Watchlist beim Anzeigen
+                if (DataContext is MainViewModel vm2 && vm2.WatchlistViewModel != null)
+                {
+                    _ = vm2.WatchlistViewModel.AktualisiereWatchlist();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Öffnen der Watchlist: {ex.Message}");
+                MessageBox.Show($"Fehler beim Öffnen der Watchlist: {ex.Message}",
                                "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -151,6 +259,23 @@ namespace HausarbeitVirtuelleBörsenplattform
 
             // Nach HandelsUserControl im visuellen Baum suchen
             FindAndCheckHandelsUserControl(this);
+
+            // ScrollViewer-Eigenschaften setzen für besseres Layout
+            if (MainContentScrollViewer != null)
+            {
+                MainContentScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+                MainContentScrollViewer.VerticalAlignment = VerticalAlignment.Stretch;
+                MainContentScrollViewer.HorizontalAlignment = HorizontalAlignment.Stretch;
+                MainContentScrollViewer.MinHeight = 600;
+            }
+
+            // MainContentGrid-Eigenschaften setzen
+            if (MainContentGrid != null)
+            {
+                MainContentGrid.VerticalAlignment = VerticalAlignment.Stretch;
+                MainContentGrid.HorizontalAlignment = HorizontalAlignment.Stretch;
+                MainContentGrid.MinHeight = 600;
+            }
         }
 
         private void UserButton_Click(object sender, RoutedEventArgs e)
@@ -234,12 +359,18 @@ namespace HausarbeitVirtuelleBörsenplattform
                 var grid = new Grid();
                 grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                grid.VerticalAlignment = VerticalAlignment.Stretch;
+                grid.HorizontalAlignment = HorizontalAlignment.Stretch;
+                grid.MinHeight = 600;
 
                 // Border für die Einstellungsansicht erstellen (ähnlich wie bei anderen Ansichten)
                 var border = new Border
                 {
                     Style = (Style)FindResource("CardBorderStyle"),
-                    Child = _einstellungenControl
+                    Child = _einstellungenControl,
+                    VerticalAlignment = VerticalAlignment.Stretch,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    MinHeight = 580
                 };
 
                 Grid.SetRow(border, 0);
@@ -365,6 +496,9 @@ namespace HausarbeitVirtuelleBörsenplattform
                 var grid = new Grid();
                 grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                grid.VerticalAlignment = VerticalAlignment.Stretch;
+                grid.HorizontalAlignment = HorizontalAlignment.Stretch;
+                grid.MinHeight = 600;
 
                 // Border für die Portfolio-Ansicht erstellen
                 var border = new Border
@@ -372,8 +506,14 @@ namespace HausarbeitVirtuelleBörsenplattform
                     Style = (Style)FindResource("CardBorderStyle"),
                     Child = new Views.PortfolioView
                     {
-                        DataContext = this.DataContext
-                    }
+                        DataContext = this.DataContext,
+                        VerticalAlignment = VerticalAlignment.Stretch,
+                        HorizontalAlignment = HorizontalAlignment.Stretch,
+                        MinHeight = 550
+                    },
+                    VerticalAlignment = VerticalAlignment.Stretch,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    MinHeight = 580
                 };
 
                 Grid.SetRow(border, 0);

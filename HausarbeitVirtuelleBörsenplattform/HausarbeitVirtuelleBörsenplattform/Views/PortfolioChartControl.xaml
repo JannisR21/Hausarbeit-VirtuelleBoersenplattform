@@ -5,73 +5,125 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:HausarbeitVirtuelleBörsenplattform.Views"
              xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
+             xmlns:converters="clr-namespace:HausarbeitVirtuelleBörsenplattform.Converters"
              mc:Ignorable="d" 
+             Background="{DynamicResource BackgroundBrush}"
              d:DesignHeight="300" d:DesignWidth="600">
+    <UserControl.Resources>
+        <converters:GewinnVerlustFarbeConverter x:Key="GewinnVerlustFarbeConverter"/>
+    </UserControl.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <!-- Header mit Zeitraum-Selektoren -->
+
+        <!-- Wert und Performance Anzeige -->
         <Grid Grid.Row="0" Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <!-- Zeitraum-Selektoren -->
-            <StackPanel Grid.Column="0" Orientation="Horizontal">
+
+            <!-- Gesamtwert und Fehler-Anzeige -->
+            <StackPanel Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Left">
+                <TextBlock Text="{Binding PortfolioWertFormatted}" 
+                           FontSize="18" 
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextBrush}"/>
+
+                <TextBlock Margin="0,2,0,0"
+                          FontSize="12">
+                    <Run Text="Tagessaldo: "/>
+                    <Run Text="{Binding TagessaldoText}" Foreground="{Binding TagessaldoColor}"/>
+                </TextBlock>
+            </StackPanel>
+
+            <!-- Grafische Anzeige MAX / MIN -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Border Background="#005288" Width="40" Height="24" CornerRadius="0" Margin="0,0,3,0">
+                    <TextBlock Text="MAX" 
+                              Foreground="White" 
+                              HorizontalAlignment="Center" 
+                              VerticalAlignment="Center"
+                              FontSize="11"
+                              FontWeight="SemiBold"/>
+                </Border>
+                <Border Background="#C00000" Width="40" Height="24" CornerRadius="0">
+                    <TextBlock Text="MIN" 
+                              Foreground="White" 
+                              HorizontalAlignment="Center" 
+                              VerticalAlignment="Center"
+                              FontSize="11"
+                              FontWeight="SemiBold"/>
+                </Border>
+            </StackPanel>
+        </Grid>
+
+        <!-- Header mit Zeitraum-Selektoren -->
+        <Grid Grid.Row="1" Margin="0,0,0,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Zeitraum-Selektoren exakt wie im Screenshot -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                 <RadioButton Content="1T" GroupName="Zeitraum" Margin="0,0,10,0" IsChecked="{Binding IsOneDay}" />
                 <RadioButton Content="1W" GroupName="Zeitraum" Margin="0,0,10,0" IsChecked="{Binding IsOneWeek}" />
                 <RadioButton Content="1M" GroupName="Zeitraum" Margin="0,0,10,0" IsChecked="{Binding IsOneMonth}" />
                 <RadioButton Content="1J" GroupName="Zeitraum" Margin="0,0,10,0" IsChecked="{Binding IsOneYear}" />
-                <RadioButton Content="Max" GroupName="Zeitraum" Margin="0,0,10,0" IsChecked="{Binding IsMax}" />
-            </StackPanel>
-            <!-- Performance-Anzeige -->
-            <StackPanel Grid.Column="2" Orientation="Horizontal">
-                <TextBlock Text="Performance: " VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding PerformanceText}" 
-                           Foreground="{Binding PerformanceColor}"
-                           FontWeight="Bold"
-                           VerticalAlignment="Center"/>
+                <RadioButton Content="Max" GroupName="Zeitraum" Margin="0,0,0,0" IsChecked="{Binding IsMax}" />
             </StackPanel>
         </Grid>
-        <!-- Chart -->
-        <lvc:CartesianChart Grid.Row="1" 
-                            Series="{Binding SeriesCollection}" 
-                            LegendLocation="None"
+
+        <!-- Verbesserter Chart, angepasst an das Beispielbild -->
+        <Border Grid.Row="2" BorderThickness="1" BorderBrush="#E0E0E0" Margin="0,5,0,0">
+            <lvc:CartesianChart Series="{Binding SeriesCollection}" 
+                              LegendLocation="None"
+                              DisableAnimations="True"
+                              Hoverable="True"
+                              Background="Transparent"
+                              Margin="0,0,0,0">
+                <lvc:CartesianChart.AxisX>
+                    <lvc:Axis Title="" 
+                            Labels="{Binding Labels}"
+                            Foreground="{DynamicResource TextBrush}"
                             DisableAnimations="True"
-                            Hoverable="False"
-                            DataTooltip="{x:Null}">
-            <lvc:CartesianChart.AxisX>
-                <lvc:Axis Title="Zeit" 
-                          Labels="{Binding Labels}"
-                          DisableAnimations="True">
-                    <lvc:Axis.Separator>
-                        <lvc:Separator StrokeThickness="1" StrokeDashArray="2" Stroke="#e6e6e6"/>
-                    </lvc:Axis.Separator>
-                </lvc:Axis>
-            </lvc:CartesianChart.AxisX>
-            <lvc:CartesianChart.AxisY>
-                <lvc:Axis Title="Performance (%)" 
-                          LabelFormatter="{Binding YFormatter}" 
-                          MinValue="{Binding YMinValue}" 
-                          MaxValue="{Binding YMaxValue}"
-                          Foreground="Black"
-                          DisableAnimations="True"
-                          Position="RightTop">
-                    <lvc:Axis.Sections>
-                        <!-- Markieren der Nulllinie -->
-                        <lvc:AxisSection Value="0" 
-                                       StrokeThickness="1" 
-                                       Stroke="Black" 
-                                       StrokeDashArray="1"/>
-                    </lvc:Axis.Sections>
-                    <lvc:Axis.Separator>
-                        <lvc:Separator StrokeThickness="1" StrokeDashArray="2" Stroke="#e6e6e6"/>
-                    </lvc:Axis.Separator>
-                </lvc:Axis>
-            </lvc:CartesianChart.AxisY>
-        </lvc:CartesianChart>
+                            ShowLabels="True"
+                            Opacity="0.7">
+                        <lvc:Axis.Separator>
+                            <lvc:Separator StrokeThickness="0.5" StrokeDashArray="3" Stroke="#C0C0C0" Step="1"/>
+                        </lvc:Axis.Separator>
+                    </lvc:Axis>
+                </lvc:CartesianChart.AxisX>
+                <lvc:CartesianChart.AxisY>
+                    <lvc:Axis Title="" 
+                            LabelFormatter="{Binding YFormatter}" 
+                            MinValue="{Binding YMinValue}" 
+                            MaxValue="{Binding YMaxValue}"
+                            Foreground="{DynamicResource TextBrush}"
+                            DisableAnimations="True"
+                            Opacity="0.7"
+                            Position="RightTop">
+                        <lvc:Axis.Sections>
+                            <!-- Markieren der Nulllinie -->
+                            <lvc:AxisSection Value="0" 
+                                         StrokeThickness="1" 
+                                         Stroke="#B0B0B0" 
+                                         StrokeDashArray="0"/>
+                        </lvc:Axis.Sections>
+                        <lvc:Axis.Separator>
+                            <lvc:Separator StrokeThickness="0.5" StrokeDashArray="3" Stroke="#C0C0C0"/>
+                        </lvc:Axis.Separator>
+                    </lvc:Axis>
+                </lvc:CartesianChart.AxisY>
+                <lvc:CartesianChart.DataTooltip>
+                    <lvc:DefaultTooltip Background="#333333" Foreground="White" SelectionMode="SharedXValues"/>
+                </lvc:CartesianChart.DataTooltip>
+            </lvc:CartesianChart>
+        </Border>
     </Grid>
 </UserControl>

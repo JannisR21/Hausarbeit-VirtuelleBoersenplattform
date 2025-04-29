@@ -7,213 +7,388 @@
              xmlns:converters="clr-namespace:HausarbeitVirtuelleBörsenplattform.Converters"
              xmlns:models="clr-namespace:HausarbeitVirtuelleBörsenplattform.Models"
              mc:Ignorable="d" 
-             d:DesignHeight="650" d:DesignWidth="900">
+             Width="1020" Height="1400"
+             MinWidth="1000" MinHeight="1200"
+             d:DesignHeight="1200" d:DesignWidth="900">
 
     <UserControl.Resources>
         <ResourceDictionary>
-            <Style x:Key="FilterGroupStyle" TargetType="GroupBox">
-                <Setter Property="Margin" Value="0,5,0,10"/>
-                <Setter Property="Padding" Value="10"/>
-                <Setter Property="BorderBrush" Value="#CCCCCC"/>
+            <!-- Farben -->
+            <Color x:Key="PrimaryColor">#3E56C4</Color>
+            <Color x:Key="SecondaryColor">#0ED3C5</Color>
+            <Color x:Key="AccentColor">#8C52FF</Color>
+            <Color x:Key="BackgroundColor">#F7F9FC</Color>
+            <Color x:Key="PanelColor">#FFFFFF</Color>
+            <Color x:Key="BorderColor">#E2E8F0</Color>
+            <Color x:Key="TextColor">#2D3748</Color>
+            <Color x:Key="SubtleTextColor">#718096</Color>
+            <Color x:Key="DisabledColor">#CBD5E0</Color>
+
+            <!-- SolidColorBrushes -->
+            <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}"/>
+            <SolidColorBrush x:Key="SecondaryBrush" Color="{StaticResource SecondaryColor}"/>
+            <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+            <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}"/>
+            <SolidColorBrush x:Key="PanelBrush" Color="{StaticResource PanelColor}"/>
+            <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}"/>
+            <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}"/>
+            <SolidColorBrush x:Key="SubtleTextBrush" Color="{StaticResource SubtleTextColor}"/>
+            <SolidColorBrush x:Key="DisabledBrush" Color="{StaticResource DisabledColor}"/>
+
+            <!-- FilterGroupStyle for Panel mit Shadow und Border -->
+            <Style x:Key="FilterGroupStyle" TargetType="Border">
+                <Setter Property="Margin" Value="0,0,0,24"/>
+                <Setter Property="Padding" Value="30"/>
+                <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
                 <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="12"/>
+                <Setter Property="Effect">
+                    <Setter.Value>
+                        <DropShadowEffect BlurRadius="10" ShadowDepth="1" Opacity="0.1" Color="#000000"/>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
-            <Style x:Key="FilterLabelStyle" TargetType="TextBlock">
-                <Setter Property="Margin" Value="0,0,10,0"/>
-                <Setter Property="VerticalAlignment" Value="Center"/>
+            <!-- GroupBox-Titel Style -->
+            <Style x:Key="GroupTitleStyle" TargetType="TextBlock">
                 <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="FontSize" Value="22"/>
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="Margin" Value="0,0,0,20"/>
             </Style>
 
+            <!-- Filter-Label Style -->
+            <Style x:Key="FilterLabelStyle" TargetType="TextBlock">
+                <Setter Property="Margin" Value="0,0,0,10"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="FontWeight" Value="Medium"/>
+                <Setter Property="FontSize" Value="16"/>
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            </Style>
+
+            <!-- Filter-ComboBox Style -->
             <Style x:Key="FilterComboBoxStyle" TargetType="ComboBox">
-                <Setter Property="Margin" Value="0,5,0,5"/>
-                <Setter Property="MinWidth" Value="150"/>
-                <Setter Property="Height" Value="28"/>
+                <Setter Property="Margin" Value="0,0,0,12"/>
+                <Setter Property="Height" Value="38"/>
+                <Setter Property="Padding" Value="12,0"/>
                 <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="FontSize" Value="13"/>
             </Style>
 
-            <Style x:Key="FilterButtonStyle" TargetType="Button">
-                <Setter Property="Height" Value="30"/>
-                <Setter Property="Margin" Value="5,0"/>
-                <Setter Property="MinWidth" Value="80"/>
-                <Setter Property="Padding" Value="10,0"/>
+            <!-- TextBox Style -->
+            <Style x:Key="FilterTextBoxStyle" TargetType="TextBox">
+                <Setter Property="Height" Value="38"/>
+                <Setter Property="Padding" Value="12,0"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TextBox">
+                            <Border x:Name="Border"
+                                    CornerRadius="8"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}">
+                                <ScrollViewer x:Name="PART_ContentHost"
+                                              Padding="{TemplateBinding Padding}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="BorderBrush" TargetName="Border" Value="{StaticResource PrimaryBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsFocused" Value="True">
+                                    <Setter Property="BorderBrush" TargetName="Border" Value="{StaticResource PrimaryBrush}"/>
+                                    <Setter Property="BorderThickness" TargetName="Border" Value="2"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.6"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
-            <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource FilterButtonStyle}">
-                <Setter Property="Background" Value="#2c3e50"/>
+            <!-- Primary Button Style -->
+            <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+                <Setter Property="Height" Value="38"/>
+                <Setter Property="Padding" Value="20,0"/>
+                <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
                 <Setter Property="Foreground" Value="White"/>
                 <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Cursor" Value="Hand"/>
             </Style>
 
-            <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource FilterButtonStyle}">
-                <Setter Property="Background" Value="#e0e0e0"/>
-                <Setter Property="Foreground" Value="#333333"/>
+            <!-- Secondary Button Style -->
+            <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+                <Setter Property="Height" Value="38"/>
+                <Setter Property="Padding" Value="20,0"/>
+                <Setter Property="Background" Value="#F0F4FD"/>
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
                 <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="FontWeight" Value="Medium"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Cursor" Value="Hand"/>
             </Style>
 
+            <!-- CheckBox Style -->
+            <Style x:Key="FilterCheckBoxStyle" TargetType="CheckBox">
+                <Setter Property="Margin" Value="0,0,0,8"/>
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="FontSize" Value="13"/>
+            </Style>
+
+            <!-- RadioButton Style -->
+            <Style x:Key="FilterRadioButtonStyle" TargetType="RadioButton">
+                <Setter Property="Margin" Value="0,0,14,0"/>
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="FontSize" Value="13"/>
+            </Style>
+
+            <!-- Converter für UI-Logik -->
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
             <converters:BooleanToBooleanInverterConverter x:Key="BooleanInverterConverter"/>
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled">
-        <Grid Margin="10">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+    <Grid Background="{StaticResource BackgroundBrush}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Margin="30">
+            <StackPanel Width="960">
+                <TextBlock Text="Anlagefilter" 
+                           FontSize="36" 
+                           FontWeight="Bold" 
+                           Foreground="{StaticResource TextBrush}" 
+                           Margin="0,20,0,30"/>
 
-            <!-- Hauptfilter und Suchleiste -->
-            <GroupBox Grid.Row="0" Header="Anlagensuche" Style="{StaticResource FilterGroupStyle}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+                <!-- Hauptsuche mit Suchleiste -->
+                <Border Style="{StaticResource FilterGroupStyle}" BorderThickness="1" BorderBrush="{StaticResource BorderBrush}">
+                    <StackPanel>
+                        <TextBlock Text="Anlagensuche" 
+                                   Style="{StaticResource GroupTitleStyle}"/>
 
-                    <TextBlock Grid.Column="0" Text="Suchen:" Style="{StaticResource FilterLabelStyle}"/>
-                    <TextBox Grid.Column="1" Text="{Binding SuchText, UpdateSourceTrigger=PropertyChanged}" 
-                             Margin="0,0,10,0" Height="30" VerticalContentAlignment="Center"
-                             ToolTip="Nach Aktiennamen oder Symbol suchen"/>
-                    <Button Grid.Column="2" Content="Suchen" Height="30" Width="80" 
-                            Style="{StaticResource PrimaryButtonStyle}"/>
-                </Grid>
-            </GroupBox>
+                        <TextBlock Text="Suchbegriff" 
+                                   Style="{StaticResource FilterLabelStyle}"/>
 
-            <!-- Anlagetyp-Auswahl -->
-            <GroupBox Grid.Row="1" Header="Anlagetyp" Style="{StaticResource FilterGroupStyle}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                        <Grid Margin="0,0,0,20">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Column="0" Text="Anlagetyp:" Style="{StaticResource FilterLabelStyle}"/>
-                    <ComboBox Grid.Column="1" ItemsSource="{Binding VerfügbareAnlageTypen}" 
-                              DisplayMemberPath="Value" SelectedValuePath="Key"
-                              SelectedValue="{Binding AusgewählterAnlageTyp}"
-                              Style="{StaticResource FilterComboBoxStyle}"/>
-                </Grid>
-            </GroupBox>
+                            <TextBox Grid.Column="0" 
+                                     Text="{Binding SuchText, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource FilterTextBoxStyle}"
+                                     Height="50"
+                                     FontSize="16"
+                                     BorderThickness="1"
+                                     BorderBrush="#CCCCCC"
+                                     VerticalContentAlignment="Center"
+                                     Padding="16,0"
+                                     ToolTip="Nach Aktiennamen oder Symbol suchen"/>
 
-            <!-- Branchenfilter (nur für Einzelaktien) -->
-            <GroupBox Grid.Row="2" Header="Branchenfilter" Style="{StaticResource FilterGroupStyle}"
-                      Visibility="{Binding ZeigeBranchenFilter, Converter={StaticResource BoolToVisibilityConverter}}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                            <Button Grid.Column="1" 
+                                    Content="Suchen" 
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Height="50"
+                                    Width="130"
+                                    FontSize="16"
+                                    Margin="12,0,0,0"
+                                    BorderThickness="0"
+                                    Background="#2c3e50"
+                                    Foreground="White"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
 
-                    <TextBlock Grid.Column="0" Text="Branche:" Style="{StaticResource FilterLabelStyle}"/>
-                    <ComboBox Grid.Column="1" ItemsSource="{Binding VerfügbareBranchen}" 
-                              DisplayMemberPath="Value" SelectedValuePath="Key"
-                              SelectedValue="{Binding AusgewählteBranche}"
-                              Style="{StaticResource FilterComboBoxStyle}"/>
-                </Grid>
-            </GroupBox>
+                <!-- Anlagetyp-Auswahl -->
+                <Border Style="{StaticResource FilterGroupStyle}" BorderThickness="1" BorderBrush="{StaticResource BorderBrush}">
+                    <StackPanel>
+                        <TextBlock Text="Anlagetyp" 
+                                   Style="{StaticResource GroupTitleStyle}"/>
 
-            <!-- ETF-Filter (nur für ETFs) -->
-            <GroupBox Grid.Row="3" Header="ETF-Filter" Style="{StaticResource FilterGroupStyle}"
-                      Visibility="{Binding ZeigeETFFilter, Converter={StaticResource BoolToVisibilityConverter}}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                        <TextBlock Text="Wählen Sie den Anlagetyp" 
+                                   Style="{StaticResource FilterLabelStyle}"/>
 
-                    <!-- ETF-Typ -->
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="ETF-Typ:" Style="{StaticResource FilterLabelStyle}"/>
-                    <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding VerfügbareETFTypen}" 
-                              DisplayMemberPath="Value" SelectedValuePath="Key"
-                              SelectedValue="{Binding AusgewählterETFTyp}"
-                              Style="{StaticResource FilterComboBoxStyle}"/>
+                        <ComboBox ItemsSource="{Binding VerfügbareAnlageTypen}" 
+                                  DisplayMemberPath="Value" 
+                                  SelectedValuePath="Key"
+                                  SelectedValue="{Binding AusgewählterAnlageTyp}"
+                                  Style="{StaticResource FilterComboBoxStyle}"
+                                  Height="50"
+                                  FontSize="16"
+                                  BorderThickness="1"
+                                  BorderBrush="#CCCCCC"
+                                  VerticalContentAlignment="Center"
+                                  Padding="16,0"/>
+                    </StackPanel>
+                </Border>
 
-                    <!-- Ausschüttende/Thesaurierende ETFs -->
-                    <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,10,0,0">
+                <!-- Branchenfilter (nur für Einzelaktien) -->
+                <Border Style="{StaticResource FilterGroupStyle}" BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                        Visibility="{Binding ZeigeBranchenFilter, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Text="Branchenfilter" 
+                                   Style="{StaticResource GroupTitleStyle}"/>
+
+                        <TextBlock Text="Branche auswählen" 
+                                   Style="{StaticResource FilterLabelStyle}"/>
+
+                        <ComboBox ItemsSource="{Binding VerfügbareBranchen}" 
+                                  DisplayMemberPath="Value" 
+                                  SelectedValuePath="Key"
+                                  SelectedValue="{Binding AusgewählteBranche}"
+                                  Style="{StaticResource FilterComboBoxStyle}"
+                                  Height="50"
+                                  FontSize="16"
+                                  BorderThickness="1"
+                                  BorderBrush="#CCCCCC"
+                                  VerticalContentAlignment="Center"
+                                  Padding="16,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- ETF-Filter (nur für ETFs) -->
+                <Border Style="{StaticResource FilterGroupStyle}" BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                        Visibility="{Binding ZeigeETFFilter, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Text="ETF-Filter" 
+                                   Style="{StaticResource GroupTitleStyle}"/>
+
+                        <TextBlock Text="ETF-Typ" 
+                                   Style="{StaticResource FilterLabelStyle}"/>
+
+                        <ComboBox ItemsSource="{Binding VerfügbareETFTypen}" 
+                                  DisplayMemberPath="Value" 
+                                  SelectedValuePath="Key"
+                                  SelectedValue="{Binding AusgewählterETFTyp}"
+                                  Style="{StaticResource FilterComboBoxStyle}"
+                                  Height="50"
+                                  FontSize="16"
+                                  BorderThickness="1"
+                                  BorderBrush="#CCCCCC"
+                                  VerticalContentAlignment="Center"
+                                  Padding="16,0"
+                                  Margin="0,0,0,16"/>
+
+                        <!-- Ausschüttende/Thesaurierende ETFs -->
                         <CheckBox Content="Nur ausschüttende ETFs anzeigen" 
                                   IsChecked="{Binding FilterAusschüttungAktiv}"
-                                  Margin="0,0,15,0"
-                                  VerticalAlignment="Center"/>
-                        <RadioButton Content="Ausschüttend" 
-                                    IsChecked="{Binding IstETFAusschüttend}"
-                                    IsEnabled="{Binding FilterAusschüttungAktiv}"
-                                    GroupName="Ausschüttung"
-                                    Margin="0,0,10,0"
-                                    VerticalAlignment="Center"/>
-                        <RadioButton Content="Thesaurierend" 
-                                    IsChecked="{Binding IstETFAusschüttend, Converter={StaticResource BooleanInverterConverter}}"
-                                    IsEnabled="{Binding FilterAusschüttungAktiv}"
-                                    GroupName="Ausschüttung"
-                                    VerticalAlignment="Center"/>
+                                  FontSize="16"
+                                  Margin="0,16,0,16"/>
+
+                        <StackPanel Orientation="Horizontal" 
+                                    Margin="32,0,0,0"
+                                    Visibility="{Binding FilterAusschüttungAktiv, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <RadioButton Content="Ausschüttend" 
+                                         IsChecked="{Binding IstETFAusschüttend}"
+                                         IsEnabled="{Binding FilterAusschüttungAktiv}"
+                                         GroupName="Ausschüttung"
+                                         FontSize="16"
+                                         Margin="0,0,24,0"/>
+                            <RadioButton Content="Thesaurierend" 
+                                         IsChecked="{Binding IstETFAusschüttend, Converter={StaticResource BooleanInverterConverter}}"
+                                         IsEnabled="{Binding FilterAusschüttungAktiv}"
+                                         FontSize="16"
+                                         GroupName="Ausschüttung"/>
+                        </StackPanel>
                     </StackPanel>
-                </Grid>
-            </GroupBox>
+                </Border>
 
-            <!-- Preisbereich-Filter -->
-            <GroupBox Grid.Row="4" Header="Preisbereich" Style="{StaticResource FilterGroupStyle}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                <!-- Preisbereich-Filter -->
+                <Border Style="{StaticResource FilterGroupStyle}" BorderThickness="1" BorderBrush="{StaticResource BorderBrush}">
+                    <StackPanel>
+                        <TextBlock Text="Preisbereich" 
+                                   Style="{StaticResource GroupTitleStyle}"/>
 
-                    <!-- Preisfilter aktivieren -->
-                    <CheckBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" 
-                              Content="Preisfilter aktivieren" IsChecked="{Binding PreisfilterAktiv}"
-                              Margin="0,0,0,10"/>
+                        <CheckBox Content="Preisfilter aktivieren" 
+                                  IsChecked="{Binding PreisfilterAktiv}"
+                                  FontSize="16"
+                                  Margin="0,0,0,16"/>
 
-                    <!-- Min/Max Preis -->
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Min. Preis:" 
-                               Style="{StaticResource FilterLabelStyle}"
-                               IsEnabled="{Binding PreisfilterAktiv}"/>
-                    <TextBox Grid.Row="1" Grid.Column="1" 
-                             Text="{Binding MinPreis, StringFormat=N2}" 
-                             IsEnabled="{Binding PreisfilterAktiv}"
-                             Height="28"
-                             Margin="0,0,10,0"
-                             VerticalContentAlignment="Center"/>
+                        <Grid Visibility="{Binding PreisfilterAktiv, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Row="1" Grid.Column="2" Text="Max. Preis:" 
-                               Style="{StaticResource FilterLabelStyle}"
-                               Margin="10,0,10,0"
-                               IsEnabled="{Binding PreisfilterAktiv}"/>
-                    <TextBox Grid.Row="1" Grid.Column="3" 
-                             Text="{Binding MaxPreis, StringFormat=N2}" 
-                             IsEnabled="{Binding PreisfilterAktiv}"
-                             Height="28"
-                             VerticalContentAlignment="Center"/>
-                </Grid>
-            </GroupBox>
+                            <!-- Min Preis -->
+                            <TextBlock Grid.Row="0" Grid.Column="0"
+                                       Text="Minimaler Preis" 
+                                       Style="{StaticResource FilterLabelStyle}"
+                                       Margin="0,0,16,10"/>
 
-            <!-- Filter-Buttons -->
-            <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-                <!-- Dieser Button wurde geändert, um auch das Command zu verwenden -->
-                <Button x:Name="ZurückButton" Content="Filter zurücksetzen" 
-            Command="{Binding FilterZurücksetzenCommand}" 
-            Style="{StaticResource SecondaryButtonStyle}"/>
+                            <TextBox Grid.Row="1" Grid.Column="0"
+                                     Text="{Binding MinPreis, StringFormat=N2}" 
+                                     Style="{StaticResource FilterTextBoxStyle}"
+                                     Height="50"
+                                     FontSize="16"
+                                     BorderThickness="1"
+                                     BorderBrush="#CCCCCC"
+                                     VerticalContentAlignment="Center"
+                                     Padding="16,0"
+                                     Margin="0,0,16,0"/>
 
-                <!-- Dieser Button kann entfernt werden, da er redundant ist -->
-                <!-- <Button Content="Zurücksetzen" Command="{Binding FilterZurücksetzenCommand}" 
-            Style="{StaticResource SecondaryButtonStyle}"/> -->
+                            <!-- Max Preis -->
+                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                       Text="Maximaler Preis" 
+                                       Style="{StaticResource FilterLabelStyle}"
+                                       Margin="16,0,0,10"/>
 
-                <Button Content="Filter anwenden" Command="{Binding FilterAnwendenCommand}" 
-            Style="{StaticResource PrimaryButtonStyle}"/>
+                            <TextBox Grid.Row="1" Grid.Column="1"
+                                     Text="{Binding MaxPreis, StringFormat=N2}" 
+                                     Style="{StaticResource FilterTextBoxStyle}"
+                                     Height="50"
+                                     FontSize="16"
+                                     BorderThickness="1"
+                                     BorderBrush="#CCCCCC"
+                                     VerticalContentAlignment="Center"
+                                     Padding="16,0"
+                                     Margin="16,0,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Filter-Buttons -->
+                <StackPanel Orientation="Horizontal" 
+                            HorizontalAlignment="Right" 
+                            Margin="0,24,0,0">
+                    <Button x:Name="ZurückButton" 
+                            Content="Filter zurücksetzen" 
+                            Command="{Binding FilterZurücksetzenCommand}" 
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Height="60"
+                            FontSize="18"
+                            Margin="0,0,20,0"
+                            Background="#e0e0e0"
+                            Foreground="#333333"
+                            BorderThickness="0"
+                            Width="200"/>
+
+                    <Button Content="Filter anwenden" 
+                            Command="{Binding FilterAnwendenCommand}" 
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Height="60"
+                            FontSize="18"
+                            Background="#2c3e50"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Width="200"/>
+                </StackPanel>
             </StackPanel>
-        </Grid>
-    </ScrollViewer>
+        </ScrollViewer>
+    </Grid>
 </UserControl>

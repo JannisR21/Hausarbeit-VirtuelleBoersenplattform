@@ -5,6 +5,16 @@
              xmlns:converters="clr-namespace:HausarbeitVirtuelleBörsenplattform.Converters"
              xmlns:helpers="clr-namespace:HausarbeitVirtuelleBörsenplattform.Helpers">
     <Application.Resources>
+
+        <!-- Globale Fenster-Standard-Styles -->
+        <Style TargetType="Window">
+            <Setter Property="WindowStartupLocation" Value="CenterScreen"/>
+            <Setter Property="ResizeMode" Value="NoResize"/>
+            <Setter Property="WindowStyle" Value="None"/>
+            <Setter Property="Width" Value="1200"/>
+            <Setter Property="Height" Value="800"/>
+        </Style>
+
         <!-- Globale Converter -->
         <converters:BooleanToBooleanInverterConverter x:Key="BooleanToBooleanInverterConverter"/>
         <converters:GewinnVerlustFarbeConverter x:Key="GewinnVerlustFarbeConverter"/>
@@ -13,5 +23,6 @@
         <helpers:WatermarkHelper x:Key="WatermarkHelper"/>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <converters:InverseVisibilityConverter x:Key="InverseVisibilityConverter"/>
+
     </Application.Resources>
 </Application>

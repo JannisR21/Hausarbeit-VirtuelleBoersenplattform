@@ -190,6 +190,19 @@ namespace HausarbeitVirtuelleBörsenplattform
                     {
                         StandardAktien = new ObservableCollection<Aktie>();
                     }
+
+                    // EmailService mit den konkreten SMTP-Daten initialisieren
+                    EmailService = new EmailService(
+                        smtpServer: "smtp.web.de",
+                        smtpPort: 587,
+                        smtpUsername: "Jannisr32@web.de",
+                        smtpPassword: "KSIYD2GR4AIKOMIH7ZCK",
+                        senderEmail: "Jannisr32@web.de",
+                        senderName: "Virtuelle Börsenplattform",
+                        isTestMode: false    // Echte E-Mails versenden
+                    );
+
+                    Debug.WriteLine("EmailService mit echten SMTP-Daten initialisiert");
                 }
                 else
                 {

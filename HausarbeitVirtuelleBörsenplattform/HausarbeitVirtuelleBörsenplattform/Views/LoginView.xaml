@@ -8,7 +8,7 @@
              xmlns:helpers="clr-namespace:HausarbeitVirtuelleBörsenplattform.Helpers"
              xmlns:sys="clr-namespace:System;assembly=mscorlib"
              mc:Ignorable="d" 
-             d:DesignHeight="600" d:DesignWidth="900">
+             d:DesignHeight="900" d:DesignWidth="900">
 
     <UserControl.DataContext>
         <viewmodels:LoginViewModel/>
@@ -419,14 +419,13 @@
                             <TextBlock Text="Willkommen zurück" 
                                    FontSize="{StaticResource StandardHeaderFontSize}" 
                                    FontWeight="Bold" 
-                                   Foreground="{StaticResource TextDarkBrush}" 
-                                   HorizontalAlignment="Left"
-                                   TextWrapping="Wrap"/>
-                            <TextBlock Text="Bitte melden Sie sich an, um fortzufahren" 
+                                   Foreground="{StaticResource TextDarkBrush}"
+                                   TextWrapping="Wrap" Width="295"/>
+                            <TextBlock 
                                    FontSize="15" 
                                    Foreground="#64748B" 
-                                   HorizontalAlignment="Left" 
-                                   Margin="0,8,0,0"/>
+                                       Margin="0,10,0,20"
+                                   ><Run Text="&#x9;&#x9;"/><Run Text="    "/><Run Text="   "/><Run Language="de-de" Text=" "/><Run Text="Bitte melden Sie sich an, um fortzufahren"/></TextBlock>
                         </StackPanel>
 
                         <!-- Login-Formular -->

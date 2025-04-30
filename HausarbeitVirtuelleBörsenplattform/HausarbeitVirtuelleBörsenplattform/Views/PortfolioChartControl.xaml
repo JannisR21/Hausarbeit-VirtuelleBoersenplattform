@@ -7,123 +7,216 @@
              xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
              xmlns:converters="clr-namespace:HausarbeitVirtuelleBörsenplattform.Converters"
              mc:Ignorable="d" 
-             Background="{DynamicResource BackgroundBrush}"
-             d:DesignHeight="300" d:DesignWidth="600">
+             Background="White"
+             d:DesignHeight="450" d:DesignWidth="800">
+
     <UserControl.Resources>
         <converters:GewinnVerlustFarbeConverter x:Key="GewinnVerlustFarbeConverter"/>
+
+        <!-- Aktualisierte Farben für Trade Republic Stil -->
+        <SolidColorBrush x:Key="PositiveValueBrush" Color="#14CC80"/>
+        <SolidColorBrush x:Key="NegativeValueBrush" Color="#FF5752"/>
+        <SolidColorBrush x:Key="NeutralLineBrush" Color="#DDDDDD"/>
+        <SolidColorBrush x:Key="ChartBackgroundBrush" Color="White"/>
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1A1A1A"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#636363"/>
+
+        <!-- Zeitraum-Button-Style im Trade Republic Stil -->
+        <Style x:Key="ZeitraumButtonStyle" TargetType="RadioButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="#636363"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Grid>
+                            <Border x:Name="ButtonBorder" 
+                                    Background="Transparent" 
+                                    CornerRadius="4"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <Border x:Name="SelectedIndicator"
+                                    Height="3"
+                                    Background="#14CC80"
+                                    CornerRadius="1.5"
+                                    Visibility="Collapsed"
+                                    VerticalAlignment="Bottom"
+                                    Margin="4,0"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="SelectedIndicator" Property="Visibility" Value="Visible"/>
+                                <Setter Property="Foreground" Value="#1A1A1A"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#1A1A1A"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
-    <Grid>
+    <Grid Margin="0,16,0,0">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Wert und Performance Anzeige -->
-        <Grid Grid.Row="0" Margin="0,0,0,10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
+        <!-- Portfolio-Wert und Performance im Trade Republic Stil -->
+        <StackPanel Grid.Row="0" Margin="20,0,20,16">
+            <!-- Hauptwert - groß und auffällig -->
+            <TextBlock Text="{Binding PortfolioWertFormatted}" 
+                       Foreground="{StaticResource TextPrimaryBrush}"
+                       FontSize="32" 
+                       FontWeight="Bold"
+                       Margin="0,0,0,4"
+                       FontFamily="Segoe UI"/>
 
-            <!-- Gesamtwert und Fehler-Anzeige -->
-            <StackPanel Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Left">
-                <TextBlock Text="{Binding PortfolioWertFormatted}" 
-                           FontSize="18" 
+            <!-- Performance mit Pfeil im Trade Republic Stil -->
+            <StackPanel Orientation="Horizontal">
+                <!-- Pfeil-Icon für Performance -->
+                <Path x:Name="PerformancePfeil" 
+                      Width="14" 
+                      Height="14" 
+                      Stretch="Uniform"
+                      Margin="0,0,4,0"
+                      VerticalAlignment="Center"
+                      Fill="{Binding TagessaldoColor}">
+                    <Path.Style>
+                        <Style TargetType="Path">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding TagessaldoText}" Value="True">
+                                    <Setter Property="Data" Value="M7,15L12,10L17,15H7Z"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding TagessaldoText}" Value="False">
+                                    <Setter Property="Data" Value="M7,10L12,15L17,10H7Z"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Path.Style>
+                </Path>
+
+                <!-- Prozentwert der Performance -->
+                <TextBlock Text="{Binding TagessaldoText}" 
+                           FontSize="16" 
                            FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextBrush}"/>
+                           Foreground="{Binding TagessaldoColor}"/>
 
-                <TextBlock Margin="0,2,0,0"
-                          FontSize="12">
-                    <Run Text="Tagessaldo: "/>
-                    <Run Text="{Binding TagessaldoText}" Foreground="{Binding TagessaldoColor}"/>
-                </TextBlock>
+                <!-- Zeitraum in Klammern -->
+                <TextBlock Text="(1 Tag)" 
+                           FontSize="14" 
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           Margin="6,0,0,0"
+                           VerticalAlignment="Center"/>
             </StackPanel>
+        </StackPanel>
 
-            <!-- Grafische Anzeige MAX / MIN -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <Border Background="#005288" Width="40" Height="24" CornerRadius="0" Margin="0,0,3,0">
-                    <TextBlock Text="MAX" 
-                              Foreground="White" 
-                              HorizontalAlignment="Center" 
-                              VerticalAlignment="Center"
-                              FontSize="11"
-                              FontWeight="SemiBold"/>
-                </Border>
-                <Border Background="#C00000" Width="40" Height="24" CornerRadius="0">
-                    <TextBlock Text="MIN" 
-                              Foreground="White" 
-                              HorizontalAlignment="Center" 
-                              VerticalAlignment="Center"
-                              FontSize="11"
-                              FontWeight="SemiBold"/>
-                </Border>
-            </StackPanel>
-        </Grid>
+        <!-- Zeitraum-Selektoren im Trade Republic-Stil -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,20">
+            <RadioButton Content="1T" GroupName="Zeitraum" Style="{StaticResource ZeitraumButtonStyle}" IsChecked="{Binding IsOneDay}" />
+            <RadioButton Content="1W" GroupName="Zeitraum" Style="{StaticResource ZeitraumButtonStyle}" IsChecked="{Binding IsOneWeek}" />
+            <RadioButton Content="1M" GroupName="Zeitraum" Style="{StaticResource ZeitraumButtonStyle}" IsChecked="{Binding IsOneMonth}" />
+            <RadioButton Content="1J" GroupName="Zeitraum" Style="{StaticResource ZeitraumButtonStyle}" IsChecked="{Binding IsOneYear}" />
+            <RadioButton Content="Max" GroupName="Zeitraum" Style="{StaticResource ZeitraumButtonStyle}" IsChecked="{Binding IsMax}" />
+        </StackPanel>
 
-        <!-- Header mit Zeitraum-Selektoren -->
-        <Grid Grid.Row="1" Margin="0,0,0,5">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- Zeitraum-Selektoren exakt wie im Screenshot -->
-            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <RadioButton Content="1T" GroupName="Zeitraum" Margin="0,0,10,0" IsChecked="{Binding IsOneDay}" />
-                <RadioButton Content="1W" GroupName="Zeitraum" Margin="0,0,10,0" IsChecked="{Binding IsOneWeek}" />
-                <RadioButton Content="1M" GroupName="Zeitraum" Margin="0,0,10,0" IsChecked="{Binding IsOneMonth}" />
-                <RadioButton Content="1J" GroupName="Zeitraum" Margin="0,0,10,0" IsChecked="{Binding IsOneYear}" />
-                <RadioButton Content="Max" GroupName="Zeitraum" Margin="0,0,0,0" IsChecked="{Binding IsMax}" />
-            </StackPanel>
-        </Grid>
-
-        <!-- Verbesserter Chart, angepasst an das Beispielbild -->
-        <Border Grid.Row="2" BorderThickness="1" BorderBrush="#E0E0E0" Margin="0,5,0,0">
+        <!-- Chart im Trade Republic-Stil -->
+        <Grid Grid.Row="2">
             <lvc:CartesianChart Series="{Binding SeriesCollection}" 
-                              LegendLocation="None"
-                              DisableAnimations="True"
-                              Hoverable="True"
-                              Background="Transparent"
-                              Margin="0,0,0,0">
+                               LegendLocation="None"
+                               DisableAnimations="False"
+                               Hoverable="True"
+                               Background="Transparent"
+                               AnimationsSpeed="0:0:0.3"
+                               Zoom="X"
+                               Pan="X">
+                <lvc:CartesianChart.Resources>
+                    <!-- Chart-spezifische Ressourcen -->
+                    <Style TargetType="lvc:LineSeries">
+                        <Setter Property="StrokeThickness" Value="2.5"/>
+                        <Setter Property="PointGeometrySize" Value="0"/>
+                        <Setter Property="LineSmoothness" Value="0.7"/>
+                        <Setter Property="Stroke" Value="{StaticResource PositiveValueBrush}"/>
+                    </Style>
+                </lvc:CartesianChart.Resources>
+
                 <lvc:CartesianChart.AxisX>
-                    <lvc:Axis Title="" 
+                    <lvc:Axis Title=""
                             Labels="{Binding Labels}"
-                            Foreground="{DynamicResource TextBrush}"
-                            DisableAnimations="True"
+                            Foreground="#9E9E9E"
+                            LabelsRotation="0"
+                            DisableAnimations="False"
                             ShowLabels="True"
+                            FontSize="10"
+                            FontWeight="Normal"
                             Opacity="0.7">
                         <lvc:Axis.Separator>
-                            <lvc:Separator StrokeThickness="0.5" StrokeDashArray="3" Stroke="#C0C0C0" Step="1"/>
+                            <lvc:Separator StrokeThickness="0" Stroke="Transparent"/>
                         </lvc:Axis.Separator>
                     </lvc:Axis>
                 </lvc:CartesianChart.AxisX>
                 <lvc:CartesianChart.AxisY>
-                    <lvc:Axis Title="" 
-                            LabelFormatter="{Binding YFormatter}" 
-                            MinValue="{Binding YMinValue}" 
+                    <lvc:Axis Title=""
+                            LabelFormatter="{Binding YFormatter}"
+                            MinValue="{Binding YMinValue}"
                             MaxValue="{Binding YMaxValue}"
-                            Foreground="{DynamicResource TextBrush}"
-                            DisableAnimations="True"
-                            Opacity="0.7"
-                            Position="RightTop">
+                            Foreground="#9E9E9E"
+                            DisableAnimations="False"
+                            FontSize="10"
+                            FontWeight="Normal"
+                            Position="RightTop"
+                            Opacity="0.7">
                         <lvc:Axis.Sections>
-                            <!-- Markieren der Nulllinie -->
-                            <lvc:AxisSection Value="0" 
-                                         StrokeThickness="1" 
-                                         Stroke="#B0B0B0" 
-                                         StrokeDashArray="0"/>
+                            <!-- Nulllinie im Trade Republic Stil -->
+                            <lvc:AxisSection Value="0"
+                                         StrokeThickness="1"
+                                         Stroke="{StaticResource NeutralLineBrush}"
+                                         StrokeDashArray="5,3"/>
                         </lvc:Axis.Sections>
                         <lvc:Axis.Separator>
-                            <lvc:Separator StrokeThickness="0.5" StrokeDashArray="3" Stroke="#C0C0C0"/>
+                            <lvc:Separator StrokeThickness="0" Stroke="Transparent"/>
                         </lvc:Axis.Separator>
                     </lvc:Axis>
                 </lvc:CartesianChart.AxisY>
                 <lvc:CartesianChart.DataTooltip>
-                    <lvc:DefaultTooltip Background="#333333" Foreground="White" SelectionMode="SharedXValues"/>
+                    <lvc:DefaultTooltip Background="White"
+                                      Foreground="#1A1A1A"
+                                      SelectionMode="SharedXValues"
+                                      FontSize="12"
+                                      FontWeight="Medium"
+                                      CornerRadius="6"
+                                      BorderThickness="1"
+                                      BorderBrush="#EEEEEE"
+                                      Padding="12,8">
+                        <lvc:DefaultTooltip.Effect>
+                            <DropShadowEffect BlurRadius="10" ShadowDepth="1" Opacity="0.1" Color="#000000"/>
+                        </lvc:DefaultTooltip.Effect>
+                    </lvc:DefaultTooltip>
                 </lvc:CartesianChart.DataTooltip>
             </lvc:CartesianChart>
-        </Border>
+
+            <!-- Trade Republic Stil - Zeitstempel-Anzeige unten -->
+            <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Center" Orientation="Horizontal" Margin="0,0,0,8">
+                <TextBlock Text="08:00" Foreground="#9E9E9E" FontSize="10" Margin="0,0,30,0"/>
+                <TextBlock Text="10:00" Foreground="#9E9E9E" FontSize="10" Margin="0,0,30,0"/>
+                <TextBlock Text="12:00" Foreground="#9E9E9E" FontSize="10" Margin="0,0,30,0"/>
+                <TextBlock Text="14:00" Foreground="#9E9E9E" FontSize="10" Margin="0,0,30,0"/>
+                <TextBlock Text="16:00" Foreground="#9E9E9E" FontSize="10" Margin="0,0,30,0"/>
+                <TextBlock Text="18:00" Foreground="#9E9E9E" FontSize="10" Margin="0,0,30,0"/>
+                <TextBlock Text="20:00" Foreground="#9E9E9E" FontSize="10" Margin="0,0,30,0"/>
+                <TextBlock Text="22:00" Foreground="#9E9E9E" FontSize="10"/>
+            </StackPanel>
+        </Grid>
     </Grid>
 </UserControl>

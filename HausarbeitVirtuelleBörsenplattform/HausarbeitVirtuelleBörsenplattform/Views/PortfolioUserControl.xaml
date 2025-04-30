@@ -5,6 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:HausarbeitVirtuelleBörsenplattform.Views"
              xmlns:converters="clr-namespace:HausarbeitVirtuelleBörsenplattform.Converters"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800"
              x:Name="ThisControl">
@@ -12,6 +13,193 @@
     <!-- Ressourcen für das UserControl -->
     <UserControl.Resources>
         <converters:GewinnVerlustFarbeConverter x:Key="GewinnVerlustFarbeConverter"/>
+
+        <!-- Farben -->
+        <Color x:Key="PrimaryColor">#1E40AF</Color>
+        <Color x:Key="PrimaryDarkColor">#102A67</Color>
+        <Color x:Key="PrimaryLightColor">#3B82F6</Color>
+        <Color x:Key="AccentColor">#10B981</Color>
+        <Color x:Key="SurfaceColor">#FFFFFF</Color>
+        <Color x:Key="BackgroundColor">#F0F6FF</Color>
+        <Color x:Key="CardColor">#FFFFFF</Color>
+        <Color x:Key="TextDarkColor">#1E293B</Color>
+        <Color x:Key="TextMediumColor">#475569</Color>
+        <Color x:Key="TextLightColor">#94A3B8</Color>
+        <Color x:Key="SuccessColor">#059669</Color>
+        <Color x:Key="WarningColor">#F59E0B</Color>
+        <Color x:Key="DangerColor">#DC2626</Color>
+        <Color x:Key="BorderColor">#CBD5E1</Color>
+
+        <!-- Brushes -->
+        <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}"/>
+        <SolidColorBrush x:Key="PrimaryDarkBrush" Color="{StaticResource PrimaryDarkColor}"/>
+        <SolidColorBrush x:Key="PrimaryLightBrush" Color="{StaticResource PrimaryLightColor}"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+        <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>
+        <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}"/>
+        <SolidColorBrush x:Key="CardBrush" Color="{StaticResource CardColor}"/>
+        <SolidColorBrush x:Key="TextDarkBrush" Color="{StaticResource TextDarkColor}"/>
+        <SolidColorBrush x:Key="TextMediumBrush" Color="{StaticResource TextMediumColor}"/>
+        <SolidColorBrush x:Key="TextLightBrush" Color="{StaticResource TextLightColor}"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}"/>
+        <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}"/>
+
+        <!-- DataGrid Styling -->
+        <Style x:Key="ModernDataGridStyle" TargetType="DataGrid">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="RowBackground" Value="#FFFFFF"/>
+            <Setter Property="AlternatingRowBackground" Value="#F8FAFC"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="GridLinesVisibility" Value="None"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#E2E8F0"/>
+            <Setter Property="VerticalGridLinesBrush" Value="Transparent"/>
+            <Setter Property="CanUserSortColumns" Value="True"/>
+            <Setter Property="RowHeight" Value="48"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+            <Setter Property="SelectionMode" Value="Single"/>
+            <Setter Property="SelectionUnit" Value="FullRow"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+
+        <!-- DataGridColumnHeader Style -->
+        <Style x:Key="ModernColumnHeaderStyle" TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#F1F5F9"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="12,13"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="SeparatorBrush" Value="Transparent"/>
+            <Setter Property="MinHeight" Value="40"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridColumnHeader">
+                        <Grid>
+                            <Border Background="{TemplateBinding Background}" 
+                                    BorderBrush="{TemplateBinding BorderBrush}" 
+                                    BorderThickness="{TemplateBinding BorderThickness}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter Grid.Column="0"
+                                                     HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                     VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                     Margin="{TemplateBinding Padding}"/>
+                                    <Path x:Name="SortArrow"
+                                          Grid.Column="1"
+                                          Visibility="Collapsed"
+                                          Width="10"
+                                          Height="10"
+                                          Stretch="Fill"
+                                          Margin="0,0,8,0"
+                                          Fill="{StaticResource PrimaryBrush}"/>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="SortDirection" Value="Ascending">
+                                <Setter TargetName="SortArrow" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="SortArrow" Property="Data" Value="M 0,10 L 10,10 L 5,0 Z"/>
+                            </Trigger>
+                            <Trigger Property="SortDirection" Value="Descending">
+                                <Setter TargetName="SortArrow" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="SortArrow" Property="Data" Value="M 0,0 L 10,0 L 5,10 Z"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- DataGridCell Style -->
+        <Style x:Key="ModernCellStyle" TargetType="DataGridCell">
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#E0F2FE"/>
+                                <Setter Property="BorderBrush" Value="#BAE6FD"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#F0F9FF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- TextBlock Styles für verschiedene Zelltypen -->
+        <Style x:Key="SymbolTextStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+        </Style>
+
+        <Style x:Key="RegularTextStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+        </Style>
+
+        <Style x:Key="NumericTextStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+        </Style>
+
+        <Style x:Key="PriceTextStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+        </Style>
+
+        <Style x:Key="ValueTextStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+        </Style>
+
+        <!-- Alert Box Style -->
+        <Style x:Key="AlertBoxStyle" TargetType="Border">
+            <Setter Property="Background" Value="#FEF3C7"/>
+            <Setter Property="BorderBrush" Value="#F59E0B"/>
+            <Setter Property="BorderThickness" Value="0,0,0,2"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+
+        <!-- Empty State Style -->
+        <Style x:Key="EmptyStateStyle" TargetType="Grid">
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="Margin" Value="0,30,0,30"/>
+        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -22,103 +210,66 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Fehlerbereich -->
+        <!-- Fehlerbereich mit modernem Design -->
         <Border Grid.Row="0" 
-                Background="#fff8e1" 
-                BorderBrush="#ffecb3" 
-                BorderThickness="1" 
-                CornerRadius="4" 
-                Padding="10" 
-                Margin="0,0,0,10">
-            <Border.Style>
-                <Style TargetType="Border">
-                    <Setter Property="Visibility" Value="Collapsed"/>
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding HatFehler}" Value="True">
-                            <Setter Property="Visibility" Value="Visible"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Border.Style>
-
+                Style="{StaticResource AlertBoxStyle}"
+                Visibility="{Binding HatFehler, Converter={StaticResource BooleanToVisibilityConverter}}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Warnsymbol -->
-                <Path Grid.Column="0"
-                      Data="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"
-                      Fill="#ffa000"
-                      Width="24"
-                      Height="24"
-                      Stretch="Uniform"
-                      Margin="0,0,10,0"/>
+                <!-- Modernes Warnsymbol -->
+                <Border Grid.Column="0" 
+                        Width="36" Height="36" 
+                        Background="#FEF9C3" 
+                        CornerRadius="18" 
+                        Margin="0,0,12,0">
+                    <Path Data="M12 5.99L19.53 19H4.47L12 5.99M12 2L1 21h22L12 2zm1 14h-2v2h2v-2zm0-6h-2v4h2v-4z"
+                          Fill="{StaticResource WarningBrush}"
+                          Width="20"
+                          Height="20"
+                          Stretch="Uniform"/>
+                </Border>
 
-                <!-- Fehlermeldung -->
+                <!-- Fehlermeldung mit verbessertem Styling -->
                 <TextBlock Grid.Column="1"
                            Text="{Binding FehlerText}"
                            TextWrapping="Wrap"
+                           FontSize="14"
+                           FontWeight="Medium"
+                           Foreground="#92400E"
                            VerticalAlignment="Center"/>
             </Grid>
         </Border>
 
-        <!-- Chart-Bereich -->
+        <!-- Chart-Bereich mit Schatten und abgerundeten Ecken -->
         <Border Grid.Row="1" 
-                BorderThickness="0,0,0,1" 
-                BorderBrush="#e0e0e0"
-                Margin="0,0,0,10" 
-                Padding="0,0,0,10">
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="12"
+                Margin="0,0,0,16" 
+                Padding="0,0,0,8"
+                Effect="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}, Path=Resources[CardEffect]}">
             <!-- Der Chart zeigt die Entwicklung des Portfoliowerts -->
             <local:PortfolioChartControl Height="300" 
-                                        DataContext="{Binding DataContext.PortfolioChartViewModel, 
-                                        RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                       DataContext="{Binding DataContext.PortfolioChartViewModel, 
+                                       RelativeSource={RelativeSource AncestorType=Window}}"/>
         </Border>
 
-        <!-- Portfolio-Tabelle mit verbessertem Styling -->
+        <!-- Portfolio-Tabelle mit modernem, elegantem Design -->
         <DataGrid x:Name="PortfolioDataGrid"
                   Grid.Row="2"
                   ItemsSource="{Binding PortfolioEintraege}"
-                  AutoGenerateColumns="False" 
-                  IsReadOnly="True"
-                  HeadersVisibility="Column" 
-                  GridLinesVisibility="Horizontal"
-                  BorderThickness="0" 
-                  Background="Transparent"
-                  RowBackground="White" 
-                  AlternatingRowBackground="#f5f9ff"
-                  Margin="0,0,0,0"
-                  CanUserSortColumns="True"
-                  RowHeight="40"
-                  HorizontalGridLinesBrush="#e0e0e0"
-                  VerticalGridLinesBrush="Transparent">
+                  Style="{StaticResource ModernDataGridStyle}"
+                  Margin="0,0,0,16">
 
-            <!-- Verbesserte Stile für die DataGrid-Elemente -->
             <DataGrid.Resources>
-                <!-- Style für die Spaltenköpfe -->
-                <Style TargetType="DataGridColumnHeader">
-                    <Setter Property="Background" Value="#f0f4f8"/>
-                    <Setter Property="Foreground" Value="#2c3e50"/>
-                    <Setter Property="FontWeight" Value="SemiBold"/>
-                    <Setter Property="Padding" Value="10,8"/>
-                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                    <Setter Property="BorderBrush" Value="#cccccc"/>
-                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
-                </Style>
-
-                <!-- Style für die Zellen -->
-                <Style TargetType="DataGridCell">
-                    <Setter Property="Padding" Value="10,5"/>
-                    <Setter Property="BorderThickness" Value="0"/>
-                    <Setter Property="VerticalAlignment" Value="Center"/>
-                    <Style.Triggers>
-                        <Trigger Property="IsSelected" Value="True">
-                            <Setter Property="Background" Value="#e3f2fd"/>
-                            <Setter Property="BorderBrush" Value="#64b5f6"/>
-                        </Trigger>
-                    </Style.Triggers>
-                </Style>
+                <!-- Styles überschreiben mit den definierten modernen Styles -->
+                <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource ModernColumnHeaderStyle}"/>
+                <Style TargetType="DataGridCell" BasedOn="{StaticResource ModernCellStyle}"/>
             </DataGrid.Resources>
 
             <DataGrid.Columns>
@@ -127,10 +278,7 @@
                                     Binding="{Binding AktienSymbol}" 
                                     Width="90">
                     <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="FontWeight" Value="Bold"/>
-                            <Setter Property="VerticalAlignment" Value="Center"/>
-                        </Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource SymbolTextStyle}"/>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
 
@@ -139,10 +287,7 @@
                                     Binding="{Binding AktienName}" 
                                     Width="*">
                     <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="VerticalAlignment" Value="Center"/>
-                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                        </Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource RegularTextStyle}"/>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
 
@@ -151,11 +296,7 @@
                                     Binding="{Binding Anzahl}" 
                                     Width="90">
                     <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="VerticalAlignment" Value="Center"/>
-                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                            <Setter Property="FontWeight" Value="Medium"/>
-                        </Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource NumericTextStyle}"/>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
 
@@ -164,22 +305,16 @@
                                     Binding="{Binding EinstandsPreis, StringFormat={}{0:N2} €}" 
                                     Width="110">
                     <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="VerticalAlignment" Value="Center"/>
-                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                        </Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource PriceTextStyle}"/>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
 
                 <!-- Spalte für den aktuellen Kurs -->
                 <DataGridTextColumn Header="Aktueller Kurs" 
                                     Binding="{Binding AktuellerKurs, StringFormat={}{0:N2} €}" 
-                                    Width="110">
+                                    Width="120">
                     <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="VerticalAlignment" Value="Center"/>
-                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                        </Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource PriceTextStyle}"/>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
 
@@ -188,153 +323,276 @@
                                     Binding="{Binding Wert, StringFormat={}{0:N2} €}" 
                                     Width="110">
                     <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="VerticalAlignment" Value="Center"/>
-                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                            <Setter Property="FontWeight" Value="SemiBold"/>
-                        </Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource ValueTextStyle}"/>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
 
-                <!-- Gewinn/Verlust-Spalte mit farblicher Hervorhebung -->
-                <DataGridTemplateColumn Header="Gewinn/Verlust" Width="150">
+                <!-- Gewinn/Verlust-Spalte mit farblicher Hervorhebung und verbesserten Visuals -->
+                <DataGridTemplateColumn Header="Gewinn/Verlust" Width="160">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                <!-- Absoluter Gewinn/Verlust -->
-                                <TextBlock Text="{Binding GewinnVerlust, StringFormat={}{0:N2} €}" 
-                           Foreground="{Binding GewinnVerlust, Converter={StaticResource GewinnVerlustFarbeConverter}}"
-                           FontWeight="SemiBold"/>
+                            <Border Padding="2,4" CornerRadius="4" Background="Transparent">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <!-- Absoluter Gewinn/Verlust -->
+                                    <TextBlock Text="{Binding GewinnVerlust, StringFormat={}{0:N2} €}" 
+                                             Foreground="{Binding GewinnVerlust, Converter={StaticResource GewinnVerlustFarbeConverter}}"
+                                             FontWeight="SemiBold"
+                                             Margin="0,0,4,0"/>
 
-                                <!-- Relativer Gewinn/Verlust in Prozent -->
-                                <TextBlock Text="{Binding GewinnVerlustProzent, StringFormat={} ({0:N2}%)}" 
-                           Foreground="{Binding GewinnVerlust, Converter={StaticResource GewinnVerlustFarbeConverter}}"
-                           Margin="5,0,0,0"/>
-                            </StackPanel>
+                                    <!-- Relativer Gewinn/Verlust in Prozent mit Pfeilsymbol -->
+                                    <StackPanel Orientation="Horizontal" Margin="4,0,0,0">
+                                        <!-- Anzeige des Pfeils nach oben/unten je nach Wert -->
+                                        <Path Width="12"
+                                              Height="12"
+                                              Stretch="Uniform"
+                                              Margin="0,0,2,0"
+                                              Fill="{Binding GewinnVerlust, Converter={StaticResource GewinnVerlustFarbeConverter}}">
+                                            <Path.Style>
+                                                <Style TargetType="Path">
+                                                    <Style.Triggers>
+                                                        <!-- Positive Werte - Pfeil nach oben -->
+                                                        <DataTrigger Binding="{Binding GewinnVerlust, Converter={StaticResource BooleanToVisibilityConverter}}" Value="Visible">
+                                                            <Setter Property="Data" Value="M7,14L12,9L17,14L19,12L12,5L5,12L7,14Z"/>
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                        <!-- Negative Werte - Pfeil nach unten -->
+                                                        <DataTrigger Binding="{Binding GewinnVerlust, Converter={StaticResource InverseVisibilityConverter}}" Value="Visible">
+                                                            <Setter Property="Data" Value="M7,10L12,15L17,10L19,12L12,19L5,12L7,10Z"/>
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                        <!-- Wert gleich 0 - kein Pfeil -->
+                                                        <DataTrigger Binding="{Binding GewinnVerlust}" Value="0">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Path.Style>
+                                        </Path>
+                                        <TextBlock Text="{Binding GewinnVerlustProzent, StringFormat={}{0:N2}%}" 
+                                                 Foreground="{Binding GewinnVerlust, Converter={StaticResource GewinnVerlustFarbeConverter}}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <!-- Letzte Aktualisierung mit Uhrsymbol -->
-                <DataGridTemplateColumn Header="Letzte Aktualisierung" Width="140">
+                <!-- Letzte Aktualisierung mit modernem Design -->
+                <DataGridTemplateColumn Header="Letzte Aktualisierung" Width="160">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <Path Data="M12,2C6.5,2 2,6.5 2,12C2,17.5 6.5,22 12,22C17.5,22 22,17.5 22,12C22,6.5 17.5,2 12,2M12.5,12.2L9,15.7L7.6,14.3L10,11.9V7H12V12.2" 
-                                      Fill="#999999" 
-                                      Width="14" 
-                                      Height="14" 
-                                      Stretch="Uniform"
-                                      Margin="0,0,5,0"/>
-                                <TextBlock Text="{Binding LetzteAktualisierung, StringFormat={}{0:HH:mm:ss}}" 
-                                           VerticalAlignment="Center"
-                                           Foreground="#666666"/>
-                            </StackPanel>
+                            <Border Background="#F1F5F9" CornerRadius="4" Padding="8,4" Margin="0,4" HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="M12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22C17.5 22 22 17.5 22 12C22 6.5 17.5 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z" 
+                                          Fill="{StaticResource TextLightBrush}" 
+                                          Width="14" 
+                                          Height="14" 
+                                          Stretch="Uniform"
+                                          Margin="0,0,6,0"/>
+                                    <TextBlock Text="{Binding LetzteAktualisierung, StringFormat={}{0:HH:mm:ss}}" 
+                                              VerticalAlignment="Center"
+                                              FontSize="12"
+                                              Foreground="{StaticResource TextMediumBrush}"/>
+                                </StackPanel>
+                            </Border>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
             </DataGrid.Columns>
 
-            <!-- Meldung bei leerem Portfolio mit verbesserten Styling -->
-            <DataGrid.Style>
-                <Style TargetType="DataGrid">
-                    <Style.Triggers>
+            <!-- Verbessertes "Leeres Portfolio"-Design -->
+            <!-- Meldung bei leerem Portfolio -->
+            <DataGrid.Template>
+                <ControlTemplate TargetType="DataGrid">
+                    <Grid Background="{TemplateBinding Background}">
+                        <!-- Normales DataGrid -->
+                        <Grid x:Name="PART_Root" Visibility="Visible">
+                            <ScrollViewer x:Name="DG_ScrollViewer" 
+                                        Focusable="false" 
+                                        HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}" 
+                                        VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}">
+                                <ItemsPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                            </ScrollViewer>
+                        </Grid>
+
+                        <!-- Leerer Zustand -->
+                        <Grid x:Name="EmptyState" Background="#F8FAFC" Visibility="Collapsed">
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20">
+                                <!-- Modernes "Leeres Portfolio"-Icon -->
+                                <Border Width="100" Height="100" 
+                                       Background="#EFF6FF" 
+                                       BorderBrush="#DBEAFE" 
+                                       BorderThickness="1"
+                                       CornerRadius="50"
+                                       Margin="0,0,0,24">
+                                    <Path Data="M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M19,5V19H5V5H19M17,11V13H7V11H17M13,15V17H7V15H13Z" 
+                                          Fill="{StaticResource PrimaryLightBrush}"
+                                          Width="50"
+                                          Height="50"
+                                          Stretch="Uniform"/>
+                                </Border>
+                                <TextBlock Text="Ihr Portfolio ist leer" 
+                                          HorizontalAlignment="Center"
+                                          FontSize="24"
+                                          FontWeight="SemiBold"
+                                          Foreground="{StaticResource TextDarkBrush}"
+                                          Margin="0,0,0,12"/>
+                                <TextBlock Text="Nutzen Sie den 'Aktienhandel'-Button oben, um Aktien zu Ihrem Portfolio hinzuzufügen" 
+                                          HorizontalAlignment="Center"
+                                          TextWrapping="Wrap"
+                                          Width="400"
+                                          TextAlignment="Center"
+                                          FontSize="16"
+                                          Foreground="{StaticResource TextMediumBrush}"/>
+                                <!-- CTA Button für Aktienhandel -->
+                                <Button Content="Zum Aktienhandel" 
+                                       Margin="0,24,0,0"
+                                       Padding="16,10"
+                                       Background="{StaticResource PrimaryBrush}"
+                                       Foreground="White"
+                                       FontWeight="SemiBold"
+                                       BorderThickness="0"
+                                       Command="{Binding NavigateToHandelsViewCommand}">
+                                    <Button.Resources>
+                                        <Style TargetType="Border">
+                                            <Setter Property="CornerRadius" Value="6"/>
+                                        </Style>
+                                    </Button.Resources>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                    <ControlTemplate.Triggers>
                         <DataTrigger Binding="{Binding PortfolioEintraege.Count}" Value="0">
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate>
-                                        <Grid Background="#f8f9fa" Margin="0,30,0,30">
-                                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                                <Path Data="M20 19V3H4v16H2v2h11.25c0-.67.13-1.33.38-1.96-.65-.23-1.13-.81-1.13-1.54v-1a2.5 2.5 0 012.5-2.5h4a2.5 2.5 0 012.5 2.5v1c0 .73-.48 1.31-1.13 1.54.25.63.38 1.29.38 1.96H22v-2h-2M6 7h12v2H6V7m0 4h12v2H6v-2m0 4h6v2H6v-2m14 5v-1c0-.28-.22-.5-.5-.5h-4c-.28 0-.5.22-.5.5v1c0 .28.22.5.5.5h4c.28 0 .5-.22.5-.5m0 2H16v1h1v1h1v-1h1v-1h1z" 
-                                                      Fill="#999999"
-                                                      Width="80"
-                                                      Height="80"
-                                                      Stretch="Uniform"
-                                                      Margin="0,0,0,15"/>
-                                                <TextBlock Text="Ihr Portfolio ist leer" 
-                                                           HorizontalAlignment="Center"
-                                                           FontSize="18"
-                                                           FontWeight="Medium"
-                                                           Foreground="#333333"
-                                                           Margin="0,0,0,5"/>
-                                                <TextBlock Text="Nutzen Sie den 'Aktienhandel'-Button oben, um Aktien zu Ihrem Portfolio hinzuzufügen" 
-                                                           HorizontalAlignment="Center"
-                                                           TextWrapping="Wrap"
-                                                           Width="400"
-                                                           TextAlignment="Center"
-                                                           Foreground="#666666"/>
-                                            </StackPanel>
-                                        </Grid>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
+                            <Setter TargetName="PART_Root" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="EmptyState" Property="Visibility" Value="Visible"/>
                         </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </DataGrid.Style>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </DataGrid.Template>
         </DataGrid>
 
-        <!-- Zusammenfassung/Summen-Bereich -->
-        <Grid Grid.Row="3">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-
-            <!-- Letzte Aktualisierung -->
-            <TextBlock Grid.Row="0" 
-                       Text="{Binding LetzteAktualisierung, StringFormat=Letzte Aktualisierung: {0:dd.MM.yyyy HH:mm:ss}}"
-                       HorizontalAlignment="Right"
-                       Foreground="#666"
-                       FontSize="11"
-                       Margin="0,5,0,5"
-                       Visibility="{Binding PortfolioEintraege.Count, Converter={StaticResource ResourceKey=BooleanToVisibilityConverter}}"/>
+        <!-- Zusammenfassung/Summen-Bereich mit verbessertem Layout -->
+        <Border Grid.Row="3" 
+                Background="#F8FAFC"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="12"
+                Padding="0">
 
             <!-- Zusammenfassung -->
-            <Border Grid.Row="1" 
-                BorderThickness="0,1,0,0" 
-                BorderBrush="#e0e0e0" 
-                VerticalAlignment="Bottom" 
-                Height="50" 
-                Padding="10,0" 
-                Background="#f0f4f8">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-                    <!-- Anzahl der Positionen -->
-                    <TextBlock Grid.Column="0" 
-                               Text="{Binding PortfolioEintraege.Count, StringFormat=Positionen: {0}}" 
-                               VerticalAlignment="Center"
-                               FontSize="13"/>
-
-                    <!-- Aktualisierungszeit -->
-                    <TextBlock Grid.Column="1" 
-                               Text="{Binding LetzteAktualisierung, StringFormat=Stand: {0:dd.MM.yyyy HH:mm:ss}}"
-                               HorizontalAlignment="Right"
-                               Foreground="#555"
-                               FontSize="11"
-                               VerticalAlignment="Center"/>
-
-                    <!-- Gesamtgewinn/-verlust -->
-                    <StackPanel Grid.Column="2" 
-                                Orientation="Horizontal" 
-                                HorizontalAlignment="Right"
-                                Margin="20,0,0,0">
-                        <TextBlock Text="Gesamtgewinn/-verlust: " 
-                                   VerticalAlignment="Center"
-                                   FontWeight="Medium"/>
-                        <TextBlock Text="{Binding GesamtGewinnVerlust, StringFormat={}{0:N2} €}"
-                                   Foreground="{Binding GesamtGewinnVerlust, Converter={StaticResource GewinnVerlustFarbeConverter}}"
-                                   FontWeight="Bold"
-                                   FontSize="15"
-                                   VerticalAlignment="Center"/>
+                <!-- Letzte Aktualisierung mit modernerem Design -->
+                <Border Grid.Row="0" 
+                        Background="Transparent"
+                        Padding="16,10"
+                        BorderThickness="0,0,0,1" 
+                        BorderBrush="#E2E8F0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Path Data="M12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22C17.5 22 22 17.5 22 12C22 6.5 17.5 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z" 
+                              Fill="{StaticResource TextLightBrush}" 
+                              Width="14" 
+                              Height="14" 
+                              Stretch="Uniform"
+                              Margin="0,0,6,0"/>
+                        <TextBlock Text="{Binding LetzteAktualisierung, StringFormat=Letzte Aktualisierung: {0:dd.MM.yyyy HH:mm:ss}}"
+                                  Foreground="{StaticResource TextLightBrush}"
+                                  FontSize="12"/>
                     </StackPanel>
+                </Border>
+
+                <!-- Moderne Fußzeile mit Zusammenfassung -->
+                <Grid Grid.Row="1" Margin="0">
+                    <Border Background="{StaticResource SurfaceBrush}" 
+                            CornerRadius="0,0,12,12" 
+                            Padding="16,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Anzahl der Positionen mit verbessertem Design -->
+                            <Border Grid.Column="0" 
+                                    Background="#F0F9FF" 
+                                    BorderBrush="#BAE6FD" 
+                                    BorderThickness="1" 
+                                    CornerRadius="20" 
+                                    Padding="12,6">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z" 
+                                          Fill="{StaticResource PrimaryBrush}"
+                                          Width="16"
+                                          Height="16"
+                                          Stretch="Uniform"
+                                          Margin="0,0,6,0"/>
+                                    <TextBlock Text="{Binding PortfolioEintraege.Count, StringFormat=Positionen: {0}}" 
+                                               FontWeight="Medium"
+                                               FontSize="13"
+                                               Foreground="{StaticResource TextDarkBrush}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Gesamtgewinn/-verlust mit verbessertem Design -->
+                            <Border Grid.Column="2" 
+                                    Background="#F0FDF4" 
+                                    BorderBrush="#BBF7D0" 
+                                    BorderThickness="1" 
+                                    CornerRadius="8"
+                                    Padding="16,10"
+                                    Visibility="{Binding PortfolioEintraege.Count, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Gesamtgewinn/-verlust: " 
+                                              FontWeight="Medium"
+                                              Foreground="{StaticResource TextDarkBrush}"
+                                              VerticalAlignment="Center"/>
+
+                                    <TextBlock Text="{Binding GesamtGewinnVerlust, StringFormat={}{0:N2} €}"
+                                              Foreground="{Binding GesamtGewinnVerlust, Converter={StaticResource GewinnVerlustFarbeConverter}}"
+                                              FontWeight="Bold"
+                                              FontSize="16"
+                                              Margin="6,0,0,0"
+                                              VerticalAlignment="Center"/>
+
+                                    <!-- Anzeige des Pfeils nach oben/unten je nach Wert -->
+                                    <Path Width="18"
+                                          Height="18"
+                                          Stretch="Uniform"
+                                          Margin="6,0,0,0"
+                                          Fill="{Binding GesamtGewinnVerlust, Converter={StaticResource GewinnVerlustFarbeConverter}}">
+                                        <Path.Style>
+                                            <Style TargetType="Path">
+                                                <Style.Triggers>
+                                                    <!-- Positive Werte - Pfeil nach oben -->
+                                                    <DataTrigger Binding="{Binding GesamtGewinnVerlust, Converter={StaticResource BooleanToVisibilityConverter}}" Value="Visible">
+                                                        <Setter Property="Data" Value="M7,14L12,9L17,14L19,12L12,5L5,12L7,14Z"/>
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                    <!-- Negative Werte - Pfeil nach unten -->
+                                                    <DataTrigger Binding="{Binding GesamtGewinnVerlust, Converter={StaticResource InverseVisibilityConverter}}" Value="Visible">
+                                                        <Setter Property="Data" Value="M7,10L12,15L17,10L19,12L12,19L5,12L7,10Z"/>
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                    <!-- Wert gleich 0 - kein Pfeil -->
+                                                    <DataTrigger Binding="{Binding GesamtGewinnVerlust}" Value="0">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Path.Style>
+                                    </Path>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Border>
                 </Grid>
-            </Border>
-        </Grid>
+            </Grid>
+        </Border>
     </Grid>
 </UserControl>

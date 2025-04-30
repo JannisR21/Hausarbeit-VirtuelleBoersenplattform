@@ -1,44 +1,74 @@
 ﻿<UserControl x:Class="HausarbeitVirtuelleBörsenplattform.Views.HandelsUserControl" 
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:helpers="clr-namespace:HausarbeitVirtuelleBörsenplattform.Helpers" 
              xmlns:converters="clr-namespace:HausarbeitVirtuelleBörsenplattform.Converters" 
              xmlns:local="clr-namespace:HausarbeitVirtuelleBörsenplattform.Views" 
              Background="Transparent" 
              Loaded="HandelsUserControl_Loaded">
     <UserControl.Resources>
-        <!-- Converter für IsKauf-Umkehrung -->
+        <!-- Converter -->
         <converters:BooleanToBooleanInverterConverter x:Key="BooleanInverterConverter"/>
-
-        <!-- BoolToVisibility-Converter -->
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:GewinnVerlustFarbeConverter x:Key="GewinnVerlustFarbeConverter"/>
 
-        <!-- Style für den Ausführen-Button -->
-        <Style x:Key="ExecuteButtonStyle" TargetType="Button">
-            <Setter Property="Height" Value="40"/>
-            <Setter Property="Background" Value="#2c3e50"/>
+        <!-- Farbpalette -->
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#2E5496"/>
+        <SolidColorBrush x:Key="SecondaryBrush" Color="#4472C4"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#5B9BD5"/>
+        <SolidColorBrush x:Key="BackgroundBrush" Color="#F5F5F5"/>
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#E0E0E0"/>
+        <SolidColorBrush x:Key="TextDarkBrush" Color="#333333"/>
+        <SolidColorBrush x:Key="TextMediumBrush" Color="#666666"/>
+        <SolidColorBrush x:Key="TextLightBrush" Color="#999999"/>
+        <SolidColorBrush x:Key="BuyBrush" Color="#70AD47"/>
+        <SolidColorBrush x:Key="SellBrush" Color="#ED7D31"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#FFB900"/>
+        <SolidColorBrush x:Key="InfoBrush" Color="#5B9BD5"/>
+
+        <!-- Kartenstil -->
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="0,0,0,20"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#20000000" BlurRadius="10" ShadowDepth="1" Opacity="0.2"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Button Style -->
+        <Style x:Key="StandardButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Margin" Value="0,15,0,0"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Height" Value="40"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" 
-                                BorderBrush="{TemplateBinding BorderBrush}" 
-                                BorderThickness="{TemplateBinding BorderThickness}" 
-                                CornerRadius="8">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
                             <ContentPresenter HorizontalAlignment="Center" 
-                                              VerticalAlignment="Center"/>
+                                              VerticalAlignment="Center" 
+                                              Margin="{TemplateBinding Padding}"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#34495e"/>
+                                <Setter Property="Background" Value="{StaticResource SecondaryBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#1a2530"/>
+                                <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+                                <Setter Property="Opacity" Value="0.9"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.5"/>
@@ -49,31 +79,37 @@
             </Setter>
         </Style>
 
-        <!-- Style für Anzahl-Steuerung -->
-        <Style x:Key="QuantityButtonStyle" TargetType="Button">
-            <Setter Property="Width" Value="28"/>
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Background" Value="#e0e0e0"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Margin" Value="0"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Padding" Value="0"/>
+        <!-- Kauf/Verkauf Buttons -->
+        <Style x:Key="BuyButtonStyle" TargetType="Button" BasedOn="{StaticResource StandardButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource BuyBrush}"/>
+        </Style>
+
+        <Style x:Key="SellButtonStyle" TargetType="Button" BasedOn="{StaticResource StandardButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource SellBrush}"/>
+        </Style>
+
+        <!-- Moderne TextBox -->
+        <Style x:Key="ModernTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" 
-                                BorderBrush="{TemplateBinding BorderBrush}" 
-                                BorderThickness="{TemplateBinding BorderThickness}" 
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="4">
-                            <ContentPresenter HorizontalAlignment="Center" 
-                                              VerticalAlignment="Center"/>
+                            <ScrollViewer x:Name="PART_ContentHost" 
+                                          Margin="{TemplateBinding Padding}" 
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#cccccc"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#bbbbbb"/>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -81,325 +117,585 @@
             </Setter>
         </Style>
 
-        <!-- Style für Loading-Indikator -->
-        <Style x:Key="LoadingSpinnerStyle" TargetType="Control">
-            <Setter Property="Width" Value="20"/>
-            <Setter Property="Height" Value="20"/>
+        <!-- Moderne ComboBox -->
+        <Style x:Key="ModernComboBox" TargetType="ComboBox">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Tab-Header Style -->
+        <Style x:Key="TabRadioButtonStyle" TargetType="RadioButton">
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="Control">
+                    <ControlTemplate TargetType="RadioButton">
                         <Grid>
-                            <Ellipse Width="{TemplateBinding Width}" 
-                                     Height="{TemplateBinding Height}" 
-                                     Stroke="#2c3e50" 
-                                     StrokeThickness="2" 
-                                     Opacity="0.3"/>
-                            <Path x:Name="Spinner" 
-                                  Stroke="#2c3e50" 
-                                  StrokeThickness="2" 
-                                  StrokeStartLineCap="Round" 
-                                  Opacity="1">
-                                <Path.Data>
-                                    <PathGeometry>
-                                        <PathFigure StartPoint="10,2">
-                                            <ArcSegment Point="10,2" IsLargeArc="True" Size="8,8" SweepDirection="Clockwise"/>
-                                        </PathFigure>
-                                    </PathGeometry>
-                                </Path.Data>
-                                <Path.RenderTransform>
-                                    <RotateTransform x:Name="SpinnerRotate" CenterX="10" CenterY="10" Angle="0"/>
-                                </Path.RenderTransform>
-                                <Path.Triggers>
-                                    <EventTrigger RoutedEvent="Loaded">
-                                        <BeginStoryboard>
-                                            <Storyboard>
-                                                <DoubleAnimation Storyboard.TargetName="SpinnerRotate" 
-                                                                Storyboard.TargetProperty="Angle" 
-                                                                From="0" To="360" Duration="0:0:1" 
-                                                                RepeatBehavior="Forever"/>
-                                            </Storyboard>
-                                        </BeginStoryboard>
-                                    </EventTrigger>
-                                </Path.Triggers>
-                            </Path>
+                            <Border x:Name="border" 
+                                    Background="Transparent" 
+                                    BorderThickness="0" 
+                                    Padding="16,10">
+                                <TextBlock x:Name="textBlock" 
+                                           Text="{TemplateBinding Content}" 
+                                           FontWeight="Medium" 
+                                           FontSize="14" 
+                                           Foreground="{StaticResource TextMediumBrush}"/>
+                            </Border>
+                            <Border x:Name="indicator" 
+                                    Height="2" 
+                                    Background="{StaticResource AccentBrush}" 
+                                    VerticalAlignment="Bottom" 
+                                    Visibility="Collapsed"/>
                         </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="indicator" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="textBlock" Property="Foreground" Value="{StaticResource PrimaryBrush}"/>
+                                <Setter TargetName="textBlock" Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="textBlock" Property="Foreground" Value="{StaticResource PrimaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
 
-        <!-- Style für Expander -->
-        <Style x:Key="FilterExpanderStyle" TargetType="Expander">
-            <Setter Property="Margin" Value="0,0,0,15"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#e0e0e0"/>
-            <Setter Property="Background" Value="#f8f9fa"/>
-            <Setter Property="Padding" Value="10"/>
+        <!-- Kauf Tab Button -->
+        <Style x:Key="BuyTabStyle" TargetType="RadioButton" BasedOn="{StaticResource TabRadioButtonStyle}">
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="RadioButton">
+                                <Grid>
+                                    <Border x:Name="border" 
+                                            Background="Transparent" 
+                                            BorderThickness="0" 
+                                            Padding="16,10">
+                                        <TextBlock x:Name="textBlock" 
+                                                   Text="{TemplateBinding Content}" 
+                                                   FontWeight="SemiBold" 
+                                                   FontSize="14" 
+                                                   Foreground="{StaticResource BuyBrush}"/>
+                                    </Border>
+                                    <Border x:Name="indicator" 
+                                            Height="2" 
+                                            Background="{StaticResource BuyBrush}" 
+                                            VerticalAlignment="Bottom"/>
+                                </Grid>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Verkauf Tab Button -->
+        <Style x:Key="SellTabStyle" TargetType="RadioButton" BasedOn="{StaticResource TabRadioButtonStyle}">
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="RadioButton">
+                                <Grid>
+                                    <Border x:Name="border" 
+                                            Background="Transparent" 
+                                            BorderThickness="0" 
+                                            Padding="16,10">
+                                        <TextBlock x:Name="textBlock" 
+                                                   Text="{TemplateBinding Content}" 
+                                                   FontWeight="SemiBold" 
+                                                   FontSize="14" 
+                                                   Foreground="{StaticResource SellBrush}"/>
+                                    </Border>
+                                    <Border x:Name="indicator" 
+                                            Height="2" 
+                                            Background="{StaticResource SellBrush}" 
+                                            VerticalAlignment="Bottom"/>
+                                </Grid>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Info und Warnung Styles -->
+        <Style x:Key="InfoBoxStyle" TargetType="Border">
+            <Setter Property="Background" Value="#EBF5FB"/>
+            <Setter Property="BorderBrush" Value="#AED6F1"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+
+        <Style x:Key="WarningBoxStyle" TargetType="Border">
+            <Setter Property="Background" Value="#FEF5E7"/>
+            <Setter Property="BorderBrush" Value="#FAD7A0"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+
+        <!-- Spinner Style -->
+        <Style x:Key="SimpleSpinnerStyle" TargetType="Control">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Control">
+                        <Grid>
+                            <Ellipse Width="20" Height="20" 
+                                     Stroke="{StaticResource AccentBrush}" 
+                                     StrokeThickness="2"
+                                     Opacity="0.3"/>
+                            <Ellipse Width="20" Height="20" 
+                                     Stroke="{StaticResource AccentBrush}" 
+                                     StrokeThickness="2"
+                                     RenderTransformOrigin="0.5,0.5"
+                                     StrokeDashArray="1 5">
+                                <Ellipse.RenderTransform>
+                                    <RotateTransform x:Name="SpinnerRotate"/>
+                                </Ellipse.RenderTransform>
+                            </Ellipse>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SpinnerRotate" 
+                                                         Storyboard.TargetProperty="Angle" 
+                                                         From="0" To="360" Duration="0:0:1" 
+                                                         RepeatBehavior="Forever"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Suchfeld-Stil -->
+        <Style x:Key="SearchBoxStyle" TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
+            <Setter Property="Padding" Value="30,6,10,6"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Grid>
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="4">
+                                <ScrollViewer x:Name="PART_ContentHost" 
+                                              Margin="{TemplateBinding Padding}" 
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                            </Border>
+                            <Path Data="M15.5 14.5l-3.5-3.5c0.9-1.2 1.5-2.6 1.5-4.2 0-3.9-3.1-7-7-7s-7 3.1-7 7 3.1 7 7 7c1.6 0 3.1-0.6 4.2-1.5l3.5 3.5c0.2 0.2 0.4 0.3 0.7 0.3s0.5-0.1 0.7-0.3c0.4-0.4 0.4-1 0-1.4zM6.5 12c-3 0-5.5-2.5-5.5-5.5s2.5-5.5 5.5-5.5 5.5 2.5 5.5 5.5-2.5 5.5-5.5 5.5z"
+                                  Fill="{StaticResource TextLightBrush}"
+                                  Width="14"
+                                  Height="14"
+                                  Stretch="Uniform"
+                                  HorizontalAlignment="Left"
+                                  Margin="10,0,0,0"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </UserControl.Resources>
 
-    <Border Padding="20" Background="White" CornerRadius="8">
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <!-- Überschrift -->
-                <RowDefinition Height="Auto"/>
-                <!-- Filterbereich -->
-                <RowDefinition Height="*"/>
-                <!-- Formular -->
-            </Grid.RowDefinitions>
-
-            <!-- Überschrift -->
-            <TextBlock Grid.Row="0" Text="Aktienhandel" 
-                       FontSize="18" FontWeight="Bold" 
-                       Foreground="#2c3e50" 
-                       Margin="0,0,0,20"/>
-
-            <!-- Filterbereich -->
-            <Expander Grid.Row="1" Header="Erweiterte Filteroptionen" 
-                      Style="{StaticResource FilterExpanderStyle}" 
-                      IsExpanded="False">
-                <local:AktienFilterUserControl x:Name="aktienFilter" 
-                                              Margin="0,10,0,0"
-                                              FilterChanged="AktienFilter_FilterChanged"/>
-            </Expander>
-
-            <!-- Hauptinhalt: Formular -->
-            <StackPanel Grid.Row="2">
-                <!-- Auswahl der Aktie mit Suche -->
-                <Grid Margin="0,0,0,15">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <!-- Suchfilter für die ComboBox -->
-                    <TextBox Grid.Row="0" 
-                             Text="{Binding SuchText, UpdateSourceTrigger=PropertyChanged}" 
-                             Height="35" 
-                             Padding="8,4" 
-                             VerticalContentAlignment="Center"
-                             helpers:WatermarkHelper.WatermarkText="Suchen Sie nach Aktien (z.B. 'Apple' oder 'AAPL')"
-                             Margin="0,0,0,5"/>
-
-                    <Grid Grid.Row="1">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Verbesserte ComboBox mit SelectedItem-Bindung und Filterung -->
-                        <ComboBox Grid.Column="0" x:Name="aktienComboBox" 
-                              ItemsSource="{Binding GefilterteAktienListe}" 
-                              SelectedItem="{Binding SelectedAktie, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                              IsEditable="True" 
-                              Height="35" 
-                              Padding="8,4" 
-                              VerticalContentAlignment="Center" 
-                              StaysOpenOnEdit="True" 
-                              IsTextSearchEnabled="True"
-                              TextSearch.TextPath="AktienSymbol"
-                              Text="{Binding AktienSymbol, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                              MaxDropDownHeight="300"
-                              SelectionChanged="AktienComboBox_SelectionChanged">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding AktienSymbol}" 
+    <Border Background="{StaticResource BackgroundBrush}" Padding="20">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Header -->
+                <TextBlock Text="Aktienhandel" 
+                           FontSize="24" 
                            FontWeight="Bold" 
-                           Margin="0,0,5,0"/>
-                                        <TextBlock Text=" - "/>
-                                        <TextBlock Text="{Binding AktienName}" 
-                           Margin="5,0,0,0" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
+                           Margin="0,0,0,10"
+                           Foreground="{StaticResource TextDarkBrush}"/>
 
-                        <!-- Such-Button -->
-                        <Button Grid.Column="1" 
-                                Content="Suchen" 
-                                Command="{Binding AktienSuchenCommand}" 
-                                Height="35" 
-                                Width="80" 
-                                Margin="5,0,0,0" 
-                                Background="#2c3e50" 
-                                Foreground="White" 
-                                BorderThickness="0"/>
+                <TextBlock Text="Kaufen und verkaufen Sie Aktien in Echtzeit - ohne finanzielles Risiko" 
+                           Foreground="{StaticResource TextMediumBrush}" 
+                           Margin="0,0,0,20"/>
+
+                <!-- Filter-Bereich -->
+                <Expander Header="Erweiterte Filteroptionen" 
+                          Foreground="{StaticResource TextDarkBrush}"
+                          Margin="0,0,0,20">
+                    <Border Style="{StaticResource CardStyle}" Margin="0,10,0,0">
+                        <local:AktienFilterUserControl x:Name="aktienFilter" 
+                                                       Margin="0,10,0,0"
+                                                       FilterChanged="AktienFilter_FilterChanged"/>
+                    </Border>
+                </Expander>
+
+                <!-- Aktiensuche und -auswahl -->
+                <Border Style="{StaticResource CardStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" 
+                                   Text="Aktienauswahl" 
+                                   FontWeight="SemiBold"
+                                   FontSize="16"
+                                   Margin="0,0,0,15"
+                                   Foreground="{StaticResource TextDarkBrush}"/>
+
+                        <TextBox Grid.Row="1" 
+                                 Text="{Binding SuchText, UpdateSourceTrigger=PropertyChanged}" 
+                                 Style="{StaticResource SearchBoxStyle}"
+                                 helpers:WatermarkHelper.WatermarkText="Aktien suchen (z.B. 'Apple' oder 'AAPL')"
+                                 Height="40"
+                                 Margin="0,0,0,15"/>
+
+                        <Grid Grid.Row="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <ComboBox Grid.Column="0" 
+                                      x:Name="aktienComboBox" 
+                                      ItemsSource="{Binding GefilterteAktienListe}" 
+                                      SelectedItem="{Binding SelectedAktie, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                      IsEditable="True" 
+                                      Style="{StaticResource ModernComboBox}" 
+                                      StaysOpenOnEdit="True" 
+                                      IsTextSearchEnabled="True"
+                                      TextSearch.TextPath="AktienSymbol"
+                                      Text="{Binding AktienSymbol, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      MaxDropDownHeight="300"
+                                      SelectionChanged="AktienComboBox_SelectionChanged">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,5,0,5">
+                                            <TextBlock Text="{Binding AktienSymbol}" 
+                                                       FontWeight="Bold" 
+                                                       FontSize="14"
+                                                       Foreground="{StaticResource TextDarkBrush}"/>
+                                            <TextBlock Text="{Binding AktienName}" 
+                                                       FontSize="12" 
+                                                       Margin="0,2,0,0"
+                                                       Foreground="{StaticResource TextMediumBrush}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+
+                            <Button Grid.Column="1" 
+                                    Content="Suchen" 
+                                    Command="{Binding AktienSuchenCommand}" 
+                                    Style="{StaticResource StandardButtonStyle}"
+                                    Width="100" 
+                                    Margin="10,0,0,0"/>
+                        </Grid>
                     </Grid>
-                </Grid>
+                </Border>
 
-                <!-- Name & Kursinformationen -->
-                <Border Background="#f8f9fa" Padding="15" CornerRadius="6" Margin="0,0,0,15">
+                <!-- Aktien-Infobereich -->
+                <Border Style="{StaticResource CardStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" 
+                                   Text="Aktieninformation" 
+                                   FontWeight="SemiBold"
+                                   FontSize="16"
+                                   Margin="0,0,0,15"
+                                   Foreground="{StaticResource TextDarkBrush}"/>
+
+                        <!-- Aktienname und Kurs -->
+                        <Grid Grid.Row="1" Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" 
+                                      Text="{Binding AktienName}" 
+                                      FontWeight="SemiBold" 
+                                      FontSize="20"
+                                      Foreground="{StaticResource TextDarkBrush}"/>
+
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <!-- Loading Spinner -->
+                                <Control Style="{StaticResource SimpleSpinnerStyle}" Margin="0,0,10,0">
+                                    <Control.Visibility>
+                                        <Binding Path="IsLoading" Converter="{StaticResource BoolToVisibilityConverter}"/>
+                                    </Control.Visibility>
+                                </Control>
+
+                                <!-- Aktueller Kurs -->
+                                <Border Background="#F0F0F0" 
+                                        BorderBrush="{StaticResource BorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="4" 
+                                        Padding="12,6"
+                                        Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=inverted}">
+                                    <TextBlock Text="{Binding AktuellerKurs, StringFormat={}{0:N2} €}" 
+                                               FontWeight="Bold" 
+                                               FontSize="16" 
+                                               Foreground="{StaticResource TextDarkBrush}"/>
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Infotext wenn keine Aktie gewählt -->
+                        <Border Grid.Row="2" 
+                               Style="{StaticResource InfoBoxStyle}"
+                               Visibility="{Binding IsAktieAusgewählt, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=inverted}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="ⓘ" 
+                                          FontSize="16" 
+                                          FontWeight="Bold" 
+                                          Foreground="{StaticResource InfoBrush}"
+                                          Margin="0,0,10,0"
+                                          VerticalAlignment="Top"/>
+                                <TextBlock Text="Wählen Sie eine Aktie aus, um detaillierte Informationen zu erhalten"
+                                          Foreground="#2980B9"
+                                          TextWrapping="Wrap"
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- Kaufen/Verkaufen Tabs -->
+                <Border Style="{StaticResource CardStyle}">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
 
-                        <!-- Name -->
-                        <TextBlock Grid.Row="0" Grid.Column="0" 
-                                Text="{Binding AktienName}" 
-                                FontWeight="SemiBold" 
-                                FontSize="14"/>
+                        <!-- Tab Header -->
+                        <Border Grid.Row="0" 
+                                BorderBrush="{StaticResource BorderBrush}" 
+                                BorderThickness="0,0,0,1" 
+                                Padding="0,0,0,0" 
+                                Margin="0,0,0,15">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Content="Kaufen" 
+                                           IsChecked="{Binding IsKauf, Mode=TwoWay}" 
+                                           Style="{StaticResource BuyTabStyle}"/>
 
-                        <!-- Loading-Indikator, nur sichtbar während der Aktualisierung -->
-                        <Control Grid.Row="0" Grid.Column="1" Style="{StaticResource LoadingSpinnerStyle}" 
-                                 Margin="0,0,10,0" HorizontalAlignment="Right">
-                            <Control.Visibility>
-                                <Binding Path="IsLoading" Converter="{StaticResource BoolToVisibilityConverter}"/>
-                            </Control.Visibility>
-                        </Control>
+                                <RadioButton Content="Verkaufen" 
+                                           IsChecked="{Binding IsKauf, Mode=TwoWay, Converter={StaticResource BooleanInverterConverter}}" 
+                                           Style="{StaticResource SellTabStyle}"/>
+                            </StackPanel>
+                        </Border>
 
-                        <!-- Aktueller Kurs -->
-                        <TextBlock Grid.Row="0" Grid.Column="1" 
-                                Text="{Binding AktuellerKurs, StringFormat={}{0:N2} €}" 
-                                FontWeight="Bold" 
-                                FontSize="16" 
-                                Foreground="#2c3e50">
-                            <TextBlock.Visibility>
-                                <Binding Path="IsLoading" Converter="{StaticResource BoolToVisibilityConverter}" ConverterParameter="inverted"/>
-                            </TextBlock.Visibility>
-                        </TextBlock>
+                        <!-- Tab Inhalt -->
+                        <Grid Grid.Row="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-                        <!-- Infotext -->
-                        <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" 
-                                Text="Wählen Sie eine Aktie aus, um Details anzuzeigen" 
-                                Foreground="#666" 
-                                FontStyle="Italic" 
-                                Margin="0,5,0,0">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Visible"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsAktieAusgewählt}" Value="True">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
+                            <!-- Anzahl der Aktien -->
+                            <Grid Grid.Row="0" Margin="0,0,0,20">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" 
+                                           Text="Anzahl der Aktien" 
+                                           FontWeight="Medium"
+                                           Margin="0,0,0,8"
+                                           Foreground="{StaticResource TextDarkBrush}"/>
+
+                                <Grid Grid.Row="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Button Grid.Column="0" 
+                                            Content="-" 
+                                            Command="{Binding DecrementMengeCommand}"
+                                            Width="40"
+                                            Height="40"
+                                            FontSize="18"
+                                            Style="{StaticResource StandardButtonStyle}"/>
+
+                                    <TextBox Grid.Column="1" 
+                                             Text="{Binding Menge, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource ModernTextBox}"
+                                             FontSize="16"
+                                             FontWeight="Medium"
+                                             TextAlignment="Center"
+                                             Margin="10,0"/>
+
+                                    <Button Grid.Column="2" 
+                                            Content="+" 
+                                            Command="{Binding IncrementMengeCommand}"
+                                            Width="40"
+                                            Height="40"
+                                            FontSize="18"
+                                            Style="{StaticResource StandardButtonStyle}"/>
+                                </Grid>
+                            </Grid>
+
+                            <!-- Gesamtwert in Box -->
+                            <Border Grid.Row="1" 
+                                   Background="#F8F9FA" 
+                                   BorderBrush="{StaticResource BorderBrush}" 
+                                   BorderThickness="1" 
+                                   CornerRadius="4" 
+                                   Padding="16" 
+                                   Margin="0,0,0,20">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" 
+                                              Text="Gesamtwert der Transaktion" 
+                                              FontWeight="Medium" 
+                                              VerticalAlignment="Center"
+                                              Foreground="{StaticResource TextDarkBrush}"/>
+
+                                    <TextBlock Grid.Column="1" 
+                                               Text="{Binding Gesamtwert, StringFormat={}{0:N2} €}" 
+                                               FontWeight="Bold" 
+                                               FontSize="16" 
+                                               Foreground="{StaticResource TextDarkBrush}"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Portfolio-Info (nur beim Verkauf) -->
+                            <Border Grid.Row="2" 
+                                   Style="{StaticResource InfoBoxStyle}"
+                                   Margin="0,0,0,20"
+                                   Visibility="{Binding IsKauf, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=inverted}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" 
+                                             Text="ⓘ" 
+                                             FontSize="22" 
+                                             FontWeight="Bold" 
+                                             Foreground="{StaticResource InfoBrush}" 
+                                             Margin="0,0,10,0"/>
+
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="Ihr aktueller Portfolio-Bestand" 
+                                                  FontWeight="SemiBold"
+                                                  Foreground="#2980B9"/>
+                                        <TextBlock Text="{Binding VerfügbareAktien, StringFormat=Sie besitzen derzeit {0} Aktien dieses Wertpapiers.}"
+                                                  Foreground="#3498DB"
+                                                  Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Warnung -->
+                            <Border Grid.Row="2" 
+                                   Style="{StaticResource WarningBoxStyle}"
+                                   Margin="0,0,0,20"
+                                   Visibility="{Binding ZeigeWarnung, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" 
+                                             Text="⚠" 
+                                             FontSize="22" 
+                                             FontWeight="Bold" 
+                                             Foreground="{StaticResource WarningBrush}" 
+                                             Margin="0,0,10,0"/>
+
+                                    <TextBlock Grid.Column="1" 
+                                              Text="{Binding WarnungsText}" 
+                                              TextWrapping="Wrap"
+                                              Foreground="#D35400"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Kauf/Verkauf Button -->
+                            <Button Grid.Row="3" 
+                                   Content="{Binding TransaktionsText}" 
+                                   Command="{Binding TransaktionAusführenCommand}" 
+                                   Width="200" 
+                                   Height="44" 
+                                   HorizontalAlignment="Center"
+                                   Margin="0,10,0,0"
+                                   FontSize="15">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="border" 
+                                                            Background="{TemplateBinding Background}" 
+                                                            BorderThickness="0"
+                                                            CornerRadius="4">
+                                                        <ContentPresenter HorizontalAlignment="Center" 
+                                                                          VerticalAlignment="Center" 
+                                                                          Margin="15,10"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="border" Property="Opacity" Value="0.9"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsPressed" Value="True">
+                                                            <Setter TargetName="border" Property="Opacity" Value="0.8"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsEnabled" Value="False">
+                                                            <Setter TargetName="border" Property="Opacity" Value="0.5"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Setter Property="Background" Value="{StaticResource BuyBrush}"/>
+                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsKauf}" Value="True">
+                                                <Setter Property="Background" Value="{StaticResource BuyBrush}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsKauf}" Value="False">
+                                                <Setter Property="Background" Value="{StaticResource SellBrush}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </Grid>
                     </Grid>
                 </Border>
-
-                <!-- Kauf/Verkauf Auswahl -->
-                <Grid Margin="0,0,0,15">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <Border Grid.Column="0" 
-                           Background="#f1f8e9" 
-                           CornerRadius="6,0,0,6" 
-                           Margin="0,0,1,0">
-                        <RadioButton Content="Kaufen" 
-                                   IsChecked="{Binding IsKauf, Mode=TwoWay}" 
-                                   HorizontalAlignment="Center" 
-                                   Padding="10,8"/>
-                    </Border>
-
-                    <Border Grid.Column="1" 
-                           Background="#f8f9fa" 
-                           CornerRadius="0,6,6,0" 
-                           Margin="1,0,0,0">
-                        <!-- Hier verwenden wir den BooleanInverterConverter -->
-                        <RadioButton Content="Verkaufen" 
-                                   IsChecked="{Binding IsKauf, Mode=TwoWay, Converter={StaticResource BooleanInverterConverter}}" 
-                                   HorizontalAlignment="Center" 
-                                   Padding="10,8"/>
-                    </Border>
-                </Grid>
-
-                <!-- Menge -->
-                <Grid Margin="0,0,0,15">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <TextBlock Grid.Row="0" Text="Anzahl der Aktien:" Margin="0,0,0,5" FontWeight="Medium"/>
-
-                    <Grid Grid.Row="1">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Minus-Button -->
-                        <Button Grid.Column="0" Content="-" 
-                                Command="{Binding DecrementMengeCommand}" 
-                                Style="{StaticResource QuantityButtonStyle}"/>
-
-                        <!-- Textfeld -->
-                        <TextBox Grid.Column="1" 
-                                Text="{Binding Menge, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                Height="28" 
-                                TextAlignment="Center" 
-                                VerticalContentAlignment="Center" 
-                                Margin="5,0"/>
-
-                        <!-- Plus-Button -->
-                        <Button Grid.Column="2" Content="+" 
-                                Command="{Binding IncrementMengeCommand}" 
-                                Style="{StaticResource QuantityButtonStyle}"/>
-                    </Grid>
-                </Grid>
-
-                <!-- Wertberechnung -->
-                <Grid Margin="0,0,0,15">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-
-                    <TextBlock Grid.Column="0" Text="Gesamtwert:" 
-                               FontWeight="Medium" 
-                               VerticalAlignment="Center"/>
-
-                    <TextBlock Grid.Column="1" 
-                               Text="{Binding Gesamtwert, StringFormat={}{0:N2} €}" 
-                               FontWeight="Bold" 
-                               FontSize="16"/>
-                </Grid>
-
-                <!-- Verfügbare Aktien im Portfolio (nur beim Verkauf) -->
-                <Border Background="#f1f8e9" 
-                        Padding="10" 
-                        CornerRadius="6" 
-                        Margin="0,0,0,15"
-                        Visibility="{Binding IsKauf, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=inverted}">
-                    <StackPanel>
-                        <TextBlock Text="Verfügbare Aktien im Portfolio:" 
-                                   FontWeight="Medium" 
-                                   Margin="0,0,0,5"/>
-                        <TextBlock Text="{Binding VerfügbareAktien, StringFormat=Sie besitzen {0} Aktien von diesem Wertpapier}"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- Warnung (wenn nicht genug Geld oder Aktien) -->
-                <Border Background="#ffebee" 
-                        Padding="10" 
-                        CornerRadius="6" 
-                        Margin="0,0,0,15"
-                        Visibility="{Binding ZeigeWarnung, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="⚠️" FontSize="16" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding WarnungsText}" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- Button -->
-                <Button Content="{Binding TransaktionsText}" 
-                        Command="{Binding TransaktionAusführenCommand}" 
-                        Style="{StaticResource ExecuteButtonStyle}" 
-                        Width="180"/>
             </StackPanel>
-        </Grid>
+        </ScrollViewer>
     </Border>
 </UserControl>

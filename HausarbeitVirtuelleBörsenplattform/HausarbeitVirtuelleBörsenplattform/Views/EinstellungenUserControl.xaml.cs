@@ -93,93 +93,11 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
         {
             try
             {
-                // Einfaches Password-Change-Dialog
-                var dialog = new Window
-                {
-                    Title = "Passwort ändern",
-                    Width = 350,
-                    Height = 250,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    Owner = Window.GetWindow(this),
-                    ResizeMode = ResizeMode.NoResize
-                };
-
-                var grid = new Grid();
-                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                grid.Margin = new Thickness(15);
-
-                var altesPasswortLabel = new TextBlock
-                {
-                    Text = "Altes Passwort:",
-                    Margin = new Thickness(0, 0, 0, 5)
-                };
-                Grid.SetRow(altesPasswortLabel, 0);
-
-                var altesPasswortBox = new PasswordBox
-                {
-                    Margin = new Thickness(0, 0, 0, 15)
-                };
-                Grid.SetRow(altesPasswortBox, 1);
-
-                var neuesPasswortLabel = new TextBlock
-                {
-                    Text = "Neues Passwort:",
-                    Margin = new Thickness(0, 0, 0, 5)
-                };
-                Grid.SetRow(neuesPasswortLabel, 2);
-
-                var neuesPasswortBox = new PasswordBox
-                {
-                    Margin = new Thickness(0, 0, 0, 15)
-                };
-                Grid.SetRow(neuesPasswortBox, 3);
-
-                var buttonsPanel = new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    HorizontalAlignment = HorizontalAlignment.Right
-                };
-                Grid.SetRow(buttonsPanel, 4);
-
-                var abbruchButton = new Button
-                {
-                    Content = "Abbrechen",
-                    Width = 80,
-                    Height = 30,
-                    Margin = new Thickness(0, 0, 10, 0)
-                };
-                abbruchButton.Click += (s, args) => dialog.Close();
-
-                var speichernButton = new Button
-                {
-                    Content = "Speichern",
-                    Width = 80,
-                    Height = 30,
-                    Background = new System.Windows.Media.SolidColorBrush(
-                        (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#2c3e50")),
-                    Foreground = System.Windows.Media.Brushes.White
-                };
-                speichernButton.Click += (s, args) =>
-                {
-                    MessageBox.Show("Passwortänderung wird in einer zukünftigen Version implementiert.",
-                        "Information", MessageBoxButton.OK, MessageBoxImage.Information);
-                    dialog.Close();
-                };
-
-                buttonsPanel.Children.Add(abbruchButton);
-                buttonsPanel.Children.Add(speichernButton);
-
-                grid.Children.Add(altesPasswortLabel);
-                grid.Children.Add(altesPasswortBox);
-                grid.Children.Add(neuesPasswortLabel);
-                grid.Children.Add(neuesPasswortBox);
-                grid.Children.Add(buttonsPanel);
-
-                dialog.Content = grid;
-                dialog.ShowDialog();
+                MessageBox.Show(
+                    "Passwortänderung wird in einer zukünftigen Version implementiert.",
+                    "Information",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -484,6 +402,9 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
         /// <summary>
         /// Event-Handler für Konto löschen Button
         /// </summary>
+        /// <summary>
+        /// Event-Handler für Konto löschen Button
+        /// </summary>
         private async void KontoLöschenButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -499,6 +420,8 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                 {
                     // Passwort zur Bestätigung anfordern
                     var passwordDialog = new PasswordBox();
+
+                    // Wir verwenden StackPanel anstatt Grid für ein robusteres Layout
                     var dialogWindow = new Window
                     {
                         Title = "Passwort bestätigen",
@@ -509,11 +432,10 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                         ResizeMode = ResizeMode.NoResize
                     };
 
-                    var grid = new Grid();
-                    grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                    grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                    grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                    grid.Margin = new Thickness(10);
+                    var stackPanel = new StackPanel
+                    {
+                        Margin = new Thickness(10)
+                    };
 
                     var textBlock = new TextBlock
                     {
@@ -521,30 +443,44 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                         TextWrapping = TextWrapping.Wrap,
                         Margin = new Thickness(0, 0, 0, 10)
                     };
-                    Grid.SetRow(textBlock, 0);
+                    stackPanel.Children.Add(textBlock);
 
                     passwordDialog.Margin = new Thickness(0, 0, 0, 10);
-                    Grid.SetRow(passwordDialog, 1);
+                    stackPanel.Children.Add(passwordDialog);
 
-                    var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-                    var cancelButton = new Button { Content = "Abbrechen", Width = 80, Margin = new Thickness(0, 0, 10, 0) };
-                    var confirmButton = new Button { Content = "Bestätigen", Width = 80, Background = new SolidColorBrush(Colors.Red), Foreground = new SolidColorBrush(Colors.White) };
+                    var buttonPanel = new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        HorizontalAlignment = HorizontalAlignment.Right
+                    };
+
+                    var cancelButton = new Button
+                    {
+                        Content = "Abbrechen",
+                        Width = 80,
+                        Margin = new Thickness(0, 0, 10, 0)
+                    };
+
+                    var confirmButton = new Button
+                    {
+                        Content = "Bestätigen",
+                        Width = 80,
+                        Background = new SolidColorBrush(Colors.Red),
+                        Foreground = new SolidColorBrush(Colors.White)
+                    };
 
                     cancelButton.Click += (s, args) => dialogWindow.DialogResult = false;
                     confirmButton.Click += (s, args) => dialogWindow.DialogResult = true;
 
                     buttonPanel.Children.Add(cancelButton);
                     buttonPanel.Children.Add(confirmButton);
-                    Grid.SetRow(buttonPanel, 2);
+                    stackPanel.Children.Add(buttonPanel);
 
-                    grid.Children.Add(textBlock);
-                    grid.Children.Add(passwordDialog);
-                    grid.Children.Add(buttonPanel);
-
-                    dialogWindow.Content = grid;
+                    dialogWindow.Content = stackPanel;
 
                     bool? dialogResult = dialogWindow.ShowDialog();
 
+                    // Restlicher Code bleibt unverändert
                     if (dialogResult == true)
                     {
                         string password = passwordDialog.Password;

@@ -7,49 +7,96 @@
         xmlns:views="clr-namespace:HausarbeitVirtuelleBörsenplattform.Views"
         xmlns:viewmodels="clr-namespace:HausarbeitVirtuelleBörsenplattform.ViewModels"
         mc:Ignorable="d"
-        Title="Aktienhandel" Height="650" Width="750"
+        Title="Aktienhandel" 
+        Height="1000" 
+        Width="1200"
+        MinHeight="900" 
+        MinWidth="1100"
         WindowStartupLocation="CenterOwner"
-        ResizeMode="NoResize"
+        ResizeMode="CanResize"
         WindowStyle="None"
         Background="Transparent"
         AllowsTransparency="True">
 
     <Window.Resources>
+        <!-- Farben -->
+        <Color x:Key="PrimaryColor">#2c3e50</Color>
+        <Color x:Key="PrimaryLightColor">#3498db</Color>
+        <Color x:Key="PrimaryDarkColor">#1a2530</Color>
+        <Color x:Key="HoverColor">#34495e</Color>
+        <Color x:Key="TextLightColor">#FFFFFF</Color>
+        <Color x:Key="BorderColor">#d0d0d0</Color>
+        <Color x:Key="BackgroundColor">#FFFFFF</Color>
+        <Color x:Key="ShadowColor">#20000000</Color>
+
+        <!-- Brushes -->
+        <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}"/>
+        <SolidColorBrush x:Key="PrimaryLightBrush" Color="{StaticResource PrimaryLightColor}"/>
+        <SolidColorBrush x:Key="PrimaryDarkBrush" Color="{StaticResource PrimaryDarkColor}"/>
+        <SolidColorBrush x:Key="HoverBrush" Color="{StaticResource HoverColor}"/>
+        <SolidColorBrush x:Key="TextLightBrush" Color="{StaticResource TextLightColor}"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}"/>
+        <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}"/>
+        <SolidColorBrush x:Key="ShadowBrush" Color="{StaticResource ShadowColor}"/>
+
         <!-- Style für den Titelbereich -->
         <Style x:Key="TitleBarStyle" TargetType="Border">
-            <Setter Property="Background" Value="#2c3e50"/>
-            <Setter Property="Height" Value="40"/>
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="Height" Value="60"/>
         </Style>
 
-        <!-- Style für die Fensterbuttons (schließen, minimieren) -->
+        <!-- Style für den Fenstertitel -->
+        <Style x:Key="WindowTitleStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextLightBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="22"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="25,0,0,0"/>
+        </Style>
+
+        <!-- Style für die Fensterbuttons (schließen) -->
         <Style x:Key="WindowButtonStyle" TargetType="Button">
-            <Setter Property="Width" Value="40"/>
-            <Setter Property="Height" Value="40"/>
+            <Setter Property="Width" Value="50"/>
+            <Setter Property="Height" Value="50"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Foreground" Value="{StaticResource TextLightBrush}"/>
             <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}">
+                        <Border x:Name="buttonBorder" Background="{TemplateBinding Background}" CornerRadius="0">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#34495e"/>
+                                <Setter TargetName="buttonBorder" Property="Background" Value="{StaticResource HoverBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#1a2530"/>
+                                <Setter TargetName="buttonBorder" Property="Background" Value="{StaticResource PrimaryDarkBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Style für den Hauptfensterbereich -->
+        <Style x:Key="MainContentStyle" TargetType="Border">
+            <Setter Property="Padding" Value="25"/>
+            <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="0,0,10,10"/>
+        </Style>
     </Window.Resources>
 
-    <Border CornerRadius="8" Background="White" BorderBrush="#d0d0d0" BorderThickness="1">
+    <Border CornerRadius="10" Background="{StaticResource BackgroundBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect Color="{StaticResource ShadowColor}" BlurRadius="15" ShadowDepth="3" Opacity="0.5"/>
+        </Border.Effect>
+
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -59,31 +106,56 @@
             </Grid.RowDefinitions>
 
             <!-- Titelleiste mit Drag-Funktionalität -->
-            <Border Grid.Row="0" Style="{StaticResource TitleBarStyle}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown" CornerRadius="8,8,0,0">
+            <Border Grid.Row="0" Style="{StaticResource TitleBarStyle}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown" CornerRadius="10,10,0,0">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <!-- Icon -->
+                        <ColumnDefinition Width="*"/>
+                        <!-- Titel -->
+                        <ColumnDefinition Width="Auto"/>
+                        <!-- Buttons -->
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Column="0" 
-                               Text="Aktienhandel" 
-                               Foreground="White" 
-                               FontWeight="Bold"
-                               FontSize="16"
-                               VerticalAlignment="Center" 
-                               Margin="15,0,0,0"/>
+                    <!-- Icon -->
+                    <Border Grid.Column="0" 
+                            Width="30" 
+                            Height="30" 
+                            Background="{StaticResource TextLightBrush}" 
+                            CornerRadius="15" 
+                            Margin="20,0,0,0">
+                        <Path Data="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z" 
+                              Fill="{StaticResource PrimaryBrush}" 
+                              Stretch="Uniform" 
+                              Margin="6"/>
+                    </Border>
 
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Style="{StaticResource WindowButtonStyle}" Click="CloseButton_Click">
-                            <Path Data="M6,6 L18,18 M6,18 L18,6" Stroke="White" StrokeThickness="2"/>
+                    <!-- Titel -->
+                    <TextBlock Grid.Column="1" 
+                               Text="Aktienhandel" 
+                               Style="{StaticResource WindowTitleStyle}"/>
+
+                    <!-- Schließen-Button -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Style="{StaticResource WindowButtonStyle}" 
+                                Click="CloseButton_Click" 
+                                ToolTip="Schließen">
+                            <Grid Width="16" Height="16">
+                                <Path Data="M0,0 L16,16 M0,16 L16,0" 
+                                      Stroke="{StaticResource TextLightBrush}" 
+                                      StrokeThickness="2" 
+                                      StrokeStartLineCap="Round" 
+                                      StrokeEndLineCap="Round"/>
+                            </Grid>
                         </Button>
                     </StackPanel>
                 </Grid>
             </Border>
 
             <!-- Hauptinhalt: HandelsUserControl -->
-            <views:HandelsUserControl Grid.Row="1" x:Name="HandelsControl" Margin="15"/>
+            <Border Grid.Row="1" Style="{StaticResource MainContentStyle}">
+                <views:HandelsUserControl x:Name="HandelsControl"/>
+            </Border>
         </Grid>
     </Border>
 </Window>

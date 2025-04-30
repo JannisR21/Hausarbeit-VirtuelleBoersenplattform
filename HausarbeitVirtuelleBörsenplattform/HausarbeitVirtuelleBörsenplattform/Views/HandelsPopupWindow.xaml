@@ -20,10 +20,10 @@
 
     <Window.Resources>
         <!-- Farben -->
-        <Color x:Key="PrimaryColor">#2c3e50</Color>
-        <Color x:Key="PrimaryLightColor">#3498db</Color>
-        <Color x:Key="PrimaryDarkColor">#1a2530</Color>
-        <Color x:Key="HoverColor">#34495e</Color>
+        <Color x:Key="PrimaryColor">#1E3A8A</Color>
+        <Color x:Key="PrimaryLightColor">#718792</Color>
+        <Color x:Key="PrimaryDarkColor">#344955</Color>
+        <Color x:Key="HoverColor">#5B7583</Color>
         <Color x:Key="TextLightColor">#FFFFFF</Color>
         <Color x:Key="BorderColor">#d0d0d0</Color>
         <Color x:Key="BackgroundColor">#FFFFFF</Color>

@@ -396,19 +396,31 @@ namespace HausarbeitVirtuelleBörsenplattform
             {
                 Debug.WriteLine("RestoreMainView aufgerufen");
 
-                // Hauptanwendung holen
-                var app = Application.Current;
+                // Benutzer informieren
+                MessageBox.Show("Die Anwendung wird neu gestartet, um zum Dashboard zurückzukehren.",
+                              "Dashboard öffnen", MessageBoxButton.OK, MessageBoxImage.Information);
 
-                // Neues MainWindow erstellen
-                var newWindow = new MainWindow();
+                // Sicherstellen, dass alle Daten gespeichert sind
+                if (DataContext is MainViewModel viewModel &&
+                    viewModel.AktuellerBenutzer != null &&
+                    App.DbService != null)
+                {
+                    // Sicherstellen, dass der aktuelle Kontostand im Benutzer-Objekt gespeichert ist
+                    viewModel.AktuellerBenutzer.Kontostand = viewModel.Kontostand;
 
-                // Das neue Fenster anzeigen
-                newWindow.Show();
+                    // In der Datenbank aktualisieren
+                    App.DbService.UpdateBenutzerAsync(viewModel.AktuellerBenutzer).Wait();
+                    Debug.WriteLine("Kontostand gespeichert");
+                }
 
-                // Das aktuelle Fenster schließen
-                this.Close();
+                // Anwendung neu starten
+                string exePath = Process.GetCurrentProcess().MainModule.FileName;
+                Process.Start(exePath);
 
-                Debug.WriteLine("Hauptansicht wurde wiederhergestellt");
+                // Aktuelle Anwendung beenden
+                Application.Current.Shutdown();
+
+                Debug.WriteLine("Anwendung wird neu gestartet");
             }
             catch (Exception ex)
             {

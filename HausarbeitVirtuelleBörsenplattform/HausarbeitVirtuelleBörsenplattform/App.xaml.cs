@@ -154,7 +154,6 @@ namespace HausarbeitVirtuelleBörsenplattform
             {
                 // Explizites Laden der Konfiguration
                 LoadConfiguration();
-
                 Debug.WriteLine($"Geladener API-Key: {TwelveDataApiKey}");
 
                 var options = new DbContextOptionsBuilder<BörsenplattformDbContext>()
@@ -165,6 +164,29 @@ namespace HausarbeitVirtuelleBörsenplattform
                 var dbContext = new BörsenplattformDbContext(options);
 
                 Debug.WriteLine("Prüfe Datenbankverbindung...");
+
+                // Prüfen, ob die Datenbank existiert, falls nicht, erstellen
+                try
+                {
+                    if (!dbContext.Database.CanConnect())
+                    {
+                        Debug.WriteLine("Datenbank existiert nicht, versuche sie zu erstellen...");
+                        // Datenbank erstellen und Migrationen anwenden
+                        dbContext.Database.EnsureCreated();
+                        // Alternativ für Entity Framework Migrations
+                        // dbContext.Database.Migrate();
+                        Debug.WriteLine("Datenbank wurde erfolgreich erstellt!");
+                    }
+                }
+                catch (Exception dbCreateEx)
+                {
+                    Debug.WriteLine($"Fehler beim Erstellen der Datenbank: {dbCreateEx.Message}");
+                    if (dbCreateEx.InnerException != null)
+                        Debug.WriteLine($"Inner Exception: {dbCreateEx.InnerException.Message}");
+                    throw; // Neu werfen, um den äußeren Catch-Block zu erreichen
+                }
+
+                // Erneute Prüfung, ob die Verbindung jetzt möglich ist
                 if (dbContext.Database.CanConnect())
                 {
                     Debug.WriteLine("Datenbankverbindung ist möglich.");
@@ -206,14 +228,21 @@ namespace HausarbeitVirtuelleBörsenplattform
                 }
                 else
                 {
-                    throw new Exception("Datenbankverbindung fehlgeschlagen.");
+                    throw new Exception("Datenbankverbindung fehlgeschlagen, auch nach Versuch der Erstellung.");
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Fehler bei der Initialisierung: {ex.Message}");
-                MessageBox.Show($"Fehler bei der Initialisierung: {ex.Message}",
-                    "Initialisierungsfehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                if (ex.InnerException != null)
+                    Debug.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+
+                MessageBox.Show($"Fehler bei der Initialisierung: {ex.Message}\n\n" +
+                                $"Details: {ex.InnerException?.Message ?? "Keine weiteren Details verfügbar."}\n\n" +
+                                "Bitte stellen Sie sicher, dass SQL Server LocalDB installiert ist und die Verbindungszeichenfolge korrekt ist.",
+                                "Initialisierungsfehler",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Error);
             }
         }
 

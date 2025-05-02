@@ -89,15 +89,24 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
         /// <summary>
         /// Event-Handler für Passwort ändern Button
         /// </summary>
-        private void PasswortÄndernButton_Click(object sender, RoutedEventArgs e)
+        private async void PasswortÄndernButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                MessageBox.Show(
-                    "Passwortänderung wird in einer zukünftigen Version implementiert.",
-                    "Information",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                var passwordDialog = new PasswortAendernDialog();
+
+                // Dialog als modal anzeigen und Besitzer setzen
+                passwordDialog.Owner = Window.GetWindow(this);
+                bool? result = passwordDialog.ShowDialog();
+
+                if (result == true && passwordDialog.PasswordChanged)
+                {
+                    MessageBox.Show(
+                        "Ihr Passwort wurde erfolgreich geändert.",
+                        "Passwort geändert",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
             }
             catch (Exception ex)
             {
@@ -658,5 +667,6 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                 Debug.WriteLine($"Fehler bei der Navigation zurück zur Hauptansicht: {ex.Message}");
             }
         }
+
     }
 }

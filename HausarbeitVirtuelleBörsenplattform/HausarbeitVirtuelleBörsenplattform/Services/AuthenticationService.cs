@@ -357,5 +357,43 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                 return false;
             }
         }
+
+        /// <summary>
+        /// Ändert das Passwort eines Benutzers
+        /// </summary>
+        /// <param name="benutzerId">ID des Benutzers</param>
+        /// <param name="newPassword">Neues Passwort</param>
+        /// <returns>True, wenn erfolgreich, sonst False</returns>
+        public async Task<bool> ChangePasswordAsync(int benutzerId, string newPassword)
+        {
+            try
+            {
+                // Benutzer aus der Datenbank holen
+                var benutzer = await _databaseService.GetBenutzerByIdAsync(benutzerId);
+                if (benutzer == null)
+                {
+                    Debug.WriteLine($"Benutzer mit ID {benutzerId} nicht gefunden");
+                    return false;
+                }
+
+                // Passwort hashen
+                string hashedPassword = HashPassword(newPassword);
+
+                // Passwort-Hash speichern
+                benutzer.PasswortHash = hashedPassword;
+
+                // Benutzer in der Datenbank aktualisieren
+                bool result = await _databaseService.UpdateBenutzerAsync(benutzer);
+
+                Debug.WriteLine($"Passwort für Benutzer {benutzer.Benutzername} wurde {(result ? "erfolgreich" : "nicht")} geändert");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler in ChangePasswordAsync: {ex.Message}");
+                Debug.WriteLine($"Stacktrace: {ex.StackTrace}");
+                return false;
+            }
+        }
     }
 }

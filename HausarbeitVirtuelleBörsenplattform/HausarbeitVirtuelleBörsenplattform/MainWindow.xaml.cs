@@ -483,37 +483,59 @@ namespace HausarbeitVirtuelleBörsenplattform
 
                 Debug.WriteLine("RestoreMainView aufgerufen");
 
-                // Benutzer informieren
-                MessageBox.Show("Die Anwendung wird neu gestartet, um zum Dashboard zurückzukehren.",
-                              "Dashboard öffnen", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                // Sicherstellen, dass alle Daten gespeichert sind
-                if (DataContext is MainViewModel viewModel &&
-                    viewModel.AktuellerBenutzer != null &&
-                    App.DbService != null)
+                // Haupt-Grid für Inhalte finden
+                var mainGrid = FindMainContentGrid();
+                if (mainGrid == null)
                 {
-                    // Sicherstellen, dass der aktuelle Kontostand im Benutzer-Objekt gespeichert ist
-                    viewModel.AktuellerBenutzer.Kontostand = viewModel.Kontostand;
-
-                    // In der Datenbank aktualisieren
-                    App.DbService.UpdateBenutzerAsync(viewModel.AktuellerBenutzer).Wait();
-                    Debug.WriteLine("Kontostand gespeichert");
+                    Debug.WriteLine("Konnte das Haupt-Grid nicht finden");
+                    MessageBox.Show("Fehler beim Öffnen des Dashboards.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
                 }
 
-                // Anwendung neu starten
-                string exePath = Process.GetCurrentProcess().MainModule.FileName;
-                Process.Start(exePath);
+                // Alles löschen und Hauptansicht wiederherstellen
+                mainGrid.Children.Clear();
 
-                // Aktuelle Anwendung beenden
-                Application.Current.Shutdown();
+                // Das ursprüngliche Dashboard-Layout wiederherstellen
+                if (DataContext is MainViewModel viewModel)
+                {
+                    // Portfolio-Bereich
+                    var portfolioBorder = new Border
+                    {
+                        Style = (Style)FindResource("CardBorderStyle"),
+                        Child = new Views.PortfolioUserControl
+                        {
+                            DataContext = viewModel.PortfolioViewModel
+                        }
+                    };
+                    Grid.SetRow(portfolioBorder, 0);
+                    Grid.SetColumn(portfolioBorder, 0);
+                    Grid.SetRowSpan(portfolioBorder, 2);
 
-                Debug.WriteLine("Anwendung wird neu gestartet");
+                    // Marktdaten-Bereich
+                    var marktdatenBorder = new Border
+                    {
+                        Style = (Style)FindResource("CardBorderStyle"),
+                        Child = new Views.MarktdatenUserControl
+                        {
+                            DataContext = viewModel.MarktdatenViewModel
+                        }
+                    };
+                    Grid.SetRow(marktdatenBorder, 0);
+                    Grid.SetColumn(marktdatenBorder, 1);
+                    Grid.SetRowSpan(marktdatenBorder, 2);
+
+                    // Zu MainContentGrid hinzufügen
+                    mainGrid.Children.Add(portfolioBorder);
+                    mainGrid.Children.Add(marktdatenBorder);
+
+                    Debug.WriteLine("Dashboard-Ansicht wurde wiederhergestellt");
+                }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Fehler beim Wiederherstellen der Hauptansicht: {ex.Message}");
                 MessageBox.Show($"Fehler beim Zurückkehren zur Hauptansicht: {ex.Message}",
-                              "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                             "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

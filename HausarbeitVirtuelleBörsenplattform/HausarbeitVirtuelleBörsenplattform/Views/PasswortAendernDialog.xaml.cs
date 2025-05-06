@@ -1,7 +1,11 @@
-﻿using HausarbeitVirtuelleBörsenplattform.ViewModels;
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Input;
+using BCrypt.Net;
+using HausarbeitVirtuelleBörsenplattform.Data;
+using HausarbeitVirtuelleBörsenplattform.Models;
+using HausarbeitVirtuelleBörsenplattform.ViewModels;
 
 namespace HausarbeitVirtuelleBörsenplattform.Views
 {
@@ -16,23 +20,15 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
         public bool PasswordChanged { get; private set; } = false;
 
         /// <summary>
-        /// Das neue Passwort, falls die Änderung erfolgreich war
-        /// </summary>
-        public string NewPassword { get; private set; }
-
-        /// <summary>
         /// Initialisiert eine neue Instanz des PasswortAendernDialog
         /// </summary>
         public PasswortAendernDialog()
         {
             InitializeComponent();
-
-            // Fokus auf das erste Eingabefeld setzen
-            Loaded += (s, e) => AktuellesPasswortBox.Focus();
         }
 
         /// <summary>
-        /// Ereignishandler für den Abbrechen-Button
+        /// Event-Handler für den Abbrechen-Button
         /// </summary>
         private void AbbrechenButton_Click(object sender, RoutedEventArgs e)
         {
@@ -41,104 +37,118 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
         }
 
         /// <summary>
-        /// Ereignishandler für den Speichern-Button
+        /// Event-Handler für den Passwort-Ändern-Button
         /// </summary>
-        private async void SpeichernButton_Click(object sender, RoutedEventArgs e)
+        private async void PasswortAendernButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                ErrorMessage.Text = string.Empty;
+                // UI während der Verarbeitung deaktivieren
+                this.IsEnabled = false;
+                Mouse.OverrideCursor = Cursors.Wait;
 
-                // Eingaben validieren
-                string aktuellesPasswort = AktuellesPasswortBox.Password;
-                string neuesPasswort = NeuesPasswortBox.Password;
-                string wiederholungsPasswort = PasswortWiederholenBox.Password;
-
-                if (string.IsNullOrEmpty(aktuellesPasswort))
+                // Eingaben prüfen
+                if (string.IsNullOrEmpty(CurrentPasswordBox.Password))
                 {
-                    ErrorMessage.Text = "Bitte geben Sie Ihr aktuelles Passwort ein.";
-                    AktuellesPasswortBox.Focus();
+                    MessageBox.Show("Bitte geben Sie Ihr aktuelles Passwort ein.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    CurrentPasswordBox.Focus();
                     return;
                 }
 
-                if (string.IsNullOrEmpty(neuesPasswort))
+                if (string.IsNullOrEmpty(NewPasswordBox.Password))
                 {
-                    ErrorMessage.Text = "Bitte geben Sie ein neues Passwort ein.";
-                    NeuesPasswortBox.Focus();
+                    MessageBox.Show("Bitte geben Sie ein neues Passwort ein.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    NewPasswordBox.Focus();
                     return;
                 }
 
-                if (neuesPasswort.Length < 6)
+                if (NewPasswordBox.Password.Length < 6)
                 {
-                    ErrorMessage.Text = "Das neue Passwort muss mindestens 6 Zeichen lang sein.";
-                    NeuesPasswortBox.Focus();
+                    MessageBox.Show("Das Passwort muss mindestens 6 Zeichen lang sein.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    NewPasswordBox.Focus();
                     return;
                 }
 
-                if (neuesPasswort != wiederholungsPasswort)
+                if (NewPasswordBox.Password != ConfirmPasswordBox.Password)
                 {
-                    ErrorMessage.Text = "Die Passwörter stimmen nicht überein.";
-                    PasswortWiederholenBox.Focus();
+                    MessageBox.Show("Die Passwörter stimmen nicht überein.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    ConfirmPasswordBox.Focus();
                     return;
                 }
 
-                // Aktuelles Passwort überprüfen
-                var mainWindow = Window.GetWindow(this.Owner) as MainWindow;
+                // Aktuellen Benutzer abrufen
+                var mainWindow = Application.Current.MainWindow as MainWindow;
                 var mainViewModel = mainWindow?.DataContext as MainViewModel;
 
                 if (mainViewModel == null || mainViewModel.AktuellerBenutzer == null)
                 {
-                    ErrorMessage.Text = "Fehler: Kein aktiver Benutzer gefunden.";
+                    MessageBox.Show("Fehler: Kein angemeldeter Benutzer gefunden.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
 
-                string benutzername = mainViewModel.AktuellerBenutzer.Benutzername;
+                Benutzer benutzer = mainViewModel.AktuellerBenutzer;
+                Debug.WriteLine($"Versuche Passwort zu ändern für Benutzer: {benutzer.Benutzername} (ID: {benutzer.BenutzerID})");
 
-                // Demo/Admin-Benutzer gesondert behandeln
-                bool isPasswordValid = false;
+                // Prüfen, ob das aktuelle Passwort korrekt ist
+                bool isCurrentPasswordValid = false;
 
-                if (benutzername.Equals("demo", StringComparison.OrdinalIgnoreCase) && aktuellesPasswort.Equals("demo"))
+                // Für Demo-Benutzer: hardcoded Vergleich
+                if (benutzer.Benutzername.Equals("demo", StringComparison.OrdinalIgnoreCase) &&
+                    CurrentPasswordBox.Password.Equals("demo"))
                 {
-                    isPasswordValid = true;
+                    isCurrentPasswordValid = true;
                 }
-                else if (benutzername.Equals("admin", StringComparison.OrdinalIgnoreCase) && aktuellesPasswort.Equals("admin"))
+                else if (benutzer.Benutzername.Equals("admin", StringComparison.OrdinalIgnoreCase) &&
+                         CurrentPasswordBox.Password.Equals("admin"))
                 {
-                    isPasswordValid = true;
+                    isCurrentPasswordValid = true;
                 }
                 else
                 {
-                    // Bei normalen Benutzern die Authentifizierung über den Service durchführen
-                    isPasswordValid = await App.AuthService.VerifyPasswordAsync(benutzername, aktuellesPasswort);
+                    // Für normale Benutzer: BCrypt-Vergleich
+                    isCurrentPasswordValid = BCrypt.Net.BCrypt.Verify(CurrentPasswordBox.Password, benutzer.PasswortHash);
                 }
 
-                if (!isPasswordValid)
+                if (!isCurrentPasswordValid)
                 {
-                    ErrorMessage.Text = "Das aktuelle Passwort ist nicht korrekt.";
-                    AktuellesPasswortBox.Password = string.Empty;
-                    AktuellesPasswortBox.Focus();
+                    MessageBox.Show("Das aktuelle Passwort ist nicht korrekt.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    CurrentPasswordBox.Focus();
                     return;
                 }
 
-                // Passwort ändern
-                int benutzerId = mainViewModel.AktuellerBenutzer.BenutzerID;
-                bool success = await App.AuthService.ChangePasswordAsync(benutzerId, neuesPasswort);
+                // Neues Passwort-Hash generieren
+                string newPasswordHash = BCrypt.Net.BCrypt.HashPassword(NewPasswordBox.Password, workFactor: 12);
+                Debug.WriteLine("Neuer Passwort-Hash wurde generiert");
 
-                if (success)
+                // Passwort im Benutzer-Objekt aktualisieren und speichern
+                benutzer.PasswortHash = newPasswordHash;
+
+                // App.DbService verwenden, um die Änderungen zu speichern
+                bool updateSuccess = await App.DbService.UpdateBenutzerAsync(benutzer);
+
+                if (updateSuccess)
                 {
-                    NewPassword = neuesPasswort;
+                    Debug.WriteLine("Passwort wurde erfolgreich in der Datenbank aktualisiert");
                     PasswordChanged = true;
                     DialogResult = true;
                     Close();
                 }
                 else
                 {
-                    ErrorMessage.Text = "Fehler beim Ändern des Passworts. Bitte versuchen Sie es später erneut.";
+                    throw new Exception("Fehler beim Speichern des neuen Passworts in der Datenbank");
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Fehler beim Ändern des Passworts: {ex.Message}");
-                ErrorMessage.Text = $"Ein Fehler ist aufgetreten: {ex.Message}";
+                Debug.WriteLine($"StackTrace: {ex.StackTrace}");
+                MessageBox.Show($"Fehler beim Ändern des Passworts: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                // UI-Status wiederherstellen
+                this.IsEnabled = true;
+                Mouse.OverrideCursor = null;
             }
         }
     }

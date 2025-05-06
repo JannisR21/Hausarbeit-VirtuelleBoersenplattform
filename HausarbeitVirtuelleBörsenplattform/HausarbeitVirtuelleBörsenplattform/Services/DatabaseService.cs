@@ -121,13 +121,34 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
             try
             {
                 using var context = CreateContext();
-                context.Benutzer.Update(benutzer);
+
+                // Den Benutzer zuerst aus der Datenbank holen
+                var existingBenutzer = await context.Benutzer.FindAsync(benutzer.BenutzerID);
+
+                if (existingBenutzer == null)
+                {
+                    Debug.WriteLine($"Benutzer mit ID {benutzer.BenutzerID} nicht gefunden");
+                    return false;
+                }
+
+                // Eigenschaften aktualisieren
+                existingBenutzer.PasswortHash = benutzer.PasswortHash;
+                existingBenutzer.Email = benutzer.Email;
+                existingBenutzer.Vorname = benutzer.Vorname;
+                existingBenutzer.Nachname = benutzer.Nachname;
+                existingBenutzer.VollName = benutzer.VollName;
+                existingBenutzer.Kontostand = benutzer.Kontostand;
+
+                // Änderungen speichern
                 await context.SaveChangesAsync();
+
+                Debug.WriteLine($"Benutzer mit ID {benutzer.BenutzerID} erfolgreich aktualisiert");
                 return true;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Fehler beim Aktualisieren des Benutzers: {ex.Message}");
+                Debug.WriteLine($"StackTrace: {ex.StackTrace}");
                 return false;
             }
         }

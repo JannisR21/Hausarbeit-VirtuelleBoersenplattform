@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace HausarbeitVirtuelleBörsenplattform.Views
 {
@@ -604,23 +605,88 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
         {
             try
             {
+                bool settingsChanged = false;
+
                 // Aktualisierungsintervall speichern
                 var selectedItem = AktualisierungsIntervallComboBox.SelectedItem as ComboBoxItem;
                 if (selectedItem != null && selectedItem.Tag != null)
                 {
                     int intervallInSekunden = Convert.ToInt32(selectedItem.Tag);
                     Debug.WriteLine($"Aktualisierungsintervall geändert auf: {intervallInSekunden} Sekunden");
-                    // Hier könnte das Intervall gespeichert werden
+
+                    // Speichere das Intervall in den Anwendungseinstellungen
+                    Properties.Settings.Default.IsDarkModeEnabled = DarkModeToggle.IsChecked ?? false;
+                    Properties.Settings.Default.Save();
+                    settingsChanged = true;
+
+                    // Aktualisiere das Timer-Intervall im MarktdatenViewModel
+                    var mainWindow = Window.GetWindow(this) as MainWindow;
+                    var mainViewModel = mainWindow?.DataContext as MainViewModel;
+                    if (mainViewModel?.MarktdatenViewModel != null)
+                    {
+                        // Versuche das _aktualisierungsIntervall direkt zu setzen
+                        // Da es privat ist, verwenden wir einen Workaround über die interne Timer-Einstellung
+                        var marktdatenViewModel = mainViewModel.MarktdatenViewModel;
+
+                        // Suche den _updateTimer per Reflection
+                        System.Reflection.FieldInfo timerField = marktdatenViewModel.GetType()
+                            .GetField("_updateTimer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                        if (timerField != null)
+                        {
+                            var timer = timerField.GetValue(marktdatenViewModel) as DispatcherTimer;
+                            if (timer != null)
+                            {
+                                timer.Interval = TimeSpan.FromSeconds(intervallInSekunden);
+                                Debug.WriteLine($"Timer-Intervall auf {intervallInSekunden} Sekunden gesetzt");
+                                settingsChanged = true;
+                            }
+                        }
+                    }
                 }
 
-                // Dark Mode Einstellung speichern
+                // Dark Mode Einstellung speichern - ist bereits durch die Event-Handler implementiert
                 bool darkModeEnabled = DarkModeToggle.IsChecked ?? false;
                 Debug.WriteLine($"Dark Mode: {darkModeEnabled}");
 
                 MessageBox.Show("Einstellungen wurden gespeichert.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
 
-                // Zurück zur Hauptansicht wechseln
-                NavigateBackToMainView();
+                // Optional: Frage nach Neustart, wenn Einstellungen geändert wurden
+                if (settingsChanged && MessageBox.Show(
+                    "Möchten Sie die Anwendung neu starten, um alle Änderungen wirksam zu machen?",
+                    "Neustart empfohlen",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    // Anwendung neu starten
+                    try
+                    {
+                        // Aktuellen Anwendungspfad ermitteln
+                        string exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+
+                        // Neuen Prozess starten
+                        System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo(exePath);
+                        startInfo.UseShellExecute = true;
+                        System.Diagnostics.Process.Start(startInfo);
+
+                        // Aktuelle Anwendung beenden
+                        Application.Current.Shutdown();
+                    }
+                    catch (Exception restartEx)
+                    {
+                        Debug.WriteLine($"Fehler beim Neustart der Anwendung: {restartEx.Message}");
+                        MessageBox.Show($"Die Anwendung konnte nicht automatisch neu gestartet werden: {restartEx.Message}",
+                            "Fehler beim Neustart", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                        // Trotz Fehler zurück zur Hauptansicht wechseln
+                        NavigateBackToMainView();
+                    }
+                }
+                else
+                {
+                    // Zurück zur Hauptansicht wechseln
+                    NavigateBackToMainView();
+                }
             }
             catch (Exception ex)
             {

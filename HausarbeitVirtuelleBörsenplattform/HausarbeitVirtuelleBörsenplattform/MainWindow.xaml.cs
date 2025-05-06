@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Data;
+using System.ComponentModel;
 
 namespace HausarbeitVirtuelleBörsenplattform
 {
@@ -28,8 +29,25 @@ namespace HausarbeitVirtuelleBörsenplattform
                 InitializeComponent();
                 Debug.WriteLine("MainWindow geladen");
 
-                this.DataContext = new MainViewModel(); // Explizit im Code setzen
-                Debug.WriteLine("MainViewModel gesetzt");
+                // Prüfen, ob wir im Designer-Modus sind
+                if (DesignerProperties.GetIsInDesignMode(this))
+                {
+                    // Im Designer-Modus setzen wir ein Mock-ViewModel, 
+                    // das keine Abhängigkeit vom angemeldeten Benutzer hat
+                    Debug.WriteLine("Designer-Modus erkannt, setze Mock-ViewModel");
+
+                    // Hier würde ein spezielles DesignerViewModel verwendet werden,
+                    // das wir hier der Einfachheit halber weglassen
+                }
+                else
+                {
+                    // In der Laufzeit setzen wir das echte ViewModel
+                    this.DataContext = new MainViewModel();
+                    Debug.WriteLine("MainViewModel gesetzt");
+
+                    // Nur in der Laufzeit die Inhalte laden
+                    LoadRuntimeContent();
+                }
 
                 // Event-Handler hinzufügen, der ausgeführt wird, wenn das Fenster vollständig geladen ist
                 this.Loaded += MainWindow_Loaded;
@@ -38,7 +56,11 @@ namespace HausarbeitVirtuelleBörsenplattform
                 UserButton.Click += UserButton_Click;
 
                 // Event-Handler für Logout-MenuItem
-                ((MenuItem)UserButton.ContextMenu.Items[3]).Click += LogoutMenuItem_Click;
+                var logoutMenuItem = UserButton.ContextMenu.Items[3] as MenuItem;
+                if (logoutMenuItem != null)
+                {
+                    logoutMenuItem.Click += LogoutMenuItem_Click;
+                }
 
                 // Event-Handler für Einstellungen-Navigation
                 var einstellungenButton = FindName("EinstellungenButton") as Button;
@@ -64,6 +86,51 @@ namespace HausarbeitVirtuelleBörsenplattform
             catch (Exception ex)
             {
                 MessageBox.Show($"Fehler im MainWindow-Konstruktor: {ex.Message}");
+            }
+        }
+
+        // Methode zum Laden der Inhalte nur in der Laufzeit, nicht im Designer
+        private void LoadRuntimeContent()
+        {
+            try
+            {
+                // Hier können wir die Inhalte für die Laufzeit laden
+                if (MainContentGrid != null && DataContext is MainViewModel viewModel)
+                {
+                    // Portfolio-Bereich
+                    var portfolioBorder = new Border
+                    {
+                        Style = (Style)FindResource("CardBorderStyle"),
+                        Child = new Views.PortfolioUserControl
+                        {
+                            DataContext = viewModel.PortfolioViewModel
+                        }
+                    };
+                    Grid.SetRow(portfolioBorder, 0);
+                    Grid.SetColumn(portfolioBorder, 0);
+                    Grid.SetRowSpan(portfolioBorder, 2);
+
+                    // Marktdaten-Bereich
+                    var marktdatenBorder = new Border
+                    {
+                        Style = (Style)FindResource("CardBorderStyle"),
+                        Child = new Views.MarktdatenUserControl
+                        {
+                            DataContext = viewModel.MarktdatenViewModel
+                        }
+                    };
+                    Grid.SetRow(marktdatenBorder, 0);
+                    Grid.SetColumn(marktdatenBorder, 1);
+                    Grid.SetRowSpan(marktdatenBorder, 2);
+
+                    // Zu MainContentGrid hinzufügen
+                    MainContentGrid.Children.Add(portfolioBorder);
+                    MainContentGrid.Children.Add(marktdatenBorder);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Laden der Inhalte: {ex.Message}");
             }
         }
 
@@ -128,6 +195,10 @@ namespace HausarbeitVirtuelleBörsenplattform
         {
             try
             {
+                // Im Designer-Modus nichts tun
+                if (DesignerProperties.GetIsInDesignMode(this))
+                    return;
+
                 Debug.WriteLine("Watchlist-Button wurde geklickt");
 
                 // Haupt-Grid für Inhalte finden
@@ -257,6 +328,10 @@ namespace HausarbeitVirtuelleBörsenplattform
         {
             Debug.WriteLine("MainWindow_Loaded-Event ausgelöst");
 
+            // Im Designer-Modus nichts tun
+            if (DesignerProperties.GetIsInDesignMode(this))
+                return;
+
             // Nach HandelsUserControl im visuellen Baum suchen
             FindAndCheckHandelsUserControl(this);
 
@@ -286,6 +361,10 @@ namespace HausarbeitVirtuelleBörsenplattform
 
         private async void LogoutMenuItem_Click(object sender, RoutedEventArgs e)
         {
+            // Im Designer-Modus nichts tun
+            if (DesignerProperties.GetIsInDesignMode(this))
+                return;
+
             // Benutzer abmelden
             var result = MessageBox.Show("Möchten Sie sich wirklich abmelden?",
                 "Abmelden", MessageBoxButton.YesNo, MessageBoxImage.Question);
@@ -335,6 +414,10 @@ namespace HausarbeitVirtuelleBörsenplattform
         {
             try
             {
+                // Im Designer-Modus nichts tun
+                if (DesignerProperties.GetIsInDesignMode(this))
+                    return;
+
                 Debug.WriteLine("Einstellungs-Button wurde geklickt");
 
                 // Haupt-Grid für Inhalte finden
@@ -394,6 +477,10 @@ namespace HausarbeitVirtuelleBörsenplattform
         {
             try
             {
+                // Im Designer-Modus nichts tun
+                if (DesignerProperties.GetIsInDesignMode(this))
+                    return;
+
                 Debug.WriteLine("RestoreMainView aufgerufen");
 
                 // Benutzer informieren
@@ -467,6 +554,10 @@ namespace HausarbeitVirtuelleBörsenplattform
 
         private void FindAndCheckHandelsUserControl(DependencyObject parent)
         {
+            // Im Designer-Modus nichts tun
+            if (DesignerProperties.GetIsInDesignMode(parent))
+                return;
+
             Debug.WriteLine($"Suche HandelsUserControl in {parent.GetType().Name}");
 
             int childCount = VisualTreeHelper.GetChildrenCount(parent);
@@ -490,6 +581,10 @@ namespace HausarbeitVirtuelleBörsenplattform
         {
             try
             {
+                // Im Designer-Modus nichts tun
+                if (DesignerProperties.GetIsInDesignMode(this))
+                    return;
+
                 Debug.WriteLine("Portfolio-Button wurde geklickt");
 
                 // Haupt-Grid für Inhalte finden

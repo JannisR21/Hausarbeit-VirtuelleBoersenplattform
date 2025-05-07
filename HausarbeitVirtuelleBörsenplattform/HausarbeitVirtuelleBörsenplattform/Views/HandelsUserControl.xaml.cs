@@ -19,6 +19,9 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
         // Flag, um doppelte Initialisierung zu verhindern
         private bool _isInitialized = false;
 
+        // Flag, um doppelte Event-Registrierung für den Watchlist-Button zu verhindern
+        private bool _watchlistButtonInitialized = false;
+
         /// <summary>
         /// Initialisiert eine neue Instanz von HandelsUserControl
         /// </summary>
@@ -26,6 +29,143 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
         {
             InitializeComponent();
             Debug.WriteLine("HandelsUserControl initialisiert");
+        }
+
+        /// <summary>
+        /// Initialisiert den Watchlist-Button und seine Event-Handler
+        /// </summary>
+        private void InitializeWatchlistButton()
+        {
+            // Wenn bereits initialisiert, nicht erneut ausführen
+            if (_watchlistButtonInitialized)
+                return;
+
+            // Falls der Button existiert, Event-Handler hinzufügen
+            if (WatchlistButton != null)
+            {
+                // Bestehenden Handler entfernen, falls einer existiert
+                WatchlistButton.Click -= WatchlistButton_Click;
+                // Neuen Handler hinzufügen
+                WatchlistButton.Click += WatchlistButton_Click;
+
+                _watchlistButtonInitialized = true;
+                Debug.WriteLine("WatchlistButton initialisiert");
+            }
+        }
+
+        /// <summary>
+        /// Bereinigt den Watchlist-Button und entfernt seine Event-Handler
+        /// </summary>
+        private void CleanupWatchlistButton()
+        {
+            if (WatchlistButton != null)
+            {
+                // Event-Handler entfernen
+                WatchlistButton.Click -= WatchlistButton_Click;
+                _watchlistButtonInitialized = false;
+                Debug.WriteLine("WatchlistButton bereinigt");
+            }
+        }
+
+        /// <summary>
+        /// Event-Handler für den Watchlist-Button-Klick
+        /// </summary>
+        private void WatchlistButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Debug.WriteLine("WatchlistButton_Click wurde aufgerufen");
+
+                // Versuch, das MainWindow zu bekommen
+                var mainWindow = Application.Current.MainWindow;
+
+                if (mainWindow == null)
+                {
+                    Debug.WriteLine("MainWindow konnte nicht gefunden werden");
+                    MessageBox.Show("Die Watchlist ist nicht verfügbar.",
+                        "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // Versuche das MainViewModel zu bekommen
+                if (mainWindow.DataContext is MainViewModel mainViewModel)
+                {
+                    Debug.WriteLine("MainViewModel gefunden");
+
+                    // Das WatchlistViewModel aus dem MainViewModel holen
+                    var watchlistViewModel = mainViewModel.WatchlistViewModel;
+
+                    // Prüfen ob das WatchlistViewModel vorhanden ist
+                    if (watchlistViewModel == null)
+                    {
+                        Debug.WriteLine("WatchlistViewModel ist null");
+                        MessageBox.Show("Die Watchlist ist nicht verfügbar.",
+                            "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    // Das ausgewählte ViewModel und die ausgewählte Aktie holen
+                    if (DataContext is AktienhandelViewModel viewModel)
+                    {
+                        Debug.WriteLine($"DataContext ist AktienhandelViewModel");
+
+                        // Prüfen ob eine Aktie ausgewählt ist
+                        if (viewModel.SelectedAktie == null)
+                        {
+                            Debug.WriteLine("Keine Aktie ausgewählt");
+                            MessageBox.Show("Es ist keine Aktie ausgewählt.",
+                                "Hinzufügen nicht möglich", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return;
+                        }
+
+                        var aktie = viewModel.SelectedAktie;
+                        Debug.WriteLine($"Ausgewählte Aktie: {aktie.AktienSymbol} - {aktie.AktienName}");
+
+                        // Über das Command hinzufügen
+                        if (watchlistViewModel.AktieHinzufügenCommand != null &&
+                            watchlistViewModel.AktieHinzufügenCommand.CanExecute(aktie))
+                        {
+                            Debug.WriteLine($"Füge Aktie {aktie.AktienSymbol} zur Watchlist hinzu");
+
+                            // Command ausführen
+                            watchlistViewModel.AktieHinzufügenCommand.Execute(aktie);
+
+                            // Erfolgsmeldung anzeigen
+                            string aktienName = aktie.AktienName;
+                            string aktienSymbol = aktie.AktienSymbol;
+
+                            MessageBox.Show($"Die Aktie {aktienName} ({aktienSymbol}) wurde zur Watchlist hinzugefügt.",
+                                "Watchlist aktualisiert", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            Debug.WriteLine("Command konnte nicht ausgeführt werden");
+                            MessageBox.Show("Die Aktie konnte nicht zur Watchlist hinzugefügt werden.",
+                                "Fehler", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        }
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"DataContext ist kein AktienhandelViewModel, sondern: {DataContext?.GetType().Name ?? "null"}");
+                        MessageBox.Show("Das Aktienhandel-Feature ist nicht verfügbar.",
+                            "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine($"MainWindow.DataContext ist kein MainViewModel, sondern: {mainWindow.DataContext?.GetType().Name ?? "null"}");
+                    MessageBox.Show("Die Watchlist ist nicht verfügbar.",
+                        "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler in WatchlistButton_Click: {ex.Message}");
+                Debug.WriteLine($"StackTrace: {ex.StackTrace}");
+
+                MessageBox.Show($"Fehler beim Hinzufügen zur Watchlist: {ex.Message}",
+                    "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         /// <summary>
@@ -38,6 +178,9 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
             // Zuerst alle bestehenden Handler entfernen, um doppelte Registrierung zu vermeiden
             this.Unloaded -= HandelsUserControl_Unloaded;
             this.Unloaded += HandelsUserControl_Unloaded;
+
+            // Wichtig: Watchlist-Button initialisieren
+            InitializeWatchlistButton();
 
             if (aktienFilter != null)
             {
@@ -168,6 +311,9 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
         private void HandelsUserControl_Unloaded(object sender, RoutedEventArgs e)
         {
             Debug.WriteLine("HandelsUserControl_Unloaded ausgelöst");
+
+            // Watchlist-Button bereinigen
+            CleanupWatchlistButton();
 
             // Alle Event-Handler entfernen
             if (aktienFilter != null)

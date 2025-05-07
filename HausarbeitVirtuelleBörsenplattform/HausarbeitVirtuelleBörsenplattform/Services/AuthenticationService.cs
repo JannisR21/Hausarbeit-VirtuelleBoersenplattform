@@ -188,9 +188,9 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                 // Die BenutzerID aus dem neu erstellten Benutzer holen
                 int benutzerId = newUser.BenutzerID;
 
-                Debug.WriteLine($"Füge 2 Apple-Aktien für neuen Benutzer hinzu (ID: {benutzerId})");
+                Debug.WriteLine($"Füge 2 Apple-Aktien als GESCHENK für neuen Benutzer hinzu (ID: {benutzerId})");
 
-                // Die neue GetOrCreateAktieBySymbolAsync-Methode verwenden
+                // Die GetOrCreateAktieBySymbolAsync-Methode verwenden
                 var appleAktie = await _databaseService.GetOrCreateAktieBySymbolAsync("AAPL", "Apple Inc.", 180.00m);
 
                 if (appleAktie == null)
@@ -220,16 +220,23 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                     }
                 }
 
-                // Portfolio-Eintrag erstellen (2 Apple-Aktien)
+                // WICHTIG: KEINE Abzüge vom Kontostand - die Aktien sind ein Geschenk!
+                int anzahlAktien = 2; // 2 Apple-Aktien zum Start
+                decimal aktienWert = anzahlAktien * aktuellerPreis;
+
+                Debug.WriteLine($"Dem Benutzer werden {anzahlAktien} Apple-Aktien im Wert von {aktienWert:F2}€ geschenkt");
+                Debug.WriteLine($"Der Kontostand von {newUser.Kontostand:F2}€ bleibt unverändert");
+
+                // Portfolio-Eintrag erstellen (2 kostenlose Apple-Aktien)
                 var portfolioEintrag = new PortfolioEintrag
                 {
                     BenutzerID = benutzerId,
                     AktienID = appleAktie.AktienID,
                     AktienSymbol = appleAktie.AktienSymbol,
                     AktienName = appleAktie.AktienName,
-                    Anzahl = 2, // 2 Aktien zum Start
+                    Anzahl = anzahlAktien,
                     AktuellerKurs = aktuellerPreis,
-                    EinstandsPreis = aktuellerPreis,
+                    EinstandsPreis = aktuellerPreis, // Einstandspreis ist trotzdem zum aktuellen Kurs für korrekte Gewinn/Verlust-Berechnung
                     LetzteAktualisierung = DateTime.Now
                 };
 
@@ -238,24 +245,17 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
 
                 if (success)
                 {
-                    // Apple-Aktien kosten vom Startguthaben abziehen
-                    decimal kosten = 2 * aktuellerPreis;
-                    newUser.Kontostand -= kosten;
-
-                    // Aktualisieren des Benutzers in der Datenbank
-                    await _databaseService.UpdateBenutzerAsync(newUser);
-
-                    Debug.WriteLine($"2 Apple-Aktien wurden dem neuen Benutzer (ID: {benutzerId}) für {kosten:F2}€ hinzugefügt");
-                    Debug.WriteLine($"Verbleibendes Guthaben: {newUser.Kontostand:F2}€");
+                    Debug.WriteLine($"{anzahlAktien} Apple-Aktien wurden dem neuen Benutzer (ID: {benutzerId}) KOSTENLOS hinzugefügt");
+                    Debug.WriteLine($"Verfügbares Guthaben bleibt unverändert bei: {newUser.Kontostand:F2}€");
                 }
                 else
                 {
-                    Debug.WriteLine($"Fehler: Konnte Portfolio-Eintrag nicht hinzufügen oder aktualisieren");
+                    Debug.WriteLine($"Fehler: Konnte Portfolio-Eintrag für geschenkte Aktien nicht hinzufügen");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Fehler beim Hinzufügen der Start-Aktien: {ex.Message}");
+                Debug.WriteLine($"Fehler beim Hinzufügen der geschenkten Start-Aktien: {ex.Message}");
                 Debug.WriteLine($"StackTrace: {ex.StackTrace}");
             }
         }

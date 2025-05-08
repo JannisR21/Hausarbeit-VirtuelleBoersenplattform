@@ -1,0 +1,298 @@
+<Window x:Class="HausarbeitVirtuelleBörsenplattform.Views.PasswortVergessenDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:HausarbeitVirtuelleBörsenplattform.Views"
+        xmlns:helpers="clr-namespace:HausarbeitVirtuelleBörsenplattform.Helpers"
+        mc:Ignorable="d"
+        Title="Passwort vergessen" Height="330" Width="430"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+
+    <Window.Resources>
+        <!-- Hauptfarben -->
+        <Color x:Key="PrimaryColor">#1E3A8A</Color>
+        <Color x:Key="PrimaryLightColor">#3B82F6</Color>
+        <Color x:Key="SecondaryColor">#16A34A</Color>
+        <Color x:Key="BackgroundColor">#F1F5F9</Color>
+        <Color x:Key="TextDarkColor">#1E293B</Color>
+        <Color x:Key="TextLightColor">#F8FAFC</Color>
+        <Color x:Key="DangerColor">#DC2626</Color>
+        <Color x:Key="WarningColor">#F59E0B</Color>
+
+        <!-- Brushes -->
+        <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}"/>
+        <SolidColorBrush x:Key="PrimaryLightBrush" Color="{StaticResource PrimaryLightColor}"/>
+        <SolidColorBrush x:Key="SecondaryBrush" Color="{StaticResource SecondaryColor}"/>
+        <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}"/>
+        <SolidColorBrush x:Key="TextDarkBrush" Color="{StaticResource TextDarkColor}"/>
+        <SolidColorBrush x:Key="TextLightBrush" Color="{StaticResource TextLightColor}"/>
+        <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}"/>
+
+        <!-- Stil für primäre Buttons -->
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                              VerticalAlignment="Center" 
+                                              Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background">
+                                    <Setter.Value>
+                                        <SolidColorBrush Color="#152C6D"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Stil für Sekundär-Buttons -->
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource PrimaryLightBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource PrimaryLightBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                              VerticalAlignment="Center" 
+                                              Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#F0F9FF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#E0F2FE"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Stil für TextBox -->
+        <Style x:Key="ModernTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Height" Value="46"/>
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Style.Triggers>
+                <Trigger Property="IsFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+                    <Setter Property="BorderThickness" Value="2"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Stil für Hilfetext -->
+        <Style x:Key="HelpTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#64748B"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,4,0,15"/>
+        </Style>
+
+        <!-- Stil für Erfolgsmeldung -->
+        <Style x:Key="SuccessMessageStyle" TargetType="Border">
+            <Setter Property="Background" Value="#ECFDF5"/>
+            <Setter Property="BorderBrush" Value="#10B981"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,20"/>
+        </Style>
+
+        <!-- Stil für Fehlermeldung -->
+        <Style x:Key="ErrorMessageStyle" TargetType="Border">
+            <Setter Property="Background" Value="#FEF2F2"/>
+            <Setter Property="BorderBrush" Value="#EF4444"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,20"/>
+            <Setter Property="Visibility" Value="Collapsed"/>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="{StaticResource BackgroundBrush}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <Grid Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Überschrift -->
+                <TextBlock Grid.Row="0" 
+                           Text="Passwort zurücksetzen" 
+                           FontSize="22" 
+                           FontWeight="Bold"
+                           Foreground="{StaticResource TextDarkBrush}"
+                           Margin="0,0,0,15"/>
+
+                <!-- Trennlinie mit Verlauf -->
+                <Border Grid.Row="1" 
+                        Height="3" 
+                        Width="100" 
+                        HorizontalAlignment="Left" 
+                        Margin="0,0,0,15" 
+                        CornerRadius="1.5">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="{StaticResource PrimaryColor}" Offset="0"/>
+                            <GradientStop Color="{StaticResource PrimaryLightColor}" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+
+                <!-- Information über Passwort-Zurücksetzung -->
+                <TextBlock Grid.Row="2"
+                           Text="Bitte geben Sie Ihre E-Mail-Adresse ein. Wir senden Ihnen ein neues Passwort zu."
+                           Foreground="{StaticResource TextDarkBrush}"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,10"/>
+
+                <!-- Fehlermeldung -->
+                <Border Grid.Row="3" 
+                        x:Name="ErrorBorder"
+                        Style="{StaticResource ErrorMessageStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Path Grid.Column="0" 
+                              Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" 
+                              Fill="#EF4444" 
+                              Width="20" 
+                              Height="20" 
+                              Stretch="Uniform" 
+                              Margin="0,0,10,0" 
+                              VerticalAlignment="Top"/>
+
+                        <TextBlock Grid.Column="1" 
+                                   x:Name="ErrorText"
+                                   Foreground="#B91C1C" 
+                                   TextWrapping="Wrap"
+                                   FontWeight="Medium"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+
+                <!-- Erfolgsmeldung -->
+                <Border Grid.Row="4" 
+                        x:Name="SuccessBorder"
+                        Style="{StaticResource SuccessMessageStyle}"
+                        Visibility="Collapsed">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Path Grid.Column="0" 
+                              Data="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" 
+                              Fill="#10B981" 
+                              Width="20" 
+                              Height="20" 
+                              Stretch="Uniform" 
+                              Margin="0,0,10,0" 
+                              VerticalAlignment="Top"/>
+
+                        <TextBlock Grid.Column="1" 
+                                   x:Name="SuccessText"
+                                   Text="Passwort wurde an Ihre E-Mail gesendet." 
+                                   Foreground="#065F46" 
+                                   TextWrapping="Wrap"
+                                   FontWeight="Medium"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+
+                <!-- E-Mail Eingabe -->
+                <StackPanel Grid.Row="5" Margin="0,10,0,0">
+                    <TextBlock Text="E-Mail-Adresse" 
+                               Foreground="{StaticResource TextDarkBrush}" 
+                               FontWeight="Medium" 
+                               Margin="0,0,0,5"/>
+                    <TextBox x:Name="EmailTextBox"
+                             Style="{StaticResource ModernTextBoxStyle}" 
+                             Height="38"
+                             Text="" 
+                             IsReadOnly="False"/>
+                    <TextBlock Text="E-Mail-Adresse Ihres Benutzerkontos eingeben." 
+                               Style="{StaticResource HelpTextStyle}"/>
+                </StackPanel>
+
+                <!-- Buttons -->
+                <Grid Grid.Row="7" Margin="0,15,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button 
+                            Content="Abbrechen" 
+                            Style="{StaticResource SecondaryButtonStyle}" 
+                            Margin="82,0,46,0"
+                            Height="36"
+                            Click="AbbrechenButton_Click" Grid.ColumnSpan="2"/>
+
+                    <Button Grid.Column="1" 
+                            Content="Passwort zusenden" 
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Height="36"
+                            Click="PasswortZusendenButton_Click" Grid.ColumnSpan="2" Margin="100,0,0,0"/>
+                </Grid>
+            </Grid>
+        </ScrollViewer>
+    </Border>
+</Window>

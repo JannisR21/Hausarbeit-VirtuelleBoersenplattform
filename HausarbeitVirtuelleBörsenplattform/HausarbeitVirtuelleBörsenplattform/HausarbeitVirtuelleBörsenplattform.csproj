@@ -30,4 +30,6 @@
     <PackageReference Include="RestSharp" Version="112.1.0" />
   </ItemGroup>
 
+  <!-- Wir lassen das .NET SDK die Dateien automatisch erkennen -->
+
 </Project>

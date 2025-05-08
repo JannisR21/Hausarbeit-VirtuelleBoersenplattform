@@ -1,6 +1,7 @@
 ﻿using HausarbeitVirtuelleBörsenplattform.Models;
 using HausarbeitVirtuelleBörsenplattform.ViewModels;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
@@ -412,9 +413,6 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
         /// <summary>
         /// Event-Handler für Konto löschen Button
         /// </summary>
-        /// <summary>
-        /// Event-Handler für Konto löschen Button
-        /// </summary>
         private async void KontoLöschenButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -428,67 +426,13 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    // Passwort zur Bestätigung anfordern
-                    var passwordDialog = new PasswordBox();
-
-                    // Wir verwenden StackPanel anstatt Grid für ein robusteres Layout
-                    var dialogWindow = new Window
+                    // Passwort zur Bestätigung anfordern mit dem neuen Dialog
+                    var passwordDialog = new PasswortBestaetigenDialog
                     {
-                        Title = "Passwort bestätigen",
-                        Width = 300,
-                        Height = 150,
-                        WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                        Owner = Window.GetWindow(this),
-                        ResizeMode = ResizeMode.NoResize
+                        Owner = Window.GetWindow(this)
                     };
 
-                    var stackPanel = new StackPanel
-                    {
-                        Margin = new Thickness(10)
-                    };
-
-                    var textBlock = new TextBlock
-                    {
-                        Text = "Bitte geben Sie Ihr Passwort ein, um die Kontolöschung zu bestätigen:",
-                        TextWrapping = TextWrapping.Wrap,
-                        Margin = new Thickness(0, 0, 0, 10)
-                    };
-                    stackPanel.Children.Add(textBlock);
-
-                    passwordDialog.Margin = new Thickness(0, 0, 0, 10);
-                    stackPanel.Children.Add(passwordDialog);
-
-                    var buttonPanel = new StackPanel
-                    {
-                        Orientation = Orientation.Horizontal,
-                        HorizontalAlignment = HorizontalAlignment.Right
-                    };
-
-                    var cancelButton = new Button
-                    {
-                        Content = "Abbrechen",
-                        Width = 80,
-                        Margin = new Thickness(0, 0, 10, 0)
-                    };
-
-                    var confirmButton = new Button
-                    {
-                        Content = "Bestätigen",
-                        Width = 80,
-                        Background = new SolidColorBrush(Colors.Red),
-                        Foreground = new SolidColorBrush(Colors.White)
-                    };
-
-                    cancelButton.Click += (s, args) => dialogWindow.DialogResult = false;
-                    confirmButton.Click += (s, args) => dialogWindow.DialogResult = true;
-
-                    buttonPanel.Children.Add(cancelButton);
-                    buttonPanel.Children.Add(confirmButton);
-                    stackPanel.Children.Add(buttonPanel);
-
-                    dialogWindow.Content = stackPanel;
-
-                    bool? dialogResult = dialogWindow.ShowDialog();
+                    bool? dialogResult = passwordDialog.ShowDialog();
 
                     // Restlicher Code bleibt unverändert
                     if (dialogResult == true)

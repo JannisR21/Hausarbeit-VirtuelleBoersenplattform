@@ -181,7 +181,31 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         private void ForgotPassword()
         {
             Debug.WriteLine("Passwort vergessen aufgerufen...");
-            // TODO: Passwort zurücksetzen implementieren
+            
+            try
+            {
+                var passworVergessenDialog = new Views.PasswortVergessenDialog();
+                passworVergessenDialog.ShowDialog();
+                
+                // Nach dem Schließen des Dialogs prüfen, ob das Passwort zurückgesetzt wurde
+                if (passworVergessenDialog.PasswordReset)
+                {
+                    Debug.WriteLine("Passwort erfolgreich zurückgesetzt");
+                    
+                    // Optional: Felder zurücksetzen
+                    Username = string.Empty;
+                    Password = string.Empty;
+                    HasError = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Öffnen des Passwort-Vergessen-Dialogs: {ex.Message}");
+                Debug.WriteLine($"StackTrace: {ex.StackTrace}");
+                
+                HasError = true;
+                ErrorMessage = "Fehler beim Öffnen des Passwort-Vergessen-Dialogs. Bitte versuchen Sie es später erneut.";
+            }
         }
 
         private void TogglePasswordVisibility()

@@ -16,11 +16,6 @@ namespace HausarbeitVirtuelleBörsenplattform
     /// </summary>
     public partial class MainWindow : Window
     {
-        // Hinzufügen des Feldes für das Einstellungen-UserControl
-        private Views.EinstellungenUserControl _einstellungenControl;
-
-        // Hinzufügen des Feldes für das Watchlist-UserControl
-        private Views.WatchlistUserControl _watchlistControl;
 
         public MainWindow()
         {
@@ -214,12 +209,12 @@ namespace HausarbeitVirtuelleBörsenplattform
                 mainGrid.Children.Clear();
 
                 // Immer eine neue Instanz des WatchlistUserControl erstellen, um Probleme mit der visuellen Hierarchie zu vermeiden
-                _watchlistControl = new Views.WatchlistUserControl();
+                var watchlistControl = new Views.WatchlistUserControl();
 
                 // DataContext setzen
                 if (DataContext is MainViewModel vm1)
                 {
-                    _watchlistControl.DataContext = vm1.WatchlistViewModel;
+                    watchlistControl.DataContext = vm1.WatchlistViewModel;
                 }
 
                 // Neues Grid für die Watchlist-Ansicht erstellen
@@ -234,7 +229,7 @@ namespace HausarbeitVirtuelleBörsenplattform
                 var border = new Border
                 {
                     Style = (Style)FindResource("CardBorderStyle"),
-                    Child = _watchlistControl,
+                    Child = watchlistControl,
                     VerticalAlignment = VerticalAlignment.Stretch,
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     MinHeight = 580
@@ -429,12 +424,10 @@ namespace HausarbeitVirtuelleBörsenplattform
                     return;
                 }
 
-                // Einstellungs-UserControl erstellen, falls noch nicht vorhanden
-                if (_einstellungenControl == null)
-                {
-                    _einstellungenControl = new Views.EinstellungenUserControl();
-                }
-
+                // Immer eine neue Instanz des EinstellungenUserControl erstellen,
+                // damit es nicht zu Parent-Child-Konflikten kommt
+                var einstellungenControl = new Views.EinstellungenUserControl();
+                
                 // Einstellungs-Ansicht anzeigen
                 mainGrid.Children.Clear();
 
@@ -450,7 +443,7 @@ namespace HausarbeitVirtuelleBörsenplattform
                 var border = new Border
                 {
                     Style = (Style)FindResource("CardBorderStyle"),
-                    Child = _einstellungenControl,
+                    Child = einstellungenControl,
                     VerticalAlignment = VerticalAlignment.Stretch,
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     MinHeight = 580

@@ -23,6 +23,20 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
             {
                 this.DataContext = new LoginViewModel();
             }
+
+            // Stellen Sie sicher, dass die TextBox immer aktiviert ist
+            this.Loaded += (s, e) => {
+                if (UsernameTextBox != null)
+                {
+                    UsernameTextBox.IsEnabled = true;
+                    UsernameTextBox.Focus();
+                }
+
+                if (StdPasswordBox != null)
+                {
+                    StdPasswordBox.IsEnabled = true;
+                }
+            };
         }
 
         /// <summary>

@@ -31,8 +31,11 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             get => _username;
             set
             {
-                SetProperty(ref _username, value);
-                LoginCommand.NotifyCanExecuteChanged(); // <- hinzugefügt
+                // Stelle sicher, dass wir nicht NULL speichern
+                var newValue = value ?? string.Empty;
+                SetProperty(ref _username, newValue);
+                Debug.WriteLine($"Username wurde auf '{newValue}' gesetzt");
+                LoginCommand.NotifyCanExecuteChanged();
             }
         }
 
@@ -41,8 +44,11 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             get => _password;
             set
             {
-                SetProperty(ref _password, value);
-                LoginCommand.NotifyCanExecuteChanged(); // <- hinzugefügt
+                // Stelle sicher, dass wir nicht NULL speichern
+                var newValue = value ?? string.Empty;
+                SetProperty(ref _password, newValue);
+                Debug.WriteLine($"Passwort wurde gesetzt (Länge: {newValue.Length})");
+                LoginCommand.NotifyCanExecuteChanged();
             }
         }
 
@@ -95,6 +101,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             IsPasswordVisible = false;
             HasError = false;
 
+            // Demo credentials pre-filled only in DEBUG, but username and password can be edited regardless
 #if DEBUG
             Username = "demo";
             Password = "demo";

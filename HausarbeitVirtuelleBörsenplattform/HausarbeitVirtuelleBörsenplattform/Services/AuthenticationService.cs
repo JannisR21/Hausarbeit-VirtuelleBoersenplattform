@@ -50,17 +50,18 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                     return false;
                 }
 
-                // Vereinfachte Passwortüberprüfung für den Entwicklungsmodus
+                // Vereinfachte Passwortüberprüfung für bestimmte Benutzer in allen Ausführungsmodi
+                // (funktioniert sowohl im Entwicklungsmodus als auch in der kompilierten EXE)
                 if (password == "demo" && benutzer.Benutzername == "demo")
                 {
-                    Debug.WriteLine("Entwicklungsmodus: Standard-Demo-Benutzer akzeptiert");
+                    Debug.WriteLine("Standard-Demo-Benutzer akzeptiert");
                     CurrentUser = benutzer;
                     return true;
                 }
 
                 if (password == "admin" && benutzer.Benutzername == "admin")
                 {
-                    Debug.WriteLine("Entwicklungsmodus: Standard-Admin-Benutzer akzeptiert");
+                    Debug.WriteLine("Standard-Admin-Benutzer akzeptiert");
                     CurrentUser = benutzer;
                     return true;
                 }
@@ -301,11 +302,11 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                     return true;
                 }
 
-                // Im Entwicklungsmodus immer "demo" und "admin" akzeptieren
+                // In allen Ausführungsmodi immer "demo" und "admin" akzeptieren
                 if ((password == "demo" || password == "admin") &&
                     (storedHash.StartsWith("$2a$") || storedHash.Contains("entwicklungdummyhash")))
                 {
-                    Debug.WriteLine("Entwicklungsmodus: Standard-Passwort akzeptiert");
+                    Debug.WriteLine("Standard-Passwort akzeptiert");
                     return true;
                 }
 

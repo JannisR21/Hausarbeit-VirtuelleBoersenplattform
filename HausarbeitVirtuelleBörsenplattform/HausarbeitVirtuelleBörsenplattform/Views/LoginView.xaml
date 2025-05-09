@@ -458,13 +458,21 @@
 
                             <!-- Benutzername/E-Mail -->
                             <StackPanel Margin="0,0,0,24">
-                                <TextBlock Text="E-Mail oder Benutzername" 
-                                       Foreground="{StaticResource TextDarkBrush}" 
-                                       FontWeight="Medium" 
+                                <TextBlock Text="E-Mail oder Benutzername"
+                                       Foreground="{StaticResource TextDarkBrush}"
+                                       FontWeight="Medium"
                                        Margin="0,0,0,8"/>
-                                <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
+                                <TextBox Name="UsernameTextBox"
+                                     Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{StaticResource ModernTextBoxStyle}"
-                                     helpers:WatermarkHelper.WatermarkText="Geben Sie Ihre E-Mail oder Ihren Benutzernamen ein"/>
+                                     Height="46"
+                                     Padding="14,0"
+                                     VerticalContentAlignment="Center"
+                                     Background="White"
+                                     Foreground="{StaticResource TextDarkBrush}"
+                                     FontSize="14"
+                                     BorderThickness="1"
+                                     BorderBrush="#D1D5DB"/>
                             </StackPanel>
 
                             <!-- Passwort -->
@@ -474,8 +482,8 @@
                                        FontWeight="Medium" 
                                        Margin="0,0,0,8"/>
 
-                                <!-- Einfache PasswordBox ohne Überlagerungen, angelehnt an die funktionale Version -->
-                                <PasswordBox x:Name="StdPasswordBox" 
+                                <!-- Vereinfachte PasswordBox ohne WatermarkHelper -->
+                                <PasswordBox x:Name="StdPasswordBox"
                                          Height="46"
                                          Padding="14,0"
                                          VerticalContentAlignment="Center"
@@ -502,19 +510,21 @@
                                           Style="{StaticResource ModernCheckBoxStyle}"/>
 
                                 <!-- Passwort vergessen -->
-                                <Button Grid.Column="1" 
-                                        Content="Passwort vergessen?" 
+                                <Button Grid.Column="1"
+                                        Content="Passwort vergessen?"
                                         HorizontalAlignment="Right"
                                         Style="{StaticResource HyperlinkButtonStyle}"
                                         Name="ForgotPasswordButton"
+                                        IsEnabled="True"
                                         Command="{Binding ForgotPasswordCommand}"/>
                             </Grid>
 
                             <!-- Login-Button -->
-                            <Button Content="Anmelden" 
+                            <Button Content="Anmelden"
                                 Command="{Binding LoginCommand}"
-                                Name="LoginButton" 
+                                Name="LoginButton"
                                 Click="LoginButton_Click"
+                                IsEnabled="True"
                                 Style="{StaticResource LoginButtonStyle}"/>
 
                             <!-- Registrierung -->
@@ -524,9 +534,10 @@
                                 <TextBlock Text="Noch kein Konto? " 
                                            Foreground="#64748B" 
                                            VerticalAlignment="Center"/>
-                                <Button Content="Jetzt registrieren" 
+                                <Button Content="Jetzt registrieren"
                                         Command="{Binding RegisterCommand}"
                                         Style="{StaticResource HyperlinkButtonStyle}"
+                                        IsEnabled="True"
                                         Name="RegisterButton"/>
                             </StackPanel>
                         </StackPanel>

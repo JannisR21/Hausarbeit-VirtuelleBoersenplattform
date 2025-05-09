@@ -69,24 +69,32 @@ namespace HausarbeitVirtuelleBörsenplattform.Helpers
         private static void TextBoxLoaded(object sender, RoutedEventArgs e)
         {
             TextBox textBox = (TextBox)sender;
+            // Stelle sicher, dass die TextBox immer aktiviert ist
+            textBox.IsEnabled = true;
             SetTextBoxWatermark(textBox);
         }
 
         private static void TextBoxTextChanged(object sender, TextChangedEventArgs e)
         {
             TextBox textBox = (TextBox)sender;
+            // Stelle sicher, dass die TextBox immer aktiviert ist
+            textBox.IsEnabled = true;
             SetTextBoxWatermark(textBox);
         }
 
         private static void TextBoxGotFocus(object sender, RoutedEventArgs e)
         {
             TextBox textBox = (TextBox)sender;
+            // Stelle sicher, dass die TextBox immer aktiviert ist
+            textBox.IsEnabled = true;
             ClearTextBoxWatermark(textBox);
         }
 
         private static void TextBoxLostFocus(object sender, RoutedEventArgs e)
         {
             TextBox textBox = (TextBox)sender;
+            // Stelle sicher, dass die TextBox immer aktiviert ist
+            textBox.IsEnabled = true;
             SetTextBoxWatermark(textBox);
         }
 
@@ -147,24 +155,32 @@ namespace HausarbeitVirtuelleBörsenplattform.Helpers
         private static void PasswordBoxLoaded(object sender, RoutedEventArgs e)
         {
             PasswordBox passwordBox = (PasswordBox)sender;
+            // Stelle sicher, dass die PasswordBox immer aktiviert ist
+            passwordBox.IsEnabled = true;
             SetPasswordBoxWatermark(passwordBox);
         }
 
         private static void PasswordBoxPasswordChanged(object sender, RoutedEventArgs e)
         {
             PasswordBox passwordBox = (PasswordBox)sender;
+            // Stelle sicher, dass die PasswordBox immer aktiviert ist
+            passwordBox.IsEnabled = true;
             SetPasswordBoxWatermark(passwordBox);
         }
 
         private static void PasswordBoxGotFocus(object sender, RoutedEventArgs e)
         {
             PasswordBox passwordBox = (PasswordBox)sender;
+            // Stelle sicher, dass die PasswordBox immer aktiviert ist
+            passwordBox.IsEnabled = true;
             ClearPasswordBoxWatermark(passwordBox);
         }
 
         private static void PasswordBoxLostFocus(object sender, RoutedEventArgs e)
         {
             PasswordBox passwordBox = (PasswordBox)sender;
+            // Stelle sicher, dass die PasswordBox immer aktiviert ist
+            passwordBox.IsEnabled = true;
             SetPasswordBoxWatermark(passwordBox);
         }
 

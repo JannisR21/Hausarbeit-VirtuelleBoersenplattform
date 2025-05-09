@@ -42,6 +42,10 @@ namespace HausarbeitVirtuelleBörsenplattform
                 DarkAndLightMode.SetDarkTheme();
             }
 
+            // Setze IsEnabled für Eingabefelder immer auf true
+            // (wird in allen Builds angewendet)
+            Debug.WriteLine("Stelle sicher, dass Eingabefelder in allen Build-Konfigurationen aktiviert sind");
+
             // Services initialisieren
             InitializeServices();
 
@@ -155,6 +159,9 @@ namespace HausarbeitVirtuelleBörsenplattform
                 // Explizites Laden der Konfiguration
                 LoadConfiguration();
                 Debug.WriteLine($"Geladener API-Key: {TwelveDataApiKey}");
+
+                // Ensure UI input fields always work regardless of build mode
+                // No need to explicitly enable input method as we've set IsEnabled=true on the controls
 
                 var options = new DbContextOptionsBuilder<BörsenplattformDbContext>()
                     .UseSqlServer(ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString)

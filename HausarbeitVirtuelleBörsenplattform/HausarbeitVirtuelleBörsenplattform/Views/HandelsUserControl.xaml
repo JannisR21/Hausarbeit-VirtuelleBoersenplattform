@@ -250,12 +250,12 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Control">
                         <Grid>
-                            <Ellipse Width="20" Height="20" 
-                                     Stroke="{StaticResource AccentBrush}" 
+                            <Ellipse Width="20" Height="20"
+                                     Stroke="{StaticResource AccentBrush}"
                                      StrokeThickness="2"
                                      Opacity="0.3"/>
-                            <Ellipse x:Name="SpinnerEllipse" Width="20" Height="20" 
-                                     Stroke="{StaticResource AccentBrush}" 
+                            <Ellipse x:Name="SpinnerEllipse" Width="20" Height="20"
+                                     Stroke="{StaticResource AccentBrush}"
                                      StrokeThickness="2"
                                      RenderTransformOrigin="0.5,0.5"
                                      StrokeDashArray="1 5">
@@ -268,9 +268,8 @@
                             <EventTrigger RoutedEvent="Loaded">
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="SpinnerRotate" 
-                                                         Storyboard.TargetProperty="Angle" 
-                                                         From="0" To="360" Duration="0:0:1" 
+                                        <DoubleAnimation Storyboard.TargetProperty="(Ellipse.RenderTransform).(RotateTransform.Angle)"
+                                                         From="0" To="360" Duration="0:0:1"
                                                          RepeatBehavior="Forever"/>
                                     </Storyboard>
                                 </BeginStoryboard>

@@ -23,7 +23,26 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
         // Hilfsmethode, um einen neuen Kontext für jede Operation zu erstellen
         private BörsenplattformDbContext CreateContext()
         {
-            return new BörsenplattformDbContext(_options);
+            try
+            {
+                var context = new BörsenplattformDbContext(_options);
+
+                // Aktiviere detaillierte Fehlerprotokollierung für SQL Server
+                context.Database.SetCommandTimeout(60); // Längeres Timeout für alle Befehle
+
+                return context;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Erstellen des Datenbankkontexts: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Debug.WriteLine($"Innere Ausnahme: {ex.InnerException.Message}");
+                }
+
+                // Trotz Fehler einen neuen Kontext zurückgeben - dieser wird mit Standardwerten initialisiert
+                return new BörsenplattformDbContext(_options);
+            }
         }
 
         #region Benutzer
@@ -612,7 +631,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                 CONSTRAINT FK_WatchlistEintraege_Benutzer FOREIGN KEY (BenutzerID) REFERENCES Benutzer(BenutzerID) ON DELETE CASCADE,
                 CONSTRAINT FK_WatchlistEintraege_Aktien FOREIGN KEY (AktienID) REFERENCES Aktien(AktienID) ON DELETE NO ACTION
             );
-            
+
             -- Default-Werte loggen
             PRINT 'Watchlist-Tabelle wurde erfolgreich erstellt';
         END
@@ -631,6 +650,251 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
                 // Fehler protokollieren, aber App weiterlaufen lassen
             }
         }
+
+        #region AktienKursHistorie
+
+        /// <summary>
+        /// Speichert einen neuen historischen Kurseintrag in der Datenbank
+        /// </summary>
+        /// <param name="historie">Der zu speichernde Kursverlauf</param>
+        /// <returns>True, wenn erfolgreich gespeichert wurde, andernfalls false</returns>
+        public async Task<bool> AddAktienKursHistorieAsync(AktienKursHistorie historie)
+        {
+            if (historie == null)
+                return false;
+
+            try
+            {
+                using var context = CreateContext();
+
+                // Prüfen, ob bereits ein Eintrag für dieses Datum und diese Aktie existiert
+                var existingHistorie = await context.AktienKursHistorie
+                    .FirstOrDefaultAsync(h => h.AktienID == historie.AktienID &&
+                                              h.Datum.Date == historie.Datum.Date);
+
+                if (existingHistorie != null)
+                {
+                    // Eintrag aktualisieren
+                    existingHistorie.Eroeffnungskurs = historie.Eroeffnungskurs;
+                    existingHistorie.Hoechstkurs = historie.Hoechstkurs;
+                    existingHistorie.Tiefstkurs = historie.Tiefstkurs;
+                    existingHistorie.Schlusskurs = historie.Schlusskurs;
+                    existingHistorie.Volumen = historie.Volumen;
+                    existingHistorie.ÄnderungProzent = historie.ÄnderungProzent;
+                }
+                else
+                {
+                    // Neuen Eintrag hinzufügen
+                    context.AktienKursHistorie.Add(historie);
+                }
+
+                await context.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Speichern der Kurshistorie: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Ruft die Kurshistorie für eine bestimmte Aktie in einem Zeitraum ab
+        /// </summary>
+        /// <param name="aktienID">Die ID der Aktie</param>
+        /// <param name="startDatum">Das Startdatum</param>
+        /// <param name="endDatum">Das Enddatum</param>
+        /// <returns>Liste der historischen Kurse, nach Datum sortiert</returns>
+        public async Task<List<AktienKursHistorie>> GetAktienKursHistorieAsync(int aktienID,
+                                                                              DateTime startDatum,
+                                                                              DateTime endDatum)
+        {
+            try
+            {
+                using var context = CreateContext();
+
+                var historie = await context.AktienKursHistorie
+                    .Where(h => h.AktienID == aktienID &&
+                                h.Datum >= startDatum.Date &&
+                                h.Datum <= endDatum.Date)
+                    .OrderBy(h => h.Datum)
+                    .ToListAsync();
+
+                return historie;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Abrufen der Kurshistorie: {ex.Message}");
+                return new List<AktienKursHistorie>();
+            }
+        }
+
+        /// <summary>
+        /// Ruft die Kurshistorie für eine bestimmte Aktie nach Symbol in einem Zeitraum ab
+        /// </summary>
+        /// <param name="aktienSymbol">Das Symbol der Aktie</param>
+        /// <param name="startDatum">Das Startdatum</param>
+        /// <param name="endDatum">Das Enddatum</param>
+        /// <returns>Liste der historischen Kurse, nach Datum sortiert</returns>
+        public async Task<List<AktienKursHistorie>> GetAktienKursHistorieBySymbolAsync(string aktienSymbol,
+                                                                                     DateTime startDatum,
+                                                                                     DateTime endDatum)
+        {
+            if (string.IsNullOrWhiteSpace(aktienSymbol))
+                return new List<AktienKursHistorie>();
+
+            try
+            {
+                using var context = CreateContext();
+
+                var historie = await context.AktienKursHistorie
+                    .Where(h => h.AktienSymbol.ToUpper() == aktienSymbol.ToUpper() &&
+                                h.Datum >= startDatum.Date &&
+                                h.Datum <= endDatum.Date)
+                    .OrderBy(h => h.Datum)
+                    .ToListAsync();
+
+                return historie;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Abrufen der Kurshistorie für Symbol {aktienSymbol}: {ex.Message}");
+                return new List<AktienKursHistorie>();
+            }
+        }
+
+        /// <summary>
+        /// Ruft die Kurshistorie für die letzten X Tage für eine Aktie ab
+        /// </summary>
+        /// <param name="aktienID">Die ID der Aktie</param>
+        /// <param name="anzahlTage">Die Anzahl der Tage</param>
+        /// <returns>Liste der historischen Kurse, nach Datum sortiert</returns>
+        public async Task<List<AktienKursHistorie>> GetLetzteXTageKursHistorieAsync(int aktienID, int anzahlTage)
+        {
+            if (anzahlTage <= 0)
+                anzahlTage = 5; // Standardwert: 5 Tage
+
+            var endDatum = DateTime.Now.Date;
+            var startDatum = endDatum.AddDays(-anzahlTage);
+
+            return await GetAktienKursHistorieAsync(aktienID, startDatum, endDatum);
+        }
+
+        /// <summary>
+        /// Speichert den aktuellen Kurs einer Aktie als historischen Eintrag für heute
+        /// </summary>
+        /// <param name="aktie">Die Aktie mit den aktuellen Kursdaten</param>
+        /// <returns>True, wenn erfolgreich gespeichert wurde, andernfalls false</returns>
+        public async Task<bool> SpeichereAktuellenKursAlsHistorieAsync(Aktie aktie)
+        {
+            if (aktie == null || aktie.AktienID <= 0)
+                return false;
+
+            try
+            {
+                // Schlusskurs als Referenzwert für alle Felder verwenden (vereinfachte Variante)
+                var historieEintrag = new AktienKursHistorie
+                {
+                    AktienID = aktie.AktienID,
+                    AktienSymbol = aktie.AktienSymbol,
+                    Datum = DateTime.Now.Date,
+                    Eroeffnungskurs = aktie.AktuellerPreis, // Vereinfacht - in einer realen API hätten wir OHLC-Daten
+                    Hoechstkurs = aktie.AktuellerPreis,
+                    Tiefstkurs = aktie.AktuellerPreis,
+                    Schlusskurs = aktie.AktuellerPreis,
+                    Volumen = 0, // Wir haben keine Volumendaten
+                    ÄnderungProzent = aktie.ÄnderungProzent
+                };
+
+                return await AddAktienKursHistorieAsync(historieEintrag);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Speichern des aktuellen Kurses als Historie: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Speichert die aktuellen Kurse aller übergebenen Aktien als historische Einträge für heute
+        /// </summary>
+        /// <param name="aktien">Liste der Aktien mit aktuellen Kursdaten</param>
+        /// <returns>Anzahl der erfolgreich gespeicherten Einträge</returns>
+        public async Task<int> SpeichereAktuelleKurseAlsHistorieBatchAsync(List<Aktie> aktien)
+        {
+            if (aktien == null || !aktien.Any())
+                return 0;
+
+            int erfolgreich = 0;
+
+            try
+            {
+                using var context = CreateContext();
+                var heutigesDatum = DateTime.Now.Date;
+
+                foreach (var aktie in aktien)
+                {
+                    if (aktie.AktienID <= 0 || string.IsNullOrEmpty(aktie.AktienSymbol))
+                        continue;
+
+                    try
+                    {
+                        // Prüfen, ob bereits ein Eintrag für heute existiert
+                        var existingHistorie = await context.AktienKursHistorie
+                            .FirstOrDefaultAsync(h => h.AktienID == aktie.AktienID &&
+                                                      h.Datum.Date == heutigesDatum);
+
+                        if (existingHistorie != null)
+                        {
+                            // Eintrag aktualisieren
+                            existingHistorie.Schlusskurs = aktie.AktuellerPreis;
+                            existingHistorie.ÄnderungProzent = aktie.ÄnderungProzent;
+
+                            // Höchst- und Tiefstkurs aktualisieren, falls nötig
+                            if (aktie.AktuellerPreis > existingHistorie.Hoechstkurs)
+                                existingHistorie.Hoechstkurs = aktie.AktuellerPreis;
+
+                            if (aktie.AktuellerPreis < existingHistorie.Tiefstkurs)
+                                existingHistorie.Tiefstkurs = aktie.AktuellerPreis;
+                        }
+                        else
+                        {
+                            // Neuen Eintrag erstellen
+                            var neuerEintrag = new AktienKursHistorie
+                            {
+                                AktienID = aktie.AktienID,
+                                AktienSymbol = aktie.AktienSymbol,
+                                Datum = heutigesDatum,
+                                Eroeffnungskurs = aktie.AktuellerPreis,
+                                Hoechstkurs = aktie.AktuellerPreis,
+                                Tiefstkurs = aktie.AktuellerPreis,
+                                Schlusskurs = aktie.AktuellerPreis,
+                                Volumen = 0,
+                                ÄnderungProzent = aktie.ÄnderungProzent
+                            };
+
+                            context.AktienKursHistorie.Add(neuerEintrag);
+                        }
+
+                        erfolgreich++;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Fehler beim Speichern der Historie für Aktie {aktie.AktienSymbol}: {ex.Message}");
+                    }
+                }
+
+                await context.SaveChangesAsync();
+                return erfolgreich;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Batch-Speichern der Kurshistorie: {ex.Message}");
+                return erfolgreich;
+            }
+        }
+
+        #endregion
 
         #endregion
 

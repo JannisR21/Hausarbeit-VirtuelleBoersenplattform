@@ -36,6 +36,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         private int _fehlerCounter = 0; // Zählt API-Fehler, um Intervall anzupassen
         private HashSet<string> _portfolioSymbole = new HashSet<string>();
         private int _maxApiAnfragenProMinute = 8; // Basic 8 Plan von Twelve Data
+        // Historische Daten wurden entfernt, da sie nun im separaten HistorischeDatenViewModel verwaltet werden
 
         // Kultur für korrekte Formatierung
         private CultureInfo _germanCulture = new CultureInfo("de-DE");
@@ -112,10 +113,14 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// </summary>
         public DateTime NächsteAktualisierung { get; private set; }
 
+        // Historische Daten-Properties wurden entfernt
+
         /// <summary>
         /// Command zum manuellen Aktualisieren der Marktdaten
         /// </summary>
         public IRelayCommand AktualisierenCommand { get; }
+
+        // Command für historische Daten entfernt
 
         #endregion
 
@@ -152,9 +157,11 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             // Nach der Initialisierung sofort aktualisieren (verzögert, um UI nicht zu blockieren)
             Application.Current.Dispatcher.BeginInvoke(async () =>
             {
-                // Zeit zum Laden des UIs geben
-                await Task.Delay(2000);
+                // Minimale Zeit zum Laden des UIs geben - beschleunigt
+                await Task.Delay(500);
                 await AktualisiereMarktdaten();
+
+                // Keine historischen Daten mehr laden
             });
 
             // Event-Handler registrieren für Portfolio-Änderungen
@@ -602,5 +609,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         }
 
         #endregion
+
+            // Historische Daten-Funktionalität wurde entfernt
     }
 }

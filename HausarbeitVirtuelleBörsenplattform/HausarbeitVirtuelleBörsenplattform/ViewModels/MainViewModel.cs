@@ -19,6 +19,8 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         private Benutzer _aktuellerBenutzer;
         private MarktStatus _marktStatus;
         private DispatcherTimer _portfolioUpdateTimer;
+        private DispatcherTimer _historienUpdateTimer; // Timer für die tägliche Aktualisierung der historischen Daten
+        private DateTime _letzteHistorienAktualisierung; // Datum der letzten Historien-Aktualisierung
         private decimal _kontostand; // Neues Feld für den Kontostand
         private AktienFilterService _aktienFilterService;
 
@@ -118,6 +120,11 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// </summary>
         public WatchlistViewModel WatchlistViewModel { get; private set; }
 
+        /// <summary>
+        /// ViewModel für die historischen Daten
+        /// </summary>
+        public HistorischeDatenViewModel HistorischeDatenViewModel { get; private set; }
+
         #endregion
 
         #region Konstruktor
@@ -209,6 +216,7 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 
                 // Timer starten
                 StartPortfolioUpdateTimer();
+                StartHistorienUpdateTimer(); // Timer für die tägliche Aktualisierung der historischen Daten starten
 
                 Debug.WriteLine("Alle ViewModels erfolgreich initialisiert");
 
@@ -220,6 +228,10 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 Debug.WriteLine("Initialisiere WatchlistViewModel...");
                 WatchlistViewModel = new WatchlistViewModel(App.DbService, AktuellerBenutzer.BenutzerID, this);
                 OnPropertyChanged(nameof(WatchlistViewModel));
+
+                Debug.WriteLine("Initialisiere HistorischeDatenViewModel...");
+                HistorischeDatenViewModel = new HistorischeDatenViewModel(App.DbContext, App.TwelveDataService);
+                OnPropertyChanged(nameof(HistorischeDatenViewModel));
             }
             catch (Exception ex)
             {
@@ -298,6 +310,94 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 
         #endregion
 
+        #region Historische Daten
+
+        /// <summary>
+        /// Startet einen Timer für die tägliche Aktualisierung der historischen Aktiendaten
+        /// </summary>
+        private void StartHistorienUpdateTimer()
+        {
+            // Letzte Aktualisierung auf heute Morgen 00:00 Uhr setzen, wenn es keine gab
+            // So wird heute noch eine Aktualisierung durchgeführt
+            _letzteHistorienAktualisierung = DateTime.Today;
+
+            _historienUpdateTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromHours(1) // Prüft stündlich, ob eine Aktualisierung nötig ist
+            };
+
+            _historienUpdateTimer.Tick += async (s, e) => await PrüfeUndAktualisiereHistorischeDaten();
+            _historienUpdateTimer.Start();
+
+            Debug.WriteLine("Historien-Update-Timer gestartet mit stündlicher Prüfung");
+
+            // Sofort einmal prüfen, ob heute schon aktualisiert wurde
+            Application.Current.Dispatcher.BeginInvoke(async () =>
+            {
+                // Zeit zum Laden des UIs geben
+                await Task.Delay(5000);
+                await PrüfeUndAktualisiereHistorischeDaten();
+            });
+        }
+
+        /// <summary>
+        /// Prüft, ob die historischen Daten heute bereits aktualisiert wurden,
+        /// und führt bei Bedarf eine Aktualisierung durch
+        /// </summary>
+        private async Task PrüfeUndAktualisiereHistorischeDaten()
+        {
+            try
+            {
+                // Wenn heute bereits aktualisiert wurde, nichts tun
+                if (_letzteHistorienAktualisierung.Date == DateTime.Today)
+                {
+                    Debug.WriteLine($"Historische Daten wurden heute bereits um {_letzteHistorienAktualisierung.ToString("HH:mm")} aktualisiert");
+                    return;
+                }
+
+                // Prüfen, ob die Börse geöffnet war/ist
+                bool istBoerseGeoeffnet = App.TwelveDataService?.IstBoerseGeoeffnet() ?? false;
+
+                // Die Uhrzeit prüfen - am besten nach Börsenschluss aktualisieren (ca. 22 Uhr unserer Zeit)
+                bool istNachBörsenschluss = DateTime.Now.Hour >= 20; // Nach 20 Uhr aktualisieren
+
+                // Historische Daten aktualisieren, wenn die Börse heute geöffnet war (oder ist) und es nach Börsenschluss ist
+                // ODER wenn es bereits der nächste Tag ist und wir gestern nicht aktualisiert haben
+                bool sollteAktualisieren = (istBoerseGeoeffnet && istNachBörsenschluss) ||
+                                          (_letzteHistorienAktualisierung.Date < DateTime.Today.AddDays(-1));
+
+                if (sollteAktualisieren)
+                {
+                    Debug.WriteLine("Starte Aktualisierung der historischen Aktiendaten...");
+
+                    if (MarktdatenViewModel != null)
+                    {
+                        // Historische Daten werden jetzt direkt im HistorischeDatenViewModel verwaltet
+                        Debug.WriteLine("Historische Daten werden jetzt im HistorischeDatenViewModel verwaltet");
+
+                        // Datum der letzten Aktualisierung speichern
+                        _letzteHistorienAktualisierung = DateTime.Now;
+
+                        Debug.WriteLine($"Historische Daten erfolgreich aktualisiert am {_letzteHistorienAktualisierung}");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("MarktdatenViewModel ist nicht verfügbar - keine Aktualisierung möglich");
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine("Keine Aktualisierung der historischen Daten notwendig (Börse geschlossen oder noch nicht Börsenschluss)");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler bei der Aktualisierung der historischen Daten: {ex.Message}");
+            }
+        }
+
+        #endregion
+
         #region Öffentliche Wrapper‑Methoden
 
         /// <summary>
@@ -371,6 +471,70 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 {
                     Debug.WriteLine("FEHLER: Kontostand konnte nicht in der Datenbank aktualisiert werden!");
                 }
+            }
+        }
+
+        /// <summary>
+        /// Aktualisiert manuell die historischen Kursdaten für alle Aktien
+        /// </summary>
+        public async Task AktualisiereHistorischeDatenAsync()
+        {
+            Debug.WriteLine("Manuelle Aktualisierung der historischen Kursdaten gestartet");
+
+            try
+            {
+                if (MarktdatenViewModel != null)
+                {
+                    // Historische Daten werden jetzt direkt im HistorischeDatenViewModel verwaltet
+                    if (HistorischeDatenViewModel != null) {
+                        // Automatische Aktualisierung über HistorischeDatenViewModel
+                        await HistorischeDatenViewModel.AktualisierenCommand.ExecuteAsync(null);
+                        Debug.WriteLine("HistorischeDatenViewModel.AktualisierenCommand ausgeführt");
+                    }
+
+                    // Datum der letzten Aktualisierung aktualisieren
+                    _letzteHistorienAktualisierung = DateTime.Now;
+
+                    Debug.WriteLine($"Historische Daten manuell aktualisiert am {_letzteHistorienAktualisierung}");
+
+                    // Erfolg anzeigen
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show(
+                            "Die historischen Kursdaten wurden erfolgreich aktualisiert über das HistorischeDatenViewModel.",
+                            "Aktualisierung erfolgreich",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
+                    });
+                }
+                else
+                {
+                    Debug.WriteLine("MarktdatenViewModel ist nicht verfügbar - keine manuelle Aktualisierung möglich");
+
+                    // Fehler anzeigen
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show(
+                            "Das HistorischeDatenViewModel ist nicht verfügbar. Aktualisierung nicht möglich.",
+                            "Fehler",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error);
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler bei der manuellen Aktualisierung der historischen Daten: {ex.Message}");
+
+                // Fehler anzeigen
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show(
+                        $"Fehler bei der Aktualisierung der historischen Daten:\n{ex.Message}",
+                        "Fehler",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                });
             }
         }
 

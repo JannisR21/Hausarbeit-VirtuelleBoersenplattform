@@ -21,7 +21,33 @@ namespace HausarbeitVirtuelleBörsenplattform.Converters
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             bool isInverted = parameter != null && parameter.ToString().ToLower() == "inverted";
-            bool boolValue = value != null && (bool)value;
+            bool boolValue;
+
+            // Prüfe den Typ des Werts und konvertiere entsprechend
+            if (value is bool)
+            {
+                boolValue = (bool)value;
+            }
+            else if (value is int)
+            {
+                boolValue = ((int)value) > 0;
+            }
+            else if (value is double)
+            {
+                boolValue = ((double)value) > 0;
+            }
+            else if (value is float)
+            {
+                boolValue = ((float)value) > 0;
+            }
+            else if (value is decimal)
+            {
+                boolValue = ((decimal)value) > 0;
+            }
+            else
+            {
+                boolValue = value != null;
+            }
 
             if (isInverted)
                 boolValue = !boolValue;

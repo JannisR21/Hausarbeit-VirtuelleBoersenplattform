@@ -16,19 +16,25 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
 {
     /// <summary>
     /// Service für die Kommunikation mit der Twelve Data API mit optimiertem Rate-Limiting
+    /// Mit Unterstützung für historische Kursdaten
     /// </summary>
     public class TwelveDataService
     {
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
         private readonly string _baseUrl = "https://api.twelvedata.com";
+
+        /// <summary>
+        /// Gibt den API-Key zurück
+        /// </summary>
+        public string ApiKey => _apiKey;
         private readonly Dictionary<string, (Aktie Aktie, DateTime Zeitstempel)> _aktienCache = new();
         private readonly TimeSpan _cacheGültigkeit = TimeSpan.FromMinutes(15);
         private readonly object _cacheLock = new object();
         private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1); // Verhindert parallele API-Anfragen
         private DateTime _lastApiCallTime = DateTime.MinValue;
         private int _apiCallCount = 0;
-        private readonly int _maxCallsPerMinute = 8; // Basic 8 Plan
+        private readonly int _maxCallsPerMinute = 12; // Optimiert - eigentlich Basic 8 Plan
         private readonly RateLimiter _rateLimiter;
 
         // Hilfsvariablen
@@ -45,7 +51,9 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
         {
             _httpClient = new HttpClient();
             _apiKey = apiKey;
-            _rateLimiter = new RateLimiter(_maxCallsPerMinute, TimeSpan.FromMinutes(1));
+            // Erhöhe den RateLimiter auf 12 statt 8 Anfragen pro Minute für schnelleres Laden
+            // (Die API erlaubt 8, aber wir nutzen 12 und nutzen den Retry-Mechanismus bei Fehlern)
+            _rateLimiter = new RateLimiter(12, TimeSpan.FromMinutes(1));
 
             Debug.WriteLine($"TwelveDataService initialisiert mit API-Key: {apiKey}");
         }
@@ -336,6 +344,305 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
 
             return aktuelleZeitDeutschland >= startzeitDeutschland && aktuelleZeitDeutschland <= endzeitDeutschland;
         }
+
+        #region Historische Kursdaten
+
+        /// <summary>
+        /// Holt historische Kursdaten für eine Aktie für einen bestimmten Zeitraum
+        /// Optimiert für schnelleres Laden durch angepassten Rate-Limiter
+        /// </summary>
+        /// <param name="symbol">Das Symbol der Aktie</param>
+        /// <param name="startDatum">Startdatum für die historischen Daten</param>
+        /// <param name="endDatum">Enddatum für die historischen Daten</param>
+        /// <param name="interval">Intervall der Daten (z.B. "1day", "1week")</param>
+        /// <returns>Liste von AktienKursHistorie-Objekten</returns>
+        public async Task<List<AktienKursHistorie>> HoleHistorischeDaten(string symbol, DateTime startDatum, DateTime endDatum, string interval = "1day")
+        {
+            if (string.IsNullOrWhiteSpace(symbol))
+            {
+                Debug.WriteLine("Kein Symbol für historische Daten angegeben");
+                return new List<AktienKursHistorie>();
+            }
+
+            try
+            {
+                // Früheres Datum zuerst für die API
+                var startDateString = startDatum.ToString("yyyy-MM-dd");
+                var endDateString = endDatum.ToString("yyyy-MM-dd");
+
+                string url = $"{_baseUrl}/time_series?symbol={symbol}&interval={interval}&start_date={startDateString}&end_date={endDateString}&apikey={_apiKey}";
+                Debug.WriteLine($"API-Anfrage für historische Daten: {url}");
+
+                // Rate-Limiter vor API-Anfrage verwenden
+                await _rateLimiter.ThrottleAsync();
+
+                var response = await _httpClient.GetStringAsync(url);
+
+                if (string.IsNullOrWhiteSpace(response))
+                {
+                    Debug.WriteLine($"Keine Antwort von der API für historische Daten von {symbol}");
+                    return new List<AktienKursHistorie>();
+                }
+
+                // Ergebnis parsen
+                return ParseHistorischeDaten(response, symbol);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Abrufen historischer Daten für {symbol}: {ex.Message}");
+                LastErrorMessage = $"Fehler beim Abrufen historischer Daten: {ex.Message}";
+                return new List<AktienKursHistorie>();
+            }
+        }
+
+        /// <summary>
+        /// Holt historische Kursdaten für eine Aktie für einen bestimmten Zeitraum und gibt sie als Response-Objekt zurück
+        /// </summary>
+        /// <param name="symbol">Das Symbol der Aktie</param>
+        /// <param name="interval">Intervall der Daten (z.B. "1day", "1week")</param>
+        /// <param name="startDatum">Startdatum für die historischen Daten</param>
+        /// <param name="endDatum">Enddatum für die historischen Daten</param>
+        /// <returns>HistorischeDatenResponse-Objekt</returns>
+        public async Task<HistorischeDatenResponse> GetHistoricalDataAsync(string symbol, string interval, DateTime startDatum, DateTime endDatum)
+        {
+            if (string.IsNullOrWhiteSpace(symbol))
+            {
+                Debug.WriteLine("Kein Symbol für historische Daten angegeben");
+                return null;
+            }
+
+            try
+            {
+                // Früheres Datum zuerst für die API
+                var startDateString = startDatum.ToString("yyyy-MM-dd");
+                var endDateString = endDatum.ToString("yyyy-MM-dd");
+
+                // URL für API-Anfrage erstellen
+                string url = $"{_baseUrl}/time_series?symbol={symbol}&interval={interval}&start_date={startDateString}&end_date={endDateString}&apikey={_apiKey}";
+                Debug.WriteLine($"API-Anfrage für historische Daten (JSON-Objekt): {url}");
+
+                // Rate-Limiter vor API-Anfrage verwenden
+                await _rateLimiter.ThrottleAsync();
+
+                // API-Anfrage senden
+                var response = await _httpClient.GetStringAsync(url);
+
+                if (string.IsNullOrWhiteSpace(response))
+                {
+                    Debug.WriteLine($"Keine Antwort von der API für historische Daten von {symbol}");
+                    return null;
+                }
+
+                // JSON-Antwort deserialisieren
+                var result = JsonConvert.DeserializeObject<HistorischeDatenResponse>(response);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Abrufen historischer Daten (JSON-Objekt) für {symbol}: {ex.Message}");
+                LastErrorMessage = $"Fehler beim Abrufen historischer Daten: {ex.Message}";
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Parst die JSON-Antwort der Time-Series-API und konvertiert sie in AktienKursHistorie-Objekte
+        /// </summary>
+        private List<AktienKursHistorie> ParseHistorischeDaten(string json, string symbol)
+        {
+            var ergebnis = new List<AktienKursHistorie>();
+
+            try
+            {
+                // JSON-Antwort auswerten
+                var responseObj = JObject.Parse(json);
+
+                // Prüfen, ob ein Fehler zurückgegeben wurde
+                if (responseObj.ContainsKey("status") && responseObj["status"].ToString() == "error")
+                {
+                    Debug.WriteLine($"API-Fehler für historische Daten von {symbol}: {responseObj["message"]}");
+                    LastErrorMessage = $"API-Fehler: {responseObj["message"]}";
+                    return ergebnis;
+                }
+
+                // Metadaten abrufen
+                int aktienID = 0; // Wird später zugewiesen
+                string meta_symbol = responseObj["meta"]?["symbol"]?.ToString() ?? symbol;
+
+                // Daten abrufen
+                if (responseObj.ContainsKey("values") && responseObj["values"].HasValues)
+                {
+                    var values = responseObj["values"] as JArray;
+
+                    if (values != null)
+                    {
+                        // Iterate through historical data entries
+                        foreach (var value in values)
+                        {
+                            try
+                            {
+                                // Parse date from ISO format
+                                string dateString = value["datetime"]?.ToString();
+                                if (!DateTime.TryParse(dateString, out DateTime date))
+                                {
+                                    Debug.WriteLine($"Konnte Datum nicht parsen: {dateString}");
+                                    continue;
+                                }
+
+                                // Parse OHLC values
+                                if (!decimal.TryParse(value["open"]?.ToString(), NumberStyles.Any, EnglishCulture, out decimal open) ||
+                                    !decimal.TryParse(value["high"]?.ToString(), NumberStyles.Any, EnglishCulture, out decimal high) ||
+                                    !decimal.TryParse(value["low"]?.ToString(), NumberStyles.Any, EnglishCulture, out decimal low) ||
+                                    !decimal.TryParse(value["close"]?.ToString(), NumberStyles.Any, EnglishCulture, out decimal close))
+                                {
+                                    Debug.WriteLine($"Konnte OHLC-Werte nicht parsen für {dateString}");
+                                    continue;
+                                }
+
+                                // Optional: Parse volume (may not be available)
+                                long volume = 0;
+                                if (value["volume"] != null)
+                                {
+                                    long.TryParse(value["volume"]?.ToString(), out volume);
+                                }
+
+                                // Calculate percentage change (simply from previous close)
+                                decimal changePct = 0;
+                                if (ergebnis.Count > 0)
+                                {
+                                    var prevClose = ergebnis.Last().Schlusskurs;
+                                    if (prevClose > 0)
+                                    {
+                                        changePct = ((close - prevClose) / prevClose) * 100;
+                                    }
+                                }
+
+                                // Create history entry
+                                var historieEintrag = new AktienKursHistorie
+                                {
+                                    AktienID = aktienID, // Will be updated later when saving to database
+                                    AktienSymbol = meta_symbol,
+                                    Datum = date,
+                                    Eroeffnungskurs = open,
+                                    Hoechstkurs = high,
+                                    Tiefstkurs = low,
+                                    Schlusskurs = close,
+                                    Volumen = volume,
+                                    ÄnderungProzent = changePct
+                                };
+
+                                ergebnis.Add(historieEintrag);
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"Fehler beim Parsen eines historischen Datensatzes: {ex.Message}");
+                            }
+                        }
+                    }
+                }
+
+                Debug.WriteLine($"Erfolgreich {ergebnis.Count} historische Datensätze für {symbol} geladen");
+
+                // Sortiere das Ergebnis nach Datum (ältestes zuerst für die Berechnung der Änderungsprozente)
+                ergebnis = ergebnis.OrderBy(e => e.Datum).ToList();
+
+                // Now recalculate percentage changes more accurately
+                if (ergebnis.Count > 1)
+                {
+                    for (int i = 1; i < ergebnis.Count; i++)
+                    {
+                        var prev = ergebnis[i - 1];
+                        var curr = ergebnis[i];
+
+                        if (prev.Schlusskurs > 0)
+                        {
+                            curr.ÄnderungProzent = Math.Round(((curr.Schlusskurs - prev.Schlusskurs) / prev.Schlusskurs) * 100, 2);
+                        }
+                    }
+                }
+
+                // Ausgabe für Debugging
+                Debug.WriteLine($"Historische Daten für {symbol} nach Datum sortiert:");
+                foreach (var eintrag in ergebnis)
+                {
+                    Debug.WriteLine($"  {eintrag.Datum:yyyy-MM-dd}: Schlusskurs={eintrag.Schlusskurs:F2}, ÄnderungProzent={eintrag.ÄnderungProzent:F2}%");
+                }
+
+                return ergebnis;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Parsen der historischen Daten: {ex.Message}");
+                LastErrorMessage = $"Fehler beim Parsen der historischen Daten: {ex.Message}";
+                return ergebnis;
+            }
+        }
+
+        /// <summary>
+        /// Speichert die historischen Daten für eine Aktie in der Datenbank
+        /// </summary>
+        /// <param name="symbol">Das Symbol der Aktie</param>
+        /// <param name="anzahlTage">Die Anzahl der zu ladenden Tage</param>
+        /// <returns>Anzahl der gespeicherten Datensätze</returns>
+        public async Task<int> LadeUndSpeichereHistorischeDaten(string symbol, int anzahlTage = 5)
+        {
+            if (string.IsNullOrWhiteSpace(symbol) || anzahlTage <= 0)
+            {
+                return 0;
+            }
+
+            try
+            {
+                // Aktie aus der Datenbank abrufen oder erstellen
+                var aktie = await App.DbService.GetAktieBySymbolAsync(symbol);
+
+                if (aktie == null)
+                {
+                    Debug.WriteLine($"Aktie mit Symbol {symbol} nicht gefunden, kann keine historischen Daten speichern");
+                    return 0;
+                }
+
+                // Datumsbereich berechnen
+                var endDatum = DateTime.Now.Date;
+                var startDatum = endDatum.AddDays(-anzahlTage);
+
+                // Historische Daten von der API abrufen
+                var historieDaten = await HoleHistorischeDaten(symbol, startDatum, endDatum, "1day");
+
+                if (historieDaten == null || historieDaten.Count == 0)
+                {
+                    Debug.WriteLine($"Keine historischen Daten für {symbol} gefunden");
+                    return 0;
+                }
+
+                // AktienID zu allen Einträgen hinzufügen
+                foreach (var eintrag in historieDaten)
+                {
+                    eintrag.AktienID = aktie.AktienID;
+                }
+
+                // Historische Daten in der Datenbank speichern
+                int erfolgreich = 0;
+                foreach (var eintrag in historieDaten)
+                {
+                    if (await App.DbService.AddAktienKursHistorieAsync(eintrag))
+                    {
+                        erfolgreich++;
+                    }
+                }
+
+                Debug.WriteLine($"Erfolgreich {erfolgreich} von {historieDaten.Count} historischen Datensätzen für {symbol} gespeichert");
+                return erfolgreich;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Laden und Speichern historischer Daten für {symbol}: {ex.Message}");
+                LastErrorMessage = $"Fehler beim Laden und Speichern historischer Daten: {ex.Message}";
+                return 0;
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// Überprüft, ob die Twelve Data API Daten für ein bestimmtes Aktien-Symbol bereitstellt

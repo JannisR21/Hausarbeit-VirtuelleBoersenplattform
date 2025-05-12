@@ -22,6 +22,7 @@ namespace HausarbeitVirtuelleBörsenplattform
         public static string TwelveDataApiKey { get; private set; }
         public static TwelveDataService TwelveDataService { get; private set; }
         public static AktienFilterService AktienFilterService { get; private set; }
+        public static BörsenplattformDbContext DbContext { get; private set; }
 
         // Diese Collection enthält nur API-geladene Aktien, keine Dummy-Daten mehr
         public static ObservableCollection<Aktie> StandardAktien { get; private set; }
@@ -163,8 +164,15 @@ namespace HausarbeitVirtuelleBörsenplattform
                 // Ensure UI input fields always work regardless of build mode
                 // No need to explicitly enable input method as we've set IsEnabled=true on the controls
 
+                var connectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
+                Debug.WriteLine($"Verbindungszeichenfolge: {connectionString}");
+
                 var options = new DbContextOptionsBuilder<BörsenplattformDbContext>()
-                    .UseSqlServer(ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString)
+                    .UseSqlServer(connectionString, sqlOptions => {
+                        // Explizites Setzen der SQL Server-Kompatibilitätsebene
+                        sqlOptions.CommandTimeout(60); // Längeres Timeout für langsamere Verbindungen
+                        sqlOptions.EnableRetryOnFailure(3); // Wiederholungsversuche bei Verbindungsproblemen
+                    })
                     .EnableSensitiveDataLogging()
                     .Options;
 
@@ -178,11 +186,27 @@ namespace HausarbeitVirtuelleBörsenplattform
                     if (!dbContext.Database.CanConnect())
                     {
                         Debug.WriteLine("Datenbank existiert nicht, versuche sie zu erstellen...");
-                        // Datenbank erstellen und Migrationen anwenden
-                        dbContext.Database.EnsureCreated();
-                        // Alternativ für Entity Framework Migrations
-                        // dbContext.Database.Migrate();
-                        Debug.WriteLine("Datenbank wurde erfolgreich erstellt!");
+
+                        // Verwende Migrate statt EnsureCreated, da es besser mit älteren SQL Server-Versionen funktioniert
+                        // und mit bereits bestehenden Datenbanken kompatibel ist
+                        dbContext.Database.Migrate();
+
+                        Debug.WriteLine("Datenbank wurde erfolgreich erstellt und Migrationen angewendet!");
+                    }
+                    else
+                    {
+                        // Prüfe, ob Migrationen angewendet werden müssen
+                        var pendingMigrations = dbContext.Database.GetPendingMigrations();
+                        if (pendingMigrations.Any())
+                        {
+                            Debug.WriteLine($"Es gibt {pendingMigrations.Count()} ausstehende Migrationen, wende sie an...");
+                            dbContext.Database.Migrate();
+                            Debug.WriteLine("Alle ausstehenden Migrationen wurden angewendet.");
+                        }
+                        else
+                        {
+                            Debug.WriteLine("Datenbank existiert und ist auf dem neuesten Stand.");
+                        }
                     }
                 }
                 catch (Exception dbCreateEx)
@@ -197,8 +221,70 @@ namespace HausarbeitVirtuelleBörsenplattform
                 if (dbContext.Database.CanConnect())
                 {
                     Debug.WriteLine("Datenbankverbindung ist möglich.");
+                    DbContext = dbContext; // DbContext für direkten Zugriff speichern
                     DbService = new DatabaseService(dbContext, options);
                     AuthService = new AuthenticationService(DbService);
+
+                    // Überprüfe und erstelle historische Daten-Tabelle, falls noch nicht vorhanden
+                    Task.Run(async () => {
+                        try {
+                            Debug.WriteLine("Prüfe die Tabelle für historische Aktiendaten...");
+                            var tableExists = false;
+
+                            // Prüfe, ob die Tabelle bereits existiert
+                            using (var command = dbContext.Database.GetDbConnection().CreateCommand())
+                            {
+                                command.CommandText = "SELECT CASE WHEN EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES " +
+                                                      "WHERE TABLE_NAME = 'AktienKursHistorie') THEN 1 ELSE 0 END";
+
+                                await dbContext.Database.OpenConnectionAsync();
+                                var result = await command.ExecuteScalarAsync();
+                                tableExists = Convert.ToInt32(result) == 1;
+                                Debug.WriteLine("Datenbankverbindung erfolgreich geöffnet und Abfrage ausgeführt");
+                            }
+
+                            Debug.WriteLine($"Historische Daten-Tabelle existiert: {tableExists}");
+
+                            // Falls nicht existierend, führe Migratioinen aus
+                            if (!tableExists)
+                            {
+                                Debug.WriteLine("Historische Daten-Tabelle wird erstellt...");
+                                dbContext.Database.ExecuteSqlRaw(@"
+                                    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'AktienKursHistorie')
+                                    BEGIN
+                                        CREATE TABLE AktienKursHistorie (
+                                            HistorieID int IDENTITY(1,1) PRIMARY KEY,
+                                            AktienID int NOT NULL,
+                                            AktienSymbol nvarchar(10) NOT NULL,
+                                            Datum datetime2 NOT NULL,
+                                            Eroeffnungskurs decimal(18,2) NOT NULL,
+                                            Hoechstkurs decimal(18,2) NOT NULL,
+                                            Tiefstkurs decimal(18,2) NOT NULL,
+                                            Schlusskurs decimal(18,2) NOT NULL,
+                                            Volumen bigint NOT NULL,
+                                            ÄnderungProzent decimal(18,2) NOT NULL,
+                                            CONSTRAINT FK_AktienKursHistorie_Aktien
+                                                FOREIGN KEY (AktienID) REFERENCES Aktien(AktienID)
+                                                ON DELETE NO ACTION,
+                                            INDEX IX_AktienKursHistorie_Symbol (AktienSymbol),
+                                            INDEX IX_AktienKursHistorie_Datum (Datum)
+                                        );
+
+                                        PRINT 'Historische Daten-Tabelle wurde erfolgreich erstellt';
+                                    END
+                                    ELSE
+                                    BEGIN
+                                        PRINT 'Historische Daten-Tabelle existiert bereits';
+                                    END");
+                                Debug.WriteLine("Historische Daten-Tabelle wurde erstellt.");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Fehler beim Prüfen/Erstellen der historischen Daten-Tabelle: {ex.Message}");
+                            // Fehler protokollieren, aber App weiterlaufen lassen
+                        }
+                    });
 
                     // Sicherstellen, dass der API-Key nicht null ist
                     if (string.IsNullOrEmpty(TwelveDataApiKey))
@@ -219,6 +305,11 @@ namespace HausarbeitVirtuelleBörsenplattform
                     {
                         StandardAktien = new ObservableCollection<Aktie>();
                     }
+
+                    // Lade einige Standard-Aktien beim Start
+                    Task.Run(async () => {
+                        await LadeAktuelleMarktdaten();
+                    });
 
                     // EmailService mit den konkreten SMTP-Daten initialisieren
                     EmailService = new EmailService(
@@ -243,6 +334,60 @@ namespace HausarbeitVirtuelleBörsenplattform
                 Debug.WriteLine($"Fehler bei der Initialisierung: {ex.Message}");
                 if (ex.InnerException != null)
                     Debug.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+
+                // Prüfen, ob es sich um ein SQL Server-Versionsproblem handelt
+                bool isSqlVersionError = ex.Message.Contains("version") ||
+                                       (ex.InnerException != null && ex.InnerException.Message.Contains("version"));
+
+                if (isSqlVersionError)
+                {
+                    Debug.WriteLine("SQL Server-Versionsproblem erkannt. Versuche alternative Verbindung...");
+
+                    try
+                    {
+                        // Alternativer Versuch mit anderer Kompatibilitätseinstellung
+                        // Verbindungszeichenfolge aus ConnectionStrings abrufen
+                        string dbConnectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
+
+                        var fallbackOptions = new DbContextOptionsBuilder<BörsenplattformDbContext>()
+                            .UseSqlServer(dbConnectionString, sqlServerOptions => {
+                                sqlServerOptions.CommandTimeout(90);
+                                sqlServerOptions.EnableRetryOnFailure(5);
+                                // Einfachere Konfiguration ohne spezifische ExecutionStrategy
+                            })
+                            .EnableDetailedErrors()
+                            .Options;
+
+                        var fallbackContext = new BörsenplattformDbContext(fallbackOptions);
+                        fallbackContext.Database.Migrate();
+
+                        // Wenn erfolgreich, setze diese Optionen und Context als Standard
+                        DbService = new DatabaseService(fallbackContext, fallbackOptions);
+                        AuthService = new AuthenticationService(DbService);
+
+                        Debug.WriteLine("Alternative Verbindung erfolgreich hergestellt!");
+
+                        MessageBox.Show("Es wurde eine ältere SQL Server-Version erkannt. " +
+                                       "Die Anwendung wurde in den Kompatibilitätsmodus versetzt und sollte nun funktionieren.",
+                                       "SQL Server-Kompatibilität", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                        // Services weiter initialisieren
+                        TwelveDataService = new TwelveDataService(TwelveDataApiKey);
+                        AktienFilterService = new AktienFilterService(TwelveDataApiKey, TwelveDataService);
+
+                        if (StandardAktien == null)
+                        {
+                            StandardAktien = new ObservableCollection<Aktie>();
+                        }
+
+                        return; // Frühzeitig beenden, da wir erfolgreich waren
+                    }
+                    catch (Exception fallbackEx)
+                    {
+                        Debug.WriteLine($"Auch der Fallback-Versuch ist fehlgeschlagen: {fallbackEx.Message}");
+                        // Weiter zum normalen Fehlerhandling
+                    }
+                }
 
                 MessageBox.Show($"Fehler bei der Initialisierung: {ex.Message}\n\n" +
                                 $"Details: {ex.InnerException?.Message ?? "Keine weiteren Details verfügbar."}\n\n" +

@@ -905,7 +905,35 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                         return;
                     }
 
-                    // Aktie zum Portfolio hinzufügen
+                    // PROBLEM-BEHEBUNG: Stellen wir sicher, dass die Aktie zuerst in der Datenbank existiert
+                    try
+                    {
+                        Debug.WriteLine($"Stelle sicher, dass Aktie in Datenbank existiert: ID={id}, Symbol={AktienSymbol.Trim().ToUpper()}, Name={name}");
+
+                        // Hole oder erstelle die Aktie in der Datenbank
+                        var dbAktie = await App.DbService.GetOrCreateAktieBySymbolAsync(
+                            AktienSymbol.Trim().ToUpper(),
+                            name,
+                            kurs);
+
+                        if (dbAktie != null)
+                        {
+                            Debug.WriteLine($"Aktie in Datenbank gefunden/erstellt: ID={dbAktie.AktienID}, Symbol={dbAktie.AktienSymbol}");
+                            // Verwende die ID aus der Datenbank für den Portfolio-Eintrag
+                            id = dbAktie.AktienID;
+                        }
+                        else
+                        {
+                            Debug.WriteLine("WARNUNG: Aktie konnte nicht in Datenbank erstellt werden!");
+                        }
+                    }
+                    catch (Exception dbEx)
+                    {
+                        Debug.WriteLine($"Fehler beim Erstellen der Aktie in der Datenbank: {dbEx.Message}");
+                        // Trotzdem weitermachen, Fehler protokollieren
+                    }
+
+                    // Aktie zum Portfolio hinzufügen (mit aktualisierter ID aus der Datenbank)
                     portfolio.FügeAktieHinzu(id, AktienSymbol.Trim().ToUpper(), name, Menge, kurs, kurs);
 
                     // Kontostand direkt im MainViewModel aktualisieren

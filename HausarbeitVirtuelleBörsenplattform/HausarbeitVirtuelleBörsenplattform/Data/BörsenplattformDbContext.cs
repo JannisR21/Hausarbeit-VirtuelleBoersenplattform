@@ -11,6 +11,8 @@ namespace HausarbeitVirtuelleBörsenplattform.Data
         public BörsenplattformDbContext(DbContextOptions<BörsenplattformDbContext> options)
             : base(options)
         {
+            // Erhöht die Robustheit der Datenbankverbindung
+            this.Database.SetCommandTimeout(60); // Erhöhtes Timeout für SQL-Befehle
         }
 
         /// <summary>
@@ -34,11 +36,24 @@ namespace HausarbeitVirtuelleBörsenplattform.Data
         public DbSet<WatchlistEintrag> WatchlistEintraege { get; set; }
 
         /// <summary>
+        /// Historische Aktienkurse-Tabelle
+        /// </summary>
+        public DbSet<AktienKursHistorie> AktienKursHistorie { get; set; }
+
+        /// <summary>
+        /// Erweiterte historische Aktiendaten-Tabelle
+        /// </summary>
+        public DbSet<HistorischeDatenErweitert> HistorischeDatenErweitert { get; set; }
+
+        /// <summary>
         /// Konfigurationen für die Tabellen und Beziehungen
         /// </summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // SQL Server-Kompatibilitätseinstellungen, um einen größeren Versionsbereich zu unterstützen
+            modelBuilder.HasAnnotation("SqlServer:CompatibilityMode", "130"); // SQL Server 2016 Kompatibilitätsmodus
 
             // Benutzer-Konfiguration
             modelBuilder.Entity<Benutzer>(entity =>
@@ -107,6 +122,59 @@ namespace HausarbeitVirtuelleBörsenplattform.Data
                 entity.HasOne<Aktie>()
                     .WithMany()
                     .HasForeignKey(e => e.AktienID)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // AktienKursHistorie-Konfiguration
+            modelBuilder.Entity<AktienKursHistorie>(entity =>
+            {
+                entity.HasKey(e => e.HistorieID); // Primärschlüssel
+                entity.Property(e => e.AktienSymbol).IsRequired().HasMaxLength(10);
+                entity.Property(e => e.Datum).IsRequired();
+                entity.Property(e => e.Eroeffnungskurs).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Hoechstkurs).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Tiefstkurs).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Schlusskurs).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.ÄnderungProzent).HasColumnType("decimal(18,2)");
+
+                // Erstelle einen zusammengesetzten Index für schnelle Abfragen nach Symbol und Datum
+                entity.HasIndex(e => new { e.AktienSymbol, e.Datum });
+
+                // Erstelle einen Index für die AktienID zur schnelleren Suche
+                entity.HasIndex(e => e.AktienID);
+
+                // Beziehung zur Aktien-Tabelle
+                entity.HasOne<Aktie>()
+                    .WithMany()
+                    .HasForeignKey(e => e.AktienID)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // HistorischeDatenErweitert-Konfiguration
+            modelBuilder.Entity<HistorischeDatenErweitert>(entity =>
+            {
+                entity.HasKey(e => e.Id); // Primärschlüssel
+                entity.Property(e => e.Datum).IsRequired();
+                entity.Property(e => e.Eröffnungskurs).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Höchstkurs).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Tiefstkurs).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Schlusskurs).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.ÄnderungProzent).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Intervall).IsRequired().HasMaxLength(20);
+
+                // Erstelle einen zusammengesetzten Index für schnelle Abfragen nach AktieId und Datum
+                entity.HasIndex(e => new { e.AktieId, e.Datum });
+
+                // Erstelle einen Index für die AktieId zur schnelleren Suche
+                entity.HasIndex(e => e.AktieId);
+
+                // Erstelle einen Index für das Datum zur schnelleren Abfrage von Zeiträumen
+                entity.HasIndex(e => e.Datum);
+
+                // Beziehung zur Aktien-Tabelle
+                entity.HasOne<Aktie>(e => e.Aktie)
+                    .WithMany()
+                    .HasForeignKey(e => e.AktieId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 

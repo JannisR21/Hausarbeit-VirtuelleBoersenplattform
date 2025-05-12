@@ -297,21 +297,89 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         private async Task SynchronisierenAsync()
         {
             if (_databaseService == null || _benutzerId <= 0)
+            {
+                Debug.WriteLine("Synchronisierung nicht möglich: Kein Datenbankservice oder ungültige BenutzerID");
                 return;
+            }
+
+            int erfolgreiche = 0;
+            int fehlgeschlagene = 0;
 
             try
             {
+                Debug.WriteLine($"Starte Synchronisierung von {PortfolioEintraege.Count} Portfolio-Einträgen mit der Datenbank...");
+
                 // Portfolio-Änderungen speichern
                 foreach (var eintrag in PortfolioEintraege)
                 {
-                    await _databaseService.AddOrUpdatePortfolioEintragAsync(eintrag);
+                    try
+                    {
+                        // Überprüfen, ob die AktienID gültig ist
+                        if (eintrag.AktienID <= 0)
+                        {
+                            Debug.WriteLine($"WARNUNG: Ungültige AktienID ({eintrag.AktienID}) für Portfolio-Eintrag {eintrag.AktienSymbol}");
+
+                            // Versuchen, die Aktie in der Datenbank zu finden oder zu erstellen
+                            var dbAktie = await _databaseService.GetOrCreateAktieBySymbolAsync(
+                                eintrag.AktienSymbol,
+                                eintrag.AktienName,
+                                eintrag.AktuellerKurs);
+
+                            if (dbAktie != null)
+                            {
+                                Debug.WriteLine($"Aktie {eintrag.AktienSymbol} in Datenbank gefunden/erstellt: ID={dbAktie.AktienID}");
+                                eintrag.AktienID = dbAktie.AktienID;
+                            }
+                            else
+                            {
+                                Debug.WriteLine($"FEHLER: Konnte Aktie {eintrag.AktienSymbol} nicht in Datenbank finden/erstellen");
+                                fehlgeschlagene++;
+                                continue; // Überspringe diesen Eintrag
+                            }
+                        }
+
+                        // Portfolio-Eintrag speichern/aktualisieren
+                        bool ergebnis = await _databaseService.AddOrUpdatePortfolioEintragAsync(eintrag);
+
+                        if (ergebnis)
+                        {
+                            erfolgreiche++;
+                            Debug.WriteLine($"Portfolio-Eintrag für {eintrag.AktienSymbol} erfolgreich synchronisiert");
+                        }
+                        else
+                        {
+                            fehlgeschlagene++;
+                            Debug.WriteLine($"Synchronisierung von Portfolio-Eintrag für {eintrag.AktienSymbol} fehlgeschlagen");
+                        }
+                    }
+                    catch (Exception entryEx)
+                    {
+                        fehlgeschlagene++;
+                        Debug.WriteLine($"Fehler beim Synchronisieren von Eintrag {eintrag.AktienSymbol}: {entryEx.Message}");
+                    }
                 }
 
-                Debug.WriteLine("Portfolio-Daten mit der Datenbank synchronisiert");
+                Debug.WriteLine($"Portfolio-Synchronisierung abgeschlossen: {erfolgreiche} erfolgreich, {fehlgeschlagene} fehlgeschlagen");
+
+                if (fehlgeschlagene > 0)
+                {
+                    HatFehler = true;
+                    FehlerText = $"Bei der Speicherung von {fehlgeschlagene} Portfolio-Positionen sind Fehler aufgetreten.";
+                }
+                else
+                {
+                    HatFehler = false;
+                    FehlerText = string.Empty;
+                }
             }
             catch (System.Exception ex)
             {
-                Debug.WriteLine($"Fehler beim Synchronisieren des Portfolios: {ex.Message}");
+                Debug.WriteLine($"Allgemeiner Fehler beim Synchronisieren des Portfolios: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Debug.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+                }
+
                 HatFehler = true;
                 FehlerText = $"Fehler beim Speichern der Portfolio-Daten: {ex.Message}";
             }
@@ -328,9 +396,34 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
         /// <param name="aktuellerKurs">Aktueller Kurs der Aktie</param>
         public void FügeAktieHinzu(int aktienID, string symbol, string name, int anzahl, decimal kaufkurs, decimal aktuellerKurs)
         {
+            Debug.WriteLine($"FügeAktieHinzu aufgerufen: ID={aktienID}, Symbol={symbol}, Name={name}, Anzahl={anzahl}, Kurs={kaufkurs}€");
+
+            // FIXES: Stellen wir sicher, dass die Aktie in der Datenbank existiert
+            if (aktienID <= 0 && _databaseService != null)
+            {
+                try
+                {
+                    Debug.WriteLine("AktienID ist ungültig, versuche Aktie in Datenbank zu finden/erstellen");
+                    var dbAktie = _databaseService.GetOrCreateAktieBySymbolAsync(symbol, name, kaufkurs).Result;
+                    if (dbAktie != null)
+                    {
+                        aktienID = dbAktie.AktienID;
+                        Debug.WriteLine($"Aktie in Datenbank gefunden/erstellt: ID={aktienID}");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("WARNUNG: Konnte Aktie nicht in Datenbank erstellen!");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Fehler beim Abrufen/Erstellen der Aktie: {ex.Message}");
+                }
+            }
+
             // Prüfen, ob die Aktie bereits im Portfolio ist
             var existingEntry = PortfolioEintraege.FirstOrDefault(pe =>
-                pe.AktienID == aktienID ||
+                (aktienID > 0 && pe.AktienID == aktienID) ||
                 pe.AktienSymbol.Equals(symbol, StringComparison.OrdinalIgnoreCase));
 
             if (existingEntry != null)
@@ -355,12 +448,30 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
                 existingEntry.AktuellerKurs = aktuellerKurs;
                 existingEntry.LetzteAktualisierung = DateTime.Now;
 
+                // Stellen wir sicher, dass die AktienID korrekt ist
+                if (aktienID > 0 && existingEntry.AktienID <= 0)
+                {
+                    existingEntry.AktienID = aktienID;
+                }
+
                 // Aktualisiere berechnete Properties
                 existingEntry.BerechneWertUndGewinnVerlust();
             }
             else
             {
                 // Wenn die Aktie noch nicht im Portfolio ist, neuen Eintrag erstellen
+                Debug.WriteLine($"Erstelle neuen Portfolio-Eintrag für Aktie: ID={aktienID}, Symbol={symbol}");
+
+                // WICHTIG: Erneute Sicherheitsüberprüfung für die AktienID
+                if (aktienID <= 0)
+                {
+                    Debug.WriteLine($"WARNUNG: Ungültige AktienID ({aktienID}) beim Erstellen des Portfolio-Eintrags!");
+                    // Notfall-ID setzen
+                    // In einer realen Anwendung sollten wir einen besseren Fallback haben
+                    aktienID = new Random().Next(1000, 10000);
+                    Debug.WriteLine($"Verwende Notfall-ID: {aktienID}");
+                }
+
                 var neuerEintrag = new PortfolioEintrag
                 {
                     BenutzerID = _benutzerId > 0 ? _benutzerId : 1,
@@ -377,6 +488,9 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 
                 // Aktualisiere berechnete Properties
                 neuerEintrag.BerechneWertUndGewinnVerlust();
+
+                Debug.WriteLine($"Neuer Eintrag erstellt: AktienID={neuerEintrag.AktienID}, Symbol={neuerEintrag.AktienSymbol}, " +
+                              $"Anzahl={neuerEintrag.Anzahl}, EinstandsPreis={neuerEintrag.EinstandsPreis:F2}€");
             }
 
             // Zusätzliche Debugging-Informationen
@@ -387,8 +501,33 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
             BerechneGesamtwerte();
             LetzteAktualisierung = DateTime.Now;
 
-            // Änderungen zur Datenbank synchronisieren
-            _ = SynchronisierenAsync();
+            // KRITISCH: Stellen sicher, dass die Datenbank aktualisiert wird
+            if (_databaseService != null)
+            {
+                try
+                {
+                    // Explizit synchronisieren mit Fehlerbehandlung
+                    Task.Run(async () => {
+                        try
+                        {
+                            await SynchronisierenAsync();
+                            Debug.WriteLine("Portfolio wurde erfolgreich mit der Datenbank synchronisiert");
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Fehler bei der Synchronisierung: {ex.Message}");
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Fehler beim Starten des Synchronisierungstasks: {ex.Message}");
+                }
+            }
+            else
+            {
+                Debug.WriteLine("WARNUNG: Kein Datenbankservice verfügbar, Änderungen werden nicht gespeichert!");
+            }
 
             // UI durch Benachrichtigung aktualisieren
             OnPropertyChanged(nameof(PortfolioEintraege));

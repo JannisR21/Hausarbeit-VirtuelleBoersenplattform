@@ -17,6 +17,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
     public partial class MarktdatenUserControl : UserControl
     {
         private DispatcherTimer _uiUpdateTimer;
+        private MarktdatenViewModel _viewModel;
 
         /// <summary>
         /// Initialisiert eine neue Instanz des MarktdatenUserControl
@@ -88,6 +89,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                     // ViewModel aus dem DataContext holen
                     if (DataContext is MarktdatenViewModel viewModel)
                     {
+                        _viewModel = viewModel;
                         Debug.WriteLine("MarktdatenViewModel gefunden, richte CollectionChanged-Event ein");
 
                         // Auf Änderungen in der AktienListe reagieren
@@ -130,6 +132,20 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                                 }
                             }
                         }
+
+                        // Verzögerung, damit UI-Elemente zuerst geladen werden
+                        Dispatcher.BeginInvoke(new Action(async () =>
+                        {
+                            // Minimale Wartezeit für das Laden des UIs
+                            await Task.Delay(100);
+
+                            // Wenn Aktien vorhanden sind, erste Aktie auswählen
+                            if (viewModel.AktienListe != null && viewModel.AktienListe.Count > 0 && viewModel.AusgewählteAktie == null)
+                            {
+                                viewModel.AusgewählteAktie = viewModel.AktienListe.FirstOrDefault();
+                                Debug.WriteLine($"Erste Aktie automatisch ausgewählt: {viewModel.AusgewählteAktie?.AktienSymbol}");
+                            }
+                        }), DispatcherPriority.Background);
                     }
                     else
                     {
@@ -193,22 +209,42 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
         /// </summary>
         private void ÄnderungProzentTextBlock_Loaded(object sender, RoutedEventArgs e)
         {
-            if (sender is TextBlock textBlock && textBlock.DataContext is Aktie aktie)
+            if (sender is TextBlock textBlock)
             {
                 try
                 {
-                    // Farbe basierend auf dem Wert setzen
-                    if (aktie.ÄnderungProzent > 0)
+                    // Erkennen, welche Art von Objekt das DataContext ist (Aktie oder AktienKursHistorie)
+                    if (textBlock.DataContext is Aktie aktie)
                     {
-                        textBlock.Foreground = Brushes.Green;
+                        // Farbe basierend auf dem Wert setzen
+                        if (aktie.ÄnderungProzent > 0)
+                        {
+                            textBlock.Foreground = Brushes.Green;
+                        }
+                        else if (aktie.ÄnderungProzent < 0)
+                        {
+                            textBlock.Foreground = Brushes.Red;
+                        }
+                        else
+                        {
+                            textBlock.Foreground = Brushes.Black;
+                        }
                     }
-                    else if (aktie.ÄnderungProzent < 0)
+                    else if (textBlock.DataContext is AktienKursHistorie historie)
                     {
-                        textBlock.Foreground = Brushes.Red;
-                    }
-                    else
-                    {
-                        textBlock.Foreground = Brushes.Black;
+                        // Farbe basierend auf dem Wert setzen
+                        if (historie.ÄnderungProzent > 0)
+                        {
+                            textBlock.Foreground = Brushes.Green;
+                        }
+                        else if (historie.ÄnderungProzent < 0)
+                        {
+                            textBlock.Foreground = Brushes.Red;
+                        }
+                        else
+                        {
+                            textBlock.Foreground = Brushes.Black;
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -218,5 +254,18 @@ namespace HausarbeitVirtuelleBörsenplattform.Views
                 }
             }
         }
+
+        /// <summary>
+        /// Wird aufgerufen, wenn eine Aktie in der DataGrid ausgewählt wird
+        /// </summary>
+        private void AktienDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_viewModel != null && _viewModel.AusgewählteAktie != null)
+            {
+                Debug.WriteLine($"Aktie ausgewählt: {_viewModel.AusgewählteAktie.AktienSymbol}");
+            }
+        }
+
+        // Methode HistorieExpander_Expanded entfernt
     }
 }

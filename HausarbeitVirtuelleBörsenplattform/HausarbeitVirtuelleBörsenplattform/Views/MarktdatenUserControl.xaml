@@ -13,6 +13,7 @@
     <UserControl.Resources>
         <!-- Converter -->
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:NullToBooleanConverter x:Key="NullToBooleanConverter"/>
         <!-- Farben -->
         <Color x:Key="PrimaryColor">#1E40AF</Color>
         <Color x:Key="PrimaryLightColor">#3B82F6</Color>
@@ -320,6 +321,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Header-Bereich mit Steuerungselementen -->
@@ -434,10 +436,13 @@
                   AlternatingRowBackground="#F7FAFC"
                   HorizontalGridLinesBrush="#EDF2F7"
                   VerticalGridLinesBrush="Transparent"
-                  RowHeight="44"
+                  RowHeight="40"
+                  MaxHeight="300"
                   VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Auto"
                   SelectionMode="Single"
-                  SelectionUnit="FullRow">
+                  SelectionUnit="FullRow"
+                  SelectionChanged="AktienDataGrid_SelectionChanged">
 
             <!-- DataGrid Styles anwenden -->
             <DataGrid.Resources>
@@ -602,13 +607,17 @@
             </DataGrid.Style>
         </DataGrid>
 
+        <!-- Leerraum zwischen Tabelle und Footer -->
+        <Grid Grid.Row="3" Height="10"/>
+        
+
         <!-- Footer mit Hinweistexten -->
-        <Border Grid.Row="3" 
-                Background="#F0F9FF" 
-                BorderBrush="#BAE6FD" 
-                BorderThickness="1" 
-                CornerRadius="8" 
-                Padding="16" 
+        <Border Grid.Row="4"
+                Background="#F0F9FF"
+                BorderBrush="#BAE6FD"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="16"
                 Margin="0,16,0,0">
             <Grid>
                 <Grid.ColumnDefinitions>

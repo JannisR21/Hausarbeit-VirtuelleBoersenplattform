@@ -77,6 +77,13 @@ namespace HausarbeitVirtuelleBörsenplattform
                 {
                     dashboardButton.Click += DashboardButton_Click;
                 }
+                
+                // Event-Handler für HistorischeDaten-Navigation hinzufügen
+                var historischeDatenButton = FindName("HistorischeDatenButton") as Button;
+                if (historischeDatenButton != null)
+                {
+                    historischeDatenButton.Click += HistorischeDatenButton_Click;
+                }
             }
             catch (Exception ex)
             {
@@ -254,6 +261,81 @@ namespace HausarbeitVirtuelleBörsenplattform
             {
                 Debug.WriteLine($"Fehler beim Öffnen der Watchlist: {ex.Message}");
                 MessageBox.Show($"Fehler beim Öffnen der Watchlist: {ex.Message}",
+                               "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// Handler für den Klick auf den HistorischeDaten-Button
+        /// </summary>
+        private void HistorischeDatenButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Im Designer-Modus nichts tun
+                if (DesignerProperties.GetIsInDesignMode(this))
+                    return;
+
+                Debug.WriteLine("HistorischeDaten-Button wurde geklickt");
+
+                // Haupt-Grid für Inhalte finden
+                var mainGrid = FindMainContentGrid();
+                if (mainGrid == null)
+                {
+                    Debug.WriteLine("Konnte das Haupt-Grid nicht finden");
+                    MessageBox.Show("Fehler beim Öffnen der historischen Daten.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // HistorischeDaten-Ansicht anzeigen
+                mainGrid.Children.Clear();
+
+                // Immer eine neue Instanz des HistorischeDatenUserControl erstellen
+                var historischeDatenControl = new Views.HistorischeDatenUserControl();
+
+                // DataContext setzen
+                if (DataContext is MainViewModel vm)
+                {
+                    historischeDatenControl.DataContext = vm.HistorischeDatenViewModel;
+                }
+
+                // Neues Grid für die HistorischeDaten-Ansicht erstellen
+                var grid = new Grid();
+                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                grid.VerticalAlignment = VerticalAlignment.Stretch;
+                grid.HorizontalAlignment = HorizontalAlignment.Stretch;
+                grid.MinHeight = 600;
+
+                // Border für die HistorischeDaten-Ansicht erstellen
+                var border = new Border
+                {
+                    Style = (Style)FindResource("CardBorderStyle"),
+                    Child = historischeDatenControl,
+                    VerticalAlignment = VerticalAlignment.Stretch,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    MinHeight = 580
+                };
+
+                Grid.SetRow(border, 0);
+                Grid.SetColumn(border, 0);
+                grid.Children.Add(border);
+
+                // Grid zum Haupt-Grid hinzufügen
+                mainGrid.Children.Add(grid);
+
+                Debug.WriteLine("HistorischeDaten-Ansicht wurde angezeigt");
+
+                // Lade verfügbare Aktien beim Anzeigen
+                if (DataContext is MainViewModel vm2 && vm2.HistorischeDatenViewModel != null)
+                {
+                    _ = vm2.HistorischeDatenViewModel.LadeVerfügbareAktienCommand.ExecuteAsync(null);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Öffnen der historischen Daten: {ex.Message}");
+                MessageBox.Show($"Fehler beim Öffnen der historischen Daten: {ex.Message}",
                                "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }

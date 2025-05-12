@@ -231,6 +231,12 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 
                 Debug.WriteLine("Initialisiere HistorischeDatenViewModel...");
                 HistorischeDatenViewModel = new HistorischeDatenViewModel(App.DbContext, App.TwelveDataService);
+
+                // Sicherstellen, dass die Tabelle für historische Daten existiert
+                Debug.WriteLine("Stelle sicher, dass die Tabelle für historische Daten existiert...");
+                // Asynchron die Tabelle für historische Daten erstellen
+                _ = HistorischeDatenViewModel.EnsureHistoricalDataTableExists();
+
                 OnPropertyChanged(nameof(HistorischeDatenViewModel));
             }
             catch (Exception ex)

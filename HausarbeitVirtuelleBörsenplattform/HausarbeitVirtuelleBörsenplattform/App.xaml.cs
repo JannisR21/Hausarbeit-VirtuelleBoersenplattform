@@ -27,7 +27,7 @@ namespace HausarbeitVirtuelleBörsenplattform
         // Diese Collection enthält nur API-geladene Aktien, keine Dummy-Daten mehr
         public static ObservableCollection<Aktie> StandardAktien { get; private set; }
 
-        protected override void OnStartup(StartupEventArgs e)
+        protected override async void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
 
@@ -48,7 +48,8 @@ namespace HausarbeitVirtuelleBörsenplattform
             Debug.WriteLine("Stelle sicher, dass Eingabefelder in allen Build-Konfigurationen aktiviert sind");
 
             // Services initialisieren
-            InitializeServices();
+            // Asynchrone Initialisierung als Task ausführen
+            await InitializeServices();
 
             // Nur das LoginWindow starten!
             var loginWindow = new LoginWindow();
@@ -153,7 +154,7 @@ namespace HausarbeitVirtuelleBörsenplattform
             }
         }
 
-        private void InitializeServices()
+        private async Task InitializeServices()
         {
             try
             {
@@ -183,30 +184,59 @@ namespace HausarbeitVirtuelleBörsenplattform
                 // Prüfen, ob die Datenbank existiert, falls nicht, erstellen
                 try
                 {
+                    // DbService initialisieren
+                    DbService = new DatabaseService(dbContext, options);
+
+                    // Explizit überprüfen, ob Datenbank bereits existiert
                     if (!dbContext.Database.CanConnect())
                     {
                         Debug.WriteLine("Datenbank existiert nicht, versuche sie zu erstellen...");
 
-                        // Verwende Migrate statt EnsureCreated, da es besser mit älteren SQL Server-Versionen funktioniert
-                        // und mit bereits bestehenden Datenbanken kompatibel ist
-                        dbContext.Database.Migrate();
+                        // Zuerst mit Migrate versuchen für bessere Kompatibilität
+                        try
+                        {
+                            dbContext.Database.Migrate();
+                            Debug.WriteLine("Datenbank wurde erfolgreich mit Migrate erstellt!");
+                        }
+                        catch (Exception migrateEx)
+                        {
+                            Debug.WriteLine($"Fehler bei Migrate: {migrateEx.Message}, versuche EnsureCreated...");
 
-                        Debug.WriteLine("Datenbank wurde erfolgreich erstellt und Migrationen angewendet!");
+                            // Fallback auf EnsureCreated
+                            dbContext.Database.EnsureCreated();
+                            Debug.WriteLine("Datenbank wurde erfolgreich mit EnsureCreated erstellt!");
+                        }
+
+                        // Zusätzlich noch unsere benutzerdefinierte Methode aufrufen
+                        await DbService.EnsureDatabaseCreatedAsync();
                     }
                     else
                     {
-                        // Prüfe, ob Migrationen angewendet werden müssen
-                        var pendingMigrations = dbContext.Database.GetPendingMigrations();
-                        if (pendingMigrations.Any())
+                        Debug.WriteLine("Datenbank existiert bereits, prüfe auf Updates...");
+
+                        // Zuerst mit GetPendingMigrations prüfen
+                        try
                         {
-                            Debug.WriteLine($"Es gibt {pendingMigrations.Count()} ausstehende Migrationen, wende sie an...");
-                            dbContext.Database.Migrate();
-                            Debug.WriteLine("Alle ausstehenden Migrationen wurden angewendet.");
+                            // Prüfe, ob Migrationen angewendet werden müssen
+                            var pendingMigrations = dbContext.Database.GetPendingMigrations();
+                            if (pendingMigrations.Any())
+                            {
+                                Debug.WriteLine($"Es gibt {pendingMigrations.Count()} ausstehende Migrationen, wende sie an...");
+                                dbContext.Database.Migrate();
+                                Debug.WriteLine("Alle ausstehenden Migrationen wurden angewendet.");
+                            }
+                            else
+                            {
+                                Debug.WriteLine("Datenbank existiert und ist auf dem neuesten Stand.");
+                            }
                         }
-                        else
+                        catch (Exception migrationEx)
                         {
-                            Debug.WriteLine("Datenbank existiert und ist auf dem neuesten Stand.");
+                            Debug.WriteLine($"Fehler beim Prüfen/Anwenden von Migrationen: {migrationEx.Message}");
                         }
+
+                        // Zusätzlich noch unsere benutzerdefinierte Methode aufrufen
+                        await DbService.EnsureDatabaseCreatedAsync();
                     }
                 }
                 catch (Exception dbCreateEx)

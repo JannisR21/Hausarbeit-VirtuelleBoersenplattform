@@ -45,6 +45,453 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
             }
         }
 
+        /// <summary>
+        /// Stellt sicher, dass die Datenbank existiert und erstellt Tabellen falls notwendig
+        /// </summary>
+        public async Task EnsureDatabaseCreatedAsync()
+        {
+            try
+            {
+                using var context = CreateContext();
+
+                // Stellt sicher, dass die Datenbank existiert
+                bool created = await context.Database.EnsureCreatedAsync();
+
+                if (created)
+                {
+                    Debug.WriteLine("Datenbank wurde neu erstellt");
+                }
+                else
+                {
+                    Debug.WriteLine("Datenbank existiert bereits");
+                }
+
+                // Benutzer-Tabelle explizit erstellen/überprüfen (wichtig!)
+                await EnsureBenutzerTabelleExistiertAsync();
+
+                // Aktien-Tabelle explizit erstellen/überprüfen
+                await EnsureAktienTabelleExistiertAsync();
+
+                // Portfolio-Tabelle explizit erstellen/überprüfen
+                await EnsurePortfolioEintraegeExistiertAsync();
+
+                // Watchlist-Tabelle explizit erstellen/überprüfen
+                await EnsureWatchlistEintraegeExistiertAsync();
+
+                // AktienKursHistorie-Tabelle explizit erstellen/überprüfen
+                await EnsureAktienKursHistorieExistiertAsync();
+
+                // Historische Daten Tabelle explizit erstellen/überprüfen
+                await EnsureHistorischeDatenTabelleExistiertAsync();
+
+                // Sicherstellen, dass alle Standard-Aktien in der Datenbank vorhanden sind
+                await EnsureAllStandardAktienExistAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Sicherstellen der Datenbank: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Debug.WriteLine($"Innere Ausnahme: {ex.InnerException.Message}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Stellt sicher, dass die Tabelle für historische Daten existiert
+        /// </summary>
+        private async Task EnsureHistorischeDatenTabelleExistiertAsync()
+        {
+            try
+            {
+                using var context = CreateContext();
+
+                // SQL zur Überprüfung und Erstellung der Tabelle
+                var sql = @"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'HistorischeDatenErweitert')
+                BEGIN
+                    CREATE TABLE HistorischeDatenErweitert (
+                        Id int IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                        AktieId int NOT NULL,
+                        Datum datetime2 NOT NULL,
+                        Eröffnungskurs decimal(18,2) NOT NULL,
+                        Höchstkurs decimal(18,2) NOT NULL,
+                        Tiefstkurs decimal(18,2) NOT NULL,
+                        Schlusskurs decimal(18,2) NOT NULL,
+                        ÄnderungProzent decimal(18,2) NOT NULL,
+                        Volumen bigint NULL,
+                        Intervall nvarchar(20) NOT NULL,
+                        ErstelltAm datetime2 NOT NULL DEFAULT GETDATE(),
+                        AktualisiertAm datetime2 NOT NULL DEFAULT GETDATE(),
+                        CONSTRAINT FK_HistorischeDatenErweitert_Aktien FOREIGN KEY (AktieId) REFERENCES Aktien(AktienID)
+                    );
+
+                    -- Indizes erstellen
+                    CREATE INDEX IX_HistorischeDatenErweitert_AktieId ON HistorischeDatenErweitert(AktieId);
+                    CREATE INDEX IX_HistorischeDatenErweitert_Datum ON HistorischeDatenErweitert(Datum);
+                    CREATE INDEX IX_HistorischeDatenErweitert_AktieId_Datum ON HistorischeDatenErweitert(AktieId, Datum);
+
+                    PRINT 'Tabelle HistorischeDatenErweitert wurde erstellt';
+                END
+                ELSE
+                BEGIN
+                    PRINT 'Tabelle HistorischeDatenErweitert existiert bereits';
+                END";
+
+                await context.Database.ExecuteSqlRawAsync(sql);
+                Debug.WriteLine("SQL zur Erstellung der HistorischeDatenErweitert-Tabelle wurde ausgeführt");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Erstellen der HistorischeDatenErweitert-Tabelle: {ex.Message}");
+                // Fehler protokollieren, aber App weiterlaufen lassen
+            }
+        }
+
+        /// <summary>
+        /// Stellt sicher, dass die Benutzer-Tabelle existiert
+        /// </summary>
+        private async Task EnsureBenutzerTabelleExistiertAsync()
+        {
+            try
+            {
+                using var context = CreateContext();
+
+                // Zuerst prüfen, ob die Tabelle existiert
+                var checkSql = @"
+                IF EXISTS (SELECT * FROM sys.tables WHERE name = 'Benutzer')
+                    SELECT 1
+                ELSE
+                    SELECT 0";
+
+                // Verbindung öffnen und Abfrage ausführen
+                var command = context.Database.GetDbConnection().CreateCommand();
+                command.CommandText = checkSql;
+
+                if (command.Connection.State != System.Data.ConnectionState.Open)
+                    await command.Connection.OpenAsync();
+
+                var result = await command.ExecuteScalarAsync();
+                bool tableExists = Convert.ToBoolean(result);
+
+                if (!tableExists)
+                {
+                    Debug.WriteLine("Benutzer-Tabelle existiert nicht, erstelle sie...");
+
+                    // Die Benutzer-Tabelle manuell erstellen
+                    var createTableCmd = context.Database.GetDbConnection().CreateCommand();
+                    createTableCmd.CommandText = @"
+                    CREATE TABLE Benutzer (
+                        BenutzerID int IDENTITY(1,1) PRIMARY KEY,
+                        Benutzername nvarchar(50) NOT NULL,
+                        Email nvarchar(100) NOT NULL,
+                        PasswortHash nvarchar(255) NOT NULL,
+                        Kontostand decimal(18,2) NOT NULL DEFAULT 10000.00,
+                        Erstellungsdatum datetime NOT NULL DEFAULT GETDATE(),
+                        Vorname nvarchar(50) NULL,
+                        Nachname nvarchar(50) NULL,
+                        VollName nvarchar(100) NULL
+                    );
+
+                    -- Unique-Indices
+                    CREATE UNIQUE INDEX IX_Benutzer_Benutzername ON Benutzer(Benutzername);
+                    CREATE UNIQUE INDEX IX_Benutzer_Email ON Benutzer(Email);
+
+                    -- Demo- und Admin-Benutzer einfügen
+                    INSERT INTO Benutzer (Benutzername, Email, PasswortHash, Kontostand, Erstellungsdatum, Vorname, Nachname, VollName)
+                    VALUES ('admin', 'admin@example.com', '$2a$12$eTxedgRvWVqcV9gOJ5ZOz.zqbTLwc7E0gIOZTSLVMPzb0OFaZqNQK', 10000.00, DATEADD(day, -30, GETDATE()), 'Admin', 'User', 'Admin User');
+
+                    INSERT INTO Benutzer (Benutzername, Email, PasswortHash, Kontostand, Erstellungsdatum, Vorname, Nachname, VollName)
+                    VALUES ('demo', 'demo@example.com', '$2a$12$T30V4QZDsHRbGHqLPBPwleF0K27z0CFkFRgYLBVT8G3V36Ou.wJbu', 10000.00, DATEADD(day, -15, GETDATE()), 'Demo', 'User', 'Demo User');";
+
+                    await createTableCmd.ExecuteNonQueryAsync();
+                    Debug.WriteLine("Benutzer-Tabelle erfolgreich erstellt mit Admin- und Demo-Benutzer");
+                }
+                else
+                {
+                    Debug.WriteLine("Benutzer-Tabelle existiert bereits");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Erstellen der Benutzer-Tabelle: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Debug.WriteLine($"Innerer Fehler: {ex.InnerException.Message}");
+                }
+                // Fehler protokollieren, aber App weiterlaufen lassen
+            }
+        }
+
+        /// <summary>
+        /// Stellt sicher, dass die Aktien-Tabelle existiert
+        /// </summary>
+        private async Task EnsureAktienTabelleExistiertAsync()
+        {
+            try
+            {
+                using var context = CreateContext();
+
+                // Zuerst prüfen, ob die Tabelle existiert
+                var checkSql = @"
+                IF EXISTS (SELECT * FROM sys.tables WHERE name = 'Aktien')
+                    SELECT 1
+                ELSE
+                    SELECT 0";
+
+                // Verbindung öffnen und Abfrage ausführen
+                var command = context.Database.GetDbConnection().CreateCommand();
+                command.CommandText = checkSql;
+
+                if (command.Connection.State != System.Data.ConnectionState.Open)
+                    await command.Connection.OpenAsync();
+
+                var result = await command.ExecuteScalarAsync();
+                bool tableExists = Convert.ToBoolean(result);
+
+                if (!tableExists)
+                {
+                    Debug.WriteLine("Aktien-Tabelle existiert nicht, erstelle sie...");
+
+                    // Die Aktien-Tabelle manuell erstellen
+                    var createTableCmd = context.Database.GetDbConnection().CreateCommand();
+                    createTableCmd.CommandText = @"
+                    CREATE TABLE Aktien (
+                        AktienID int IDENTITY(1,1) PRIMARY KEY,
+                        AktienSymbol nvarchar(10) NOT NULL,
+                        AktienName nvarchar(100) NOT NULL,
+                        AktuellerPreis decimal(18,2) NOT NULL DEFAULT 0,
+                        Änderung decimal(18,2) NOT NULL DEFAULT 0,
+                        ÄnderungProzent decimal(18,2) NOT NULL DEFAULT 0,
+                        LetzteAktualisierung datetime NOT NULL DEFAULT GETDATE()
+                    );
+
+                    -- Unique-Index
+                    CREATE UNIQUE INDEX IX_Aktien_AktienSymbol ON Aktien(AktienSymbol);";
+
+                    await createTableCmd.ExecuteNonQueryAsync();
+                    Debug.WriteLine("Aktien-Tabelle erfolgreich erstellt");
+                }
+                else
+                {
+                    Debug.WriteLine("Aktien-Tabelle existiert bereits");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Erstellen der Aktien-Tabelle: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Debug.WriteLine($"Innerer Fehler: {ex.InnerException.Message}");
+                }
+                // Fehler protokollieren, aber App weiterlaufen lassen
+            }
+        }
+
+        /// <summary>
+        /// Stellt sicher, dass die Portfolio-Tabelle existiert
+        /// </summary>
+        private async Task EnsurePortfolioEintraegeExistiertAsync()
+        {
+            try
+            {
+                using var context = CreateContext();
+
+                // Zuerst prüfen, ob die Tabelle existiert
+                var checkSql = @"
+                IF EXISTS (SELECT * FROM sys.tables WHERE name = 'PortfolioEintraege')
+                    SELECT 1
+                ELSE
+                    SELECT 0";
+
+                // Verbindung öffnen und Abfrage ausführen
+                var command = context.Database.GetDbConnection().CreateCommand();
+                command.CommandText = checkSql;
+
+                if (command.Connection.State != System.Data.ConnectionState.Open)
+                    await command.Connection.OpenAsync();
+
+                var result = await command.ExecuteScalarAsync();
+                bool tableExists = Convert.ToBoolean(result);
+
+                if (!tableExists)
+                {
+                    Debug.WriteLine("PortfolioEintraege-Tabelle existiert nicht, erstelle sie...");
+
+                    // Die PortfolioEintraege-Tabelle manuell erstellen
+                    var createTableCmd = context.Database.GetDbConnection().CreateCommand();
+                    createTableCmd.CommandText = @"
+                    CREATE TABLE PortfolioEintraege (
+                        BenutzerID int NOT NULL,
+                        AktienID int NOT NULL,
+                        AktienSymbol nvarchar(10) NOT NULL,
+                        AktienName nvarchar(100) NOT NULL,
+                        Anzahl int NOT NULL DEFAULT 0,
+                        EinstandsPreis decimal(18,2) NOT NULL DEFAULT 0,
+                        AktuellerKurs decimal(18,2) NOT NULL DEFAULT 0,
+                        LetzteAktualisierung datetime NOT NULL DEFAULT GETDATE(),
+                        CONSTRAINT PK_PortfolioEintraege PRIMARY KEY (BenutzerID, AktienID),
+                        CONSTRAINT FK_PortfolioEintraege_Benutzer FOREIGN KEY (BenutzerID) REFERENCES Benutzer(BenutzerID) ON DELETE CASCADE,
+                        CONSTRAINT FK_PortfolioEintraege_Aktien FOREIGN KEY (AktienID) REFERENCES Aktien(AktienID) ON DELETE NO ACTION
+                    );";
+
+                    await createTableCmd.ExecuteNonQueryAsync();
+                    Debug.WriteLine("PortfolioEintraege-Tabelle erfolgreich erstellt");
+                }
+                else
+                {
+                    Debug.WriteLine("PortfolioEintraege-Tabelle existiert bereits");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Erstellen der PortfolioEintraege-Tabelle: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Debug.WriteLine($"Innerer Fehler: {ex.InnerException.Message}");
+                }
+                // Fehler protokollieren, aber App weiterlaufen lassen
+            }
+        }
+
+        /// <summary>
+        /// Stellt sicher, dass die Watchlist-Tabelle existiert
+        /// </summary>
+        private async Task EnsureWatchlistEintraegeExistiertAsync()
+        {
+            try
+            {
+                using var context = CreateContext();
+
+                // Zuerst prüfen, ob die Tabelle existiert
+                var checkSql = @"
+                IF EXISTS (SELECT * FROM sys.tables WHERE name = 'WatchlistEintraege')
+                    SELECT 1
+                ELSE
+                    SELECT 0";
+
+                // Verbindung öffnen und Abfrage ausführen
+                var command = context.Database.GetDbConnection().CreateCommand();
+                command.CommandText = checkSql;
+
+                if (command.Connection.State != System.Data.ConnectionState.Open)
+                    await command.Connection.OpenAsync();
+
+                var result = await command.ExecuteScalarAsync();
+                bool tableExists = Convert.ToBoolean(result);
+
+                if (!tableExists)
+                {
+                    Debug.WriteLine("WatchlistEintraege-Tabelle existiert nicht, erstelle sie...");
+
+                    // Die WatchlistEintraege-Tabelle manuell erstellen
+                    var createTableCmd = context.Database.GetDbConnection().CreateCommand();
+                    createTableCmd.CommandText = @"
+                    CREATE TABLE WatchlistEintraege (
+                        BenutzerID int NOT NULL,
+                        AktienID int NOT NULL,
+                        AktienSymbol nvarchar(10) NOT NULL,
+                        AktienName nvarchar(100) NOT NULL,
+                        HinzugefuegtAm datetime NOT NULL DEFAULT GETDATE(),
+                        KursBeimHinzufuegen decimal(18,2) NOT NULL DEFAULT 0,
+                        AktuellerKurs decimal(18,2) NOT NULL DEFAULT 0,
+                        LetzteAktualisierung datetime NOT NULL DEFAULT GETDATE(),
+                        CONSTRAINT PK_WatchlistEintraege PRIMARY KEY (BenutzerID, AktienID),
+                        CONSTRAINT FK_WatchlistEintraege_Benutzer FOREIGN KEY (BenutzerID) REFERENCES Benutzer(BenutzerID) ON DELETE CASCADE,
+                        CONSTRAINT FK_WatchlistEintraege_Aktien FOREIGN KEY (AktienID) REFERENCES Aktien(AktienID) ON DELETE NO ACTION
+                    );";
+
+                    await createTableCmd.ExecuteNonQueryAsync();
+                    Debug.WriteLine("WatchlistEintraege-Tabelle erfolgreich erstellt");
+                }
+                else
+                {
+                    Debug.WriteLine("WatchlistEintraege-Tabelle existiert bereits");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Erstellen der WatchlistEintraege-Tabelle: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Debug.WriteLine($"Innerer Fehler: {ex.InnerException.Message}");
+                }
+                // Fehler protokollieren, aber App weiterlaufen lassen
+            }
+        }
+
+        /// <summary>
+        /// Stellt sicher, dass die AktienKursHistorie-Tabelle existiert
+        /// </summary>
+        private async Task EnsureAktienKursHistorieExistiertAsync()
+        {
+            try
+            {
+                using var context = CreateContext();
+
+                // Zuerst prüfen, ob die Tabelle existiert
+                var checkSql = @"
+                IF EXISTS (SELECT * FROM sys.tables WHERE name = 'AktienKursHistorie')
+                    SELECT 1
+                ELSE
+                    SELECT 0";
+
+                // Verbindung öffnen und Abfrage ausführen
+                var command = context.Database.GetDbConnection().CreateCommand();
+                command.CommandText = checkSql;
+
+                if (command.Connection.State != System.Data.ConnectionState.Open)
+                    await command.Connection.OpenAsync();
+
+                var result = await command.ExecuteScalarAsync();
+                bool tableExists = Convert.ToBoolean(result);
+
+                if (!tableExists)
+                {
+                    Debug.WriteLine("AktienKursHistorie-Tabelle existiert nicht, erstelle sie...");
+
+                    // Die AktienKursHistorie-Tabelle manuell erstellen
+                    var createTableCmd = context.Database.GetDbConnection().CreateCommand();
+                    createTableCmd.CommandText = @"
+                    CREATE TABLE AktienKursHistorie (
+                        HistorieID int IDENTITY(1,1) PRIMARY KEY,
+                        AktienID int NOT NULL,
+                        AktienSymbol nvarchar(10) NOT NULL,
+                        Datum datetime NOT NULL,
+                        Eroeffnungskurs decimal(18,2) NOT NULL,
+                        Hoechstkurs decimal(18,2) NOT NULL,
+                        Tiefstkurs decimal(18,2) NOT NULL,
+                        Schlusskurs decimal(18,2) NOT NULL,
+                        Volumen bigint NULL,
+                        ÄnderungProzent decimal(18,2) NOT NULL DEFAULT 0,
+                        ErstelltAm datetime NOT NULL DEFAULT GETDATE(),
+                        CONSTRAINT FK_AktienKursHistorie_Aktien FOREIGN KEY (AktienID) REFERENCES Aktien(AktienID) ON DELETE NO ACTION
+                    );
+
+                    -- Indices für Performance
+                    CREATE INDEX IX_AktienKursHistorie_AktienID ON AktienKursHistorie(AktienID);
+                    CREATE INDEX IX_AktienKursHistorie_Datum ON AktienKursHistorie(Datum);
+                    CREATE INDEX IX_AktienKursHistorie_AktienSymbol_Datum ON AktienKursHistorie(AktienSymbol, Datum);";
+
+                    await createTableCmd.ExecuteNonQueryAsync();
+                    Debug.WriteLine("AktienKursHistorie-Tabelle erfolgreich erstellt");
+                }
+                else
+                {
+                    Debug.WriteLine("AktienKursHistorie-Tabelle existiert bereits");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Erstellen der AktienKursHistorie-Tabelle: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Debug.WriteLine($"Innerer Fehler: {ex.InnerException.Message}");
+                }
+                // Fehler protokollieren, aber App weiterlaufen lassen
+            }
+        }
+
         #region Benutzer
 
         public async Task<Benutzer> GetBenutzerByIdAsync(int id)
@@ -652,6 +1099,57 @@ namespace HausarbeitVirtuelleBörsenplattform.Services
         }
 
         #region AktienKursHistorie
+
+        /// <summary>
+        /// Stellt sicher, dass alle Aktien aus der Standard-Aktienliste in der Datenbank existieren
+        /// und für historische Daten verwendet werden können
+        /// </summary>
+        public async Task EnsureAllStandardAktienExistAsync()
+        {
+            try
+            {
+                using var context = CreateContext();
+                var standardAktien = AktienListe.GetBekannteBörsenAktien();
+                var dbAktien = await context.Aktien.ToListAsync();
+
+                int hinzugefügt = 0;
+
+                // Alle Standard-Aktien durchgehen
+                foreach (var aktie in standardAktien)
+                {
+                    // Prüfen, ob die Aktie bereits in der Datenbank existiert
+                    if (!dbAktien.Any(a => a.AktienSymbol.Equals(aktie.AktienSymbol, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        // Neue Aktie zur Datenbank hinzufügen
+                        context.Aktien.Add(new Aktie
+                        {
+                            AktienSymbol = aktie.AktienSymbol,
+                            AktienName = aktie.AktienName,
+                            AktuellerPreis = aktie.AktuellerPreis > 0 ? aktie.AktuellerPreis : 0.01m, // Sicherstellen, dass Preis > 0
+                            Änderung = 0,
+                            ÄnderungProzent = 0,
+                            LetzteAktualisierung = DateTime.Now
+                        });
+
+                        hinzugefügt++;
+                    }
+                }
+
+                if (hinzugefügt > 0)
+                {
+                    await context.SaveChangesAsync();
+                    Debug.WriteLine($"{hinzugefügt} Standard-Aktien wurden zur Datenbank hinzugefügt");
+                }
+                else
+                {
+                    Debug.WriteLine("Alle Standard-Aktien sind bereits in der Datenbank vorhanden");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Sicherstellen der Standard-Aktien: {ex.Message}");
+            }
+        }
 
         /// <summary>
         /// Speichert einen neuen historischen Kurseintrag in der Datenbank

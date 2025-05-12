@@ -53,7 +53,7 @@ namespace HausarbeitVirtuelleBörsenplattform.Data
             base.OnModelCreating(modelBuilder);
 
             // SQL Server-Kompatibilitätseinstellungen, um einen größeren Versionsbereich zu unterstützen
-            modelBuilder.HasAnnotation("SqlServer:CompatibilityMode", "130"); // SQL Server 2016 Kompatibilitätsmodus
+            modelBuilder.HasAnnotation("SqlServer:CompatibilityMode", "120"); // SQL Server 2014 Kompatibilitätsmodus für bessere Abwärtskompatibilität
 
             // Benutzer-Konfiguration
             modelBuilder.Entity<Benutzer>(entity =>

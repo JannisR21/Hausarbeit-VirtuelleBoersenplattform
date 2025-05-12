@@ -105,6 +105,79 @@ namespace HausarbeitVirtuelleBörsenplattform.ViewModels
 
             StatusText = "Bereit";
             Debug.WriteLine("HistorischeDatenViewModel initialisiert");
+
+            // Anmerkung: Für die Sicherstellung der Tabellen nutzen wir die
+            // externe Methoden im DatabaseService anstelle des direkten Aufrufs
+            // hier, da EnsureHistoricalDataTableExists async ist
+        }
+
+        /// <summary>
+        /// Stellt sicher, dass die Tabelle für historische Daten existiert
+        /// </summary>
+        public async Task EnsureHistoricalDataTableExists()
+        {
+            try
+            {
+                Debug.WriteLine("Prüfe historische Daten Tabelle...");
+
+                // Prüfe, ob die Tabelle bereits existiert
+                var command = _context.Database.GetDbConnection().CreateCommand();
+                command.CommandText = @"
+                    IF EXISTS (SELECT * FROM sys.tables WHERE name = 'HistorischeDatenErweitert')
+                        SELECT 1
+                    ELSE
+                        SELECT 0";
+
+                // Verbindung öffnen, falls noch nicht offen
+                if (command.Connection.State != System.Data.ConnectionState.Open)
+                    await command.Connection.OpenAsync();
+
+                var result = await command.ExecuteScalarAsync();
+                bool tableExists = Convert.ToBoolean(result);
+
+                Debug.WriteLine($"Historische Daten-Tabelle existiert: {tableExists}");
+
+                // Falls die Tabelle nicht existiert, erstelle sie mit einfachster SQL-Syntax für maximale Kompatibilität
+                if (!tableExists)
+                {
+                    Debug.WriteLine("Erstelle Tabelle für historische Daten mit einfacher SQL-Syntax...");
+
+                    // Verwende einfache SQL-Syntax für maximale Kompatibilität
+                    var createTableCmd = _context.Database.GetDbConnection().CreateCommand();
+                    createTableCmd.CommandText = @"
+                        CREATE TABLE HistorischeDatenErweitert (
+                            Id int IDENTITY(1,1) PRIMARY KEY,
+                            AktieId int NOT NULL,
+                            Datum datetime NOT NULL,
+                            Eröffnungskurs decimal(18,2) NOT NULL,
+                            Höchstkurs decimal(18,2) NOT NULL,
+                            Tiefstkurs decimal(18,2) NOT NULL,
+                            Schlusskurs decimal(18,2) NOT NULL,
+                            ÄnderungProzent decimal(18,2) NOT NULL,
+                            Volumen bigint NULL,
+                            Intervall nvarchar(20) NOT NULL,
+                            ErstelltAm datetime DEFAULT GETDATE(),
+                            AktualisiertAm datetime DEFAULT GETDATE()
+                        )";
+
+                    await createTableCmd.ExecuteNonQueryAsync();
+                    Debug.WriteLine("Tabelle erfolgreich erstellt");
+
+                    // Einfache Indizes erstellen
+                    var indexCmd = _context.Database.GetDbConnection().CreateCommand();
+                    indexCmd.CommandText = @"
+                        CREATE INDEX IX_HistorischeDatenErweitert_AktieId ON HistorischeDatenErweitert(AktieId);
+                        CREATE INDEX IX_HistorischeDatenErweitert_Datum ON HistorischeDatenErweitert(Datum);";
+
+                    await indexCmd.ExecuteNonQueryAsync();
+                    Debug.WriteLine("Indizes erfolgreich erstellt");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fehler beim Prüfen/Erstellen der Tabelle: {ex.Message}");
+                // Wir fangen den Fehler ab, damit die Anwendung weiter funktioniert
+            }
         }
 
         /// <summary>

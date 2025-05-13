@@ -492,7 +492,7 @@
                     </Grid>
                 </Border>
 
-                <!-- Analyse und Export -->
+                <!-- Analyse -->
                 <Border Style="{StaticResource CardStyle}">
                     <Grid>
                         <Grid.RowDefinitions>
@@ -568,7 +568,6 @@
                             </Border>
                         </WrapPanel>
 
-                        <!-- Export-Optionen entfernt auf Wunsch -->
                         <TextBlock Grid.Row="2"
                                    Text="Daten werden automatisch in der Datenbank gespeichert"
                                    FontStyle="Italic"

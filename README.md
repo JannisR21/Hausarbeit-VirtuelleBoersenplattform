@@ -167,3 +167,26 @@ Die Datenbank besteht aus vier Haupttabellen:
 ## Autor
 
 Dieses Projekt wurde im Rahmen der Hausarbeit der HBFSWI erstellt von Jannis Ruhland.
+
+
+
+
+![Screenshot 2025-05-10 113424](https://github.com/user-attachments/assets/10b34fec-6533-4bd8-b0b8-84663368df60)
+![Screenshot 2025-05-10 113547](https://github.com/user-attachments/assets/cca660ca-b73e-4767-be2b-069a99c8e141)
+![Screenshot 2025-05-10 113920](https://github.com/user-attachments/assets/afc0b938-586d-418b-bb6c-4158047215a2)
+![Screenshot 2025-05-10 114133](https://github.com/user-attachments/assets/12815e94-1574-4f6a-bcab-5233d9ab7287)
+![Screenshot 2025-05-10 114439](https://github.com/user-attachments/assets/3a4bbdd8-07cf-4c91-8d24-a9f87d13005c)
+![Screenshot 2025-05-10 114639](https://github.com/user-attachments/assets/2a53cd90-48bc-4204-b13b-5c36668a0ebe)
+![Screenshot 2025-05-10 114822](https://github.com/user-attachments/assets/b1e60056-477f-404b-aa53-bb5f08748598)
+![Screenshot 2025-05-10 115109](https://github.com/user-attachments/assets/737471be-09d3-46b7-894f-4ddb927e3b21)
+![Screenshot 2025-05-10 115254](https://github.com/user-attachments/assets/ed7e47c4-2f90-4ef1-9144-2f8ab4f32443)
+![Screenshot 2025-05-12 173335](https://github.com/user-attachments/assets/17f8aba1-a64f-4a2b-874f-e20f7f752675)
+
+
+
+
+
+
+
+
+
